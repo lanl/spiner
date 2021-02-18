@@ -1,6 +1,8 @@
 Spiner
 ===
 
+[![Build Status](https://www.travis-ci.com/lanl/spiner.svg?token=1Son5aqoY35CxrTszRiD&branch=main)](https://www.travis-ci.com/lanl/spiner)
+
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
 Spiner](https://en.wikipedia.org/wiki/Brent_Spiner).
