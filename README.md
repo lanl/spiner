@@ -17,16 +17,14 @@ If you want to use unit tests, clone with submodules to include `Catch2`.
 ```bash
 git clone --recurse-submodules git@gitlab.lanl.gov:jonahm/spiner.git
 ```
-To build the relevant object file, call 
+To build and run unit tests,
 ```bash
-make databox
-```
-To run unit tests,
-```bash
+cd test
 make test
 ```
 and to do convergence testing,
 ```bash
+cd test
 make convergence
 ```
 At the moment, `Spiner` cannot be installed into a system directory.

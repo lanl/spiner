@@ -14,9 +14,9 @@
 USE_HDF5=no
 
 CC=g++
-INC= spiner_types.hpp \
-	databox.hpp \
-	interpolation.hpp
+INC= ../spiner_types.hpp \
+	../databox.hpp \
+	../interpolation.hpp
 GCH=$(INC:.hpp=.hpp.gch)
 
 H5CC=h5c++
@@ -25,18 +25,18 @@ H5_INCLUDE=-I${H5_DIR}/include
 H5_LIB=-L${H5_DIR}/lib
 H5_LINK=-lhdf5_hl -lhdf5 -Wl,-rpath=${H5_DIR}/lib/
 
-CATCH_INCLUDE=-ICatch2/single_include/catch2
-PORTS_INCLUDE=-Iports-of-call
+CATCH_INCLUDE=-I../Catch2/single_include/catch2
+PORTS_INCLUDE=-I../ports-of-call
 BASE_FLAGS=-std=c++14 -Wall -fdiagnostics-color=always -g
 
 ifeq ($(USE_HDF5),yes)
 	CC=${H5CC}
-	INCLUDE_FLAGS=${CATCH_INCLUDE} ${PORTS_INCLUDE} ${H5_INCLUDE}
+	INCLUDE_FLAGS=${CATCH_INCLUDE} ${PORTS_INCLUDE} ${H5_INCLUDE} -I../
 	LIB_FLAGS=${H5_LIB}
 	LINK_FLAGS=${H5_LINK}
 	CFLAGS=${BASE_FLAGS} ${INCLUDE_FLAGS} -DSPINER_USE_HDF
 else
-	INCLUDE_FLAGS=${CATCH_INCLUDE} ${PORTS_INCLUDE}
+	INCLUDE_FLAGS=${CATCH_INCLUDE} ${PORTS_INCLUDE} -I../
 	LIB_FLAGS=
 	LINK_FLAGS=
 	CFLAGS=${BASE_FLAGS} ${INCLUDE_FLAGS}
