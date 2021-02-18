@@ -76,6 +76,14 @@ slice shown). Convergence is second-order, as expected.
 
 ![convergence plot](figs/convergence.png)
 
+## Contributors
+
+`Spiner` and `ports-of-call` were primarily developed by
+- Jonah Miller
+- Chad Meyer
+- Daniel Holladay
+- Josh Dolence
+
 ## Copyright
 
 © (or copyright) 2019-2021. Triad National Security, LLC. All rights
