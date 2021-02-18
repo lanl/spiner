@@ -78,9 +78,13 @@ slice shown). Convergence is second-order, as expected.
 
 ## Contributors
 
-`Spiner` and `ports-of-call` were primarily developed by
-- Jonah Miller
+`Spiner` was primarily developed by Jonah Miller in collaboration with
 - Chad Meyer
+- Daniel Holladay
+- Josh Dolence
+
+The underlying portability machinery in `ports-of-call` was primarily developed by Chad Meyer in collaboration with
+- Jonah Miller
 - Daniel Holladay
 - Josh Dolence
 
