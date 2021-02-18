@@ -32,6 +32,13 @@ Provides an implementation of a multidimensional array with round
 parentheses access. Could be a Kokkos view or something that is not
 portable
 
+## Contributors
+
+`ports-of-call` was primarily developed by Chad Meyer, in collaboration with
+- Jonah Miller
+- Daniel Holladay
+- Josh Dolence
+
 ## Copyright
 
 © (or copyright) 2019-2021. Triad National Security, LLC. All rights
