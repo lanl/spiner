@@ -1,0 +1,10 @@
+a.out
+*.o
+test.bin
+convergence.bin
+*.hpp.gch
+convergence.dat
+.markdown-preview.html
+*.sp5
+*.lst
+*.s
