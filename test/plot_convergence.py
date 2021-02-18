@@ -13,7 +13,7 @@ rc('font',size=14)
 # mpl.rcParams['xtick.minor.width'] = 0
 
 DFILE = "convergence.dat"
-PLOTPATH = os.path.join("figs","convergence")
+PLOTPATH = os.path.join("../","figs","convergence")
 
 KX,KY,KZ = 2,3,4
 xmin,xmax = 0,1
