@@ -1,0 +1,26 @@
+language: C++
+compiler: gcc
+os: linux
+dist: bionic
+git:
+  quiet: true
+  submodules: true
+
+addons:
+  apt:
+    packages:
+      - build-essential
+      - libhdf5-dev
+
+before_install:
+  - wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  - sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /usr/local/miniconda3
+  - sudo /usr/local/miniconda3/bin/conda install --yes --quiet numpy scipy h5py matplotlib pip psutil
+  - sudo mkdir -p /usr/local/bin
+  - sudo ln -s /usr/local/miniconda3/bin/python /usr/local/bin/python
+  - export PATH=/usr/local/bin:${PATH}
+  - mkdir -p ${HOME}/.config/matplotlib
+  - cp matplotlibrc ${HOME}/.config/matplotlib
+
+script:
+  - make test USE_HDF5=yes
