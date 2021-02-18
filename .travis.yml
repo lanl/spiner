@@ -20,7 +20,8 @@ before_install:
   - sudo ln -s /usr/local/miniconda3/bin/python /usr/local/bin/python
   - export PATH=/usr/local/bin:${PATH}
   - mkdir -p ${HOME}/.config/matplotlib
-  - cp matplotlibrc ${HOME}/.config/matplotlib
+  - cp test/matplotlibrc ${HOME}/.config/matplotlib
 
 script:
+  - cd test
   - make test USE_HDF5=yes
