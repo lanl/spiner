@@ -7,6 +7,10 @@ Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
 Spiner](https://en.wikipedia.org/wiki/Brent_Spiner).
 
+## Performance portability
+
+`Spiner` is compatible with code on CPU, GPU, and everything in between. Read the `ports-of-call` [README](ports-of-call/README.md) for more details.
+
 ## Installation
 
 `Spiner` is self-contained. Simply clone it as
@@ -39,6 +43,8 @@ At the moment, `Spiner` cannot be installed into a system directory.
 - `interpolation.hpp`
 - `spiner_types.hpp`
 - `sp5.hpp`
+- `ports-of-call/portability.hpp`
+- `ports-of-call/portable_arrays.hpp`
 
 The testing tooling requires a few different pieces:
 
@@ -49,10 +55,14 @@ The testing tooling requires a few different pieces:
   - numpy
   - matplotlib
 
-## HDF5
+### HDF5
 
 `Spiner` supports reading and writing DataBox objects into a custom HDF5 format called `SP5`. 
 To enable this, compile with the appropriate `HDF5` linking and the flag `-DSPINER_USE_HDF5`.
+
+### CUDA and Kokkos
+
+`Spiner` uses the `ports-of-call` code to optionally support compilation with CUDA, Kokkos, or none of the above.
 
 ## Features
 
