@@ -77,6 +77,9 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
     DataBox db4(5,4,2,2);
     REQUIRE( db.rank() == 1 );
     REQUIRE( db4.rank() == 4 );
+
+    db.finalize(); // free data
+    db4.finalize();
   }
 
   SECTION( "A DataBox can be written to and read from" ) {
@@ -121,6 +124,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
         REQUIRE( dbCopy.dim(2) == 4 );
         REQUIRE( dbCopy.dim(3) == 5 );
       }
+      dbCopy.finalize(); // re-allocations require free
     }
 
     SECTION("DataBoxes can be shallow copied") {
@@ -134,6 +138,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
       DataBox db2;
       db2.copy(db);
       REQUIRE( &(db2(0)) != &(db(0)) );
+      db2.finalize(); // deep copies require free
     }
 
     SECTION( "DataBoxes can be sliced in 2D" ) {
@@ -156,6 +161,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
         REQUIRE( &(dbslc(0)) == &(db(0)) );
       }
     }
+    db.finalize(); // free original data
   }
 }
 
@@ -264,6 +270,7 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
       error = sqrt(error);
       REQUIRE( error <= EPSTEST );
     }
+    free(db2d);
   }
 
   SECTION( "interpFromDB 3D->1D" ) {
@@ -297,7 +304,9 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
     }
     error = sqrt(error);
     REQUIRE( error <= EPSTEST );
+    free(db1d);
   }
+  free(db); // free databox
 }
 
 DataBox MakeFilledDB(int N, int &tot) {
@@ -328,6 +337,7 @@ SCENARIO( "Reference Counting", "[DataBox]" ) {
         REQUIRE( db(N-1, N-1, N-1) == tot - 1 );
       }
     }
+    free(db);
   }
 }
 
@@ -375,8 +385,10 @@ SCENARIO( "DataBox HDF5", "[DataBox],[HDF5]" ) {
           }
         }
       }
+      free(db2);
     }
   }
+  free(db);
 }
 #endif
 
@@ -384,7 +396,7 @@ SCENARIO( "DataBox HDF5", "[DataBox],[HDF5]" ) {
 #ifdef PORTABILITY_STRATEGY_KOKKOS
 SCENARIO( "Kokkos functionality: interpolation",
           "[DataBox],[Kokkos]" ) {
-  constexpr int NFINE = 100;
+  constexpr int NFINE = 1000;
   constexpr int RANK  = 3;
   constexpr int NZ    = 8; 
   constexpr int NY    = 10;
@@ -435,17 +447,19 @@ SCENARIO( "Kokkos functionality: interpolation",
   Kokkos::parallel_reduce(Policy3D({0,0,0},{NFINE,NFINE,NFINE}),
     PORTABLE_LAMBDA(const int iz, const int iy, const int ix, Real& update)
   {
+    DataBox db2 = db_dev; // checks that copying works on device
     const Real z = fine_grids[2].x(iz);
     const Real y = fine_grids[1].x(iy);
     const Real x = fine_grids[0].x(ix);
     const Real f_true = linearFunction(z,y,x);
-    const Real difference = db_dev.interpToReal(z,y,x) - f_true;
+    const Real difference = db2.interpToReal(z,y,x) - f_true;
     update += difference*difference;
   }, error );
   error = sqrt(error);
   REQUIRE( error <= EPSTEST );
   
   PORTABLE_FREE(device_data);
+  free(db);
 }
 #endif
 
