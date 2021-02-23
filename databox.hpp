@@ -21,6 +21,7 @@
 #include <vector>
 #include <string>
 #include <limits>
+
 #include <assert.h>
 
 #ifdef SPINER_USE_HDF
@@ -47,72 +48,22 @@ namespace Spiner {
   public:
 
     // Base constructor
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow)) DataBox()
+    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
+    DataBox()
       : rank_(0)
       , status_(DataStatus::empty)
       , data_(nullptr)
     {}
 
     // Rank constructors w/ pointer
+    template<typename... Args>
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx1)
-      : rank_(1)
+    DataBox(Real* data, Args... args)
+      : rank_(sizeof...(args))
       , status_(DataStatus::shallow_slice)
       , data_(data)
     {
-      dataView_.NewPortableMDArray(data, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx2, int nx1)
-      : rank_(2)
-      , status_(DataStatus::shallow_slice)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx2,nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data,
-            int nx3, int nx2, int nx1)
-      : rank_(3)
-      , status_(DataStatus::shallow_slice)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx3,nx2,nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data,
-            int nx4, int nx3,
-            int nx2, int nx1)
-      : rank_(4)
-      , status_(DataStatus::shallow_slice)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx4,nx3,nx2,nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data,
-            int nx5, int nx4,
-            int nx3, int nx2, int nx1)
-      : rank_(5)
-      , status_(DataStatus::shallow_slice)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx5,nx4,nx3,nx2,nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data,
-            int nx6, int nx5, int nx4,
-            int nx3, int nx2, int nx1)
-      : rank_(6)
-      , status_(DataStatus::shallow_slice)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx6,nx5,nx4,nx3,nx2,nx1);
+      dataView_.NewPortableMDArray(data, std::forward<Args>(args)...);
       setAllIndexed_();
     }
 
