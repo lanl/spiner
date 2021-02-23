@@ -395,7 +395,7 @@ namespace Spiner {
     inline void copy(const DataBox& src);
 
     // utility info
-    inline DataStatus dataStatus() { return status_; }
+    inline DataStatus dataStatus() const { return status_; }
     inline bool isReference() { return status_ == DataStatus::shallow_slice; }
     inline bool ownsAllocatedMemory() {
       return (status_ == DataStatus::empty
