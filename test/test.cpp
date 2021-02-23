@@ -300,6 +300,37 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
   }
 }
 
+DataBox MakeFilledDB(int N, int &tot) {
+  DataBox db(N, N, N);
+  tot = 0;
+  for (int k = 0; k < N; k++) {
+    for (int j = 0; j < N; j++) {
+      for (int i = 0; i < N; i++) {
+        db(k,j,i) = tot++;
+      }
+    }
+  }
+  db.setRange(0,0,1,10);
+  return db;
+}
+SCENARIO( "Reference Counting", "[DataBox]" ) {
+  WHEN("A databox is asigned and the original one goes out of scope") {
+    constexpr int N = 2;
+    int tot;
+    DataBox db;
+    {
+      auto db2 = MakeFilledDB(N,tot);
+      db = db2;
+    }
+    THEN("The databox status is correct") {
+      REQUIRE( db.dataStatus() == Spiner::DataStatus::AllocatedHost );
+      AND_THEN( "The data is present" ) {
+        REQUIRE( db(N-1, N-1, N-1) == tot - 1 );
+      }
+    }
+  }
+}
+
 #if SPINER_USE_HDF
 SCENARIO( "DataBox HDF5", "[DataBox],[HDF5]" ) {
   constexpr int N = 2;

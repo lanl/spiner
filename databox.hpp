@@ -15,12 +15,13 @@
 // permit others to do so.
 //======================================================================
 
-#include <utility>
 #include <algorithm>
-#include <type_traits>
-#include <vector>
-#include <string>
 #include <limits>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <assert.h>
 
@@ -41,7 +42,7 @@
 namespace Spiner {
 
   enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
-  enum class DataStatus {empty, shallow_slice, allocated_hostonly};
+  enum class DataStatus { Empty, Unmanaged, AllocatedHost };
   constexpr int MAXRANK = PortableMDArray<Real>::MAXDIM;
 
   class DataBox {
@@ -51,7 +52,7 @@ namespace Spiner {
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
     DataBox()
       : rank_(0)
-      , status_(DataStatus::empty)
+      , status_(DataStatus::Empty)
       , data_(nullptr)
     {}
 
@@ -60,7 +61,7 @@ namespace Spiner {
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
     DataBox(Real* data, Args... args)
       : rank_(sizeof...(args))
-      , status_(DataStatus::shallow_slice)
+      , status_(DataStatus::Unmanaged)
       , data_(data)
     {
       dataView_.NewPortableMDArray(data, std::forward<Args>(args)...);
@@ -70,32 +71,36 @@ namespace Spiner {
     // Rank constructors w/o pointer
     inline __attribute__((nothrow)) DataBox(int nx1)
       : rank_(1)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx1);
       setAllIndexed_();
     }
     inline __attribute__((nothrow)) DataBox(int nx2, int nx1)
       : rank_(2)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx2*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx2*nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx2, nx1);
       setAllIndexed_();
     }
     inline __attribute__((nothrow)) DataBox(int nx3, int nx2, int nx1)
       : rank_(3)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx3*nx2*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx3*nx2*nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx3, nx2, nx1);
       setAllIndexed_();
     }
     inline __attribute__((nothrow)) DataBox(int nx4, int nx3, int nx2, int nx1)
       : rank_(4)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx4*nx3*nx2*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx4*nx3*nx2*nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx4, nx3, nx2, nx1);
       setAllIndexed_();
@@ -104,8 +109,9 @@ namespace Spiner {
     DataBox(int nx5, int nx4,
             int nx3, int nx2, int nx1)
       : rank_(5)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx5*nx4*nx3*nx2*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx5*nx4*nx3*nx2*nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx5, nx4, nx3, nx2, nx1);
       setAllIndexed_();
@@ -114,17 +120,18 @@ namespace Spiner {
     DataBox(int nx6, int nx5, int nx4,
             int nx3, int nx2, int nx1)
       : rank_(6)
-      , status_(DataStatus::allocated_hostonly)
-      , data_((Real*)malloc(sizeof(Real)*nx6*nx5*nx4*nx3*nx2*nx1))
+      , status_(DataStatus::AllocatedHost)
+      , hostData_(new Real[nx6*nx5*nx4*nx3*nx2*nx1])
+      , data_(hostData_.get())
     {
       dataView_.NewPortableMDArray(data_, nx6, nx5, nx4, nx3, nx2, nx1);
       setAllIndexed_();
     }
 
-    // Copy and move constructors. ALL SHALLOW
+    // Copy and move constructors. All shallow.
     inline __attribute__((nothrow)) DataBox(PortableMDArray<Real> A)
       : rank_(A.GetRank())
-      , status_(DataStatus::shallow_slice)
+      , status_(DataStatus::Unmanaged)
       , data_(A.data())
       , dataView_(A)
     {
@@ -132,7 +139,7 @@ namespace Spiner {
     }
     inline __attribute__((nothrow)) DataBox(PortableMDArray<Real>& A)
       : rank_(A.GetRank())
-      , status_(DataStatus::shallow_slice)
+      , status_(DataStatus::Unmanaged)
       , data_(A.data())
       , dataView_(A)
     {
@@ -141,7 +148,8 @@ namespace Spiner {
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
     DataBox(const DataBox& src)
       : rank_(src.rank_)
-      , status_(DataStatus::shallow_slice)
+      , status_(src.status_)
+      , hostData_(src.hostData_)
       , data_(src.data_)
     {
       setAllIndexed_();
@@ -152,15 +160,22 @@ namespace Spiner {
       }
     }
 
-    // Destructor
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow)) ~DataBox() { free_(); }
-
     // Slice constructor
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
     DataBox(const DataBox& b,
             const int dim,
             const int indx,
-            const int nvar);
+            const int nvar)
+      : status_(b.status_)
+      , hostData_(b.hostData_)
+      , data_(b.data_) {
+      dataView_.InitWithShallowSlice(b.dataView_,dim,indx,nvar);
+      rank_ = dataView_.GetRank();
+      for (int i = 0; i < rank_; i++) {
+        indices_[i] = b.indices_[i];
+        grids_[i] = b.grids_[i];
+      }
+    }
 
 #ifdef SPINER_USE_HDF
     // HDF5 constructors
@@ -175,12 +190,8 @@ namespace Spiner {
 
     // Equivalent to NewPortableMDArray.
     // Note that it's destructive!
-    inline void resize(int nx1);
-    inline void resize(int nx2, int nx1);
-    inline void resize(int nx3, int nx2, int nx1);
-    inline void resize(int nx4, int nx3, int nx2, int nx1);
-    inline void resize(int nx5, int nx4, int nx3, int nx2, int nx1);
-    inline void resize(int nx6, int nx5, int nx4, int nx3, int nx2, int nx1);
+    template<typename... Args>
+    inline void resize(Args... args);
 
     // Index operators
     // By reference
@@ -301,6 +312,7 @@ namespace Spiner {
     // DataBox, interpolated at that slowest index.
     // WARNING: requires memory to be pre-allocated.
     // TODO: add 3d and higher interpFromDB if necessary
+    // TODO(JMM): Include interpToDB
     PORTABLE_INLINE_FUNCTION void interpFromDB(const DataBox& db, const Real x);
     PORTABLE_INLINE_FUNCTION void interpFromDB(const DataBox& db,
                                                const Real x2, const Real x1);
@@ -347,10 +359,10 @@ namespace Spiner {
 
     // utility info
     inline DataStatus dataStatus() const { return status_; }
-    inline bool isReference() { return status_ == DataStatus::shallow_slice; }
+    inline bool isReference() { return status_ == DataStatus::Unmanaged; }
     inline bool ownsAllocatedMemory() {
-      return (status_ == DataStatus::empty
-              || status_ == DataStatus::allocated_hostonly);
+      return (status_ == DataStatus::Empty
+              || status_ == DataStatus::AllocatedHost);
     }
     inline bool operator== (const DataBox& other) const;
     inline bool operator!= (const DataBox& other) const { return !(*this == other); }
@@ -372,10 +384,17 @@ namespace Spiner {
       return indices_[i];
     }
 
+    // TODO(JMM): Potentially use this for device-free
+    void finalize() {
+      // currently a no-op.
+    }
+
   private:
     int rank_; // after dataView_ b/c dataView_ should be initialized first
     DataStatus status_;
-    Real* data_; // sometimes we manage this and sometimes we don't
+    // when we manage our own data on host, it lives here
+    std::shared_ptr<Real> hostData_; 
+    Real* data_; // points at data, managed or not
     PortableMDArray<Real> dataView_; // always used
     IndexType indices_[MAXRANK];
     RegularGrid1D grids_[MAXRANK];
@@ -385,27 +404,24 @@ namespace Spiner {
     inline std::string gridname_(int i) const {
       return SP5::DB::GRID_FORMAT[0] + std::to_string(i+1) + SP5::DB::GRID_FORMAT[1];
     }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    void free_() {
-      if (status_ == DataStatus::allocated_hostonly) free(data_);
+
+    int prod_() {
+      return 1;
+    }
+    int prod_(int i) {
+      return i;
+    }
+    template <typename... Rest>
+    int prod_(int i, Rest... rest) {
+      return i*prod_(std::forward<Rest>(rest)...);
+    }
+    template<typename... Args>
+    inline void allocateHost_(Args... args) {
+      hostData_.reset(new Real[prod_(std::forward<Args>(args)...)]);
+      data_ = hostData_.get();
+      status_ = DataStatus::AllocatedHost;
     }
   };
-
-  // Slice constructor
-  PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-  DataBox::DataBox(const DataBox& b,
-                   const int dim,
-                   const int indx,
-                   const int nvar) {
-    data_ = b.data_;
-    status_ = DataStatus::shallow_slice;
-    dataView_.InitWithShallowSlice(b.dataView_,dim,indx,nvar);
-    rank_ = dataView_.GetRank();
-    for (int i = 0; i < rank_; i++) {
-      indices_[i] = b.indices_[i];
-      grids_[i] = b.grids_[i];
-    }
-  }
 
   // Read an array, shallow
   inline void DataBox::setArray(PortableMDArray<Real>& A) {
@@ -415,54 +431,14 @@ namespace Spiner {
   }
 
   // Allocate memory of constructed DataBox
-  inline void DataBox::resize(int nx1) {
+  template<typename... Args>
+  inline void DataBox::resize(Args... args) {
     assert( ownsAllocatedMemory() ) ;
-    free_();
-    rank_ = 1;
-    data_ = (Real*)malloc(sizeof(Real)*nx1);
+    finalize();
+    rank_ = sizeof...(args);
+    allocateHost_(std::forward<Args>(args)...);
     setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx1);
-  }
-  inline void DataBox::resize(int nx2, int nx1) {
-    assert( ownsAllocatedMemory() );
-    free_();
-    rank_ = 2;
-    data_ = (Real*)malloc(sizeof(Real)*nx2*nx1);
-    setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx2, nx1);
-  }
-  inline void DataBox::resize(int nx3, int nx2, int nx1) {
-    assert( ownsAllocatedMemory() );
-    free_();
-    rank_ = 3;
-    data_ = (Real*)malloc(sizeof(Real)*nx3*nx2*nx1);
-    setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx3, nx2, nx1);
-  }
-  inline void DataBox::resize(int nx4, int nx3, int nx2, int nx1) {
-    assert( ownsAllocatedMemory() );
-    free_();
-    rank_ = 4;
-    data_ = (Real*)malloc(sizeof(Real)*nx4*nx3*nx2*nx1);
-    setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx4, nx3, nx2, nx1);
-  }
-  inline void DataBox::resize(int nx5, int nx4, int nx3, int nx2, int nx1) {
-    assert( ownsAllocatedMemory() );
-    free_();
-    rank_ = 5;
-    data_ = (Real*)malloc(sizeof(Real)*nx5*nx4*nx3*nx2*nx1);
-    setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx5, nx4, nx3, nx2, nx1);
-  }
-  inline void DataBox::resize(int nx6, int nx5, int nx4,
-                              int nx3, int nx2, int nx1) {
-    assert( ownsAllocatedMemory() );
-    free_();
-    rank_ = 6;
-    data_ = (Real*)malloc(sizeof(Real)*nx6*nx5*nx4*nx3*nx2*nx1);
-    setAllIndexed_();
-    dataView_.NewPortableMDArray(data_, nx6, nx5, nx4, nx3, nx2, nx1);
+    dataView_.NewPortableMDArray(data_, std::forward<Args>(args)...);
   }
 
   PORTABLE_INLINE_FUNCTION Real DataBox::interpToReal(const Real x) const {
@@ -715,10 +691,8 @@ namespace Spiner {
                                     dims.data());
 
     // Allocate PortableMDArray and read it in to buffer
-    free_();
-    data_ = (Real*)malloc(sizeof(Real)
-                          *dims[5]*dims[4]*dims[3]
-                          *dims[2]*dims[1]*dims[0]);
+    finalize();
+    allocateHost_(dims[5],dims[4],dims[3],dims[2],dims[1],dims[0]);
     dataView_.NewPortableMDArray(data_,
                                  dims[5], dims[4], dims[3],
                                  dims[2], dims[1], dims[0]);
@@ -752,8 +726,8 @@ namespace Spiner {
   PORTABLE_INLINE_FUNCTION DataBox& DataBox::operator= (const DataBox& src) {
     if (this != &src) {
       rank_ = src.rank_;
-      free_();
-      status_ = DataStatus::shallow_slice;
+      status_ = src.status_;
+      hostData_ = src.hostData_;
       data_ = src.data_;
       dataView_.InitWithShallowSlice(src.dataView_,6,0,src.dim(6));
       for (int i = 0; i < rank_; i++) {
