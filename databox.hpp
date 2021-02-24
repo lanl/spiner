@@ -58,104 +58,35 @@ namespace Spiner {
     {}
 
     // Rank constructors w/ pointer
+    // args should be ints.
+    // example call
+    // DataBox(data, nx3, nx2, nx1)
+    template<typename... Args>
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx1)
-      : rank_(1)
+    DataBox(Real* data, Args...args)
+      : rank_(sizeof...(args))
       , status_(DataStatus::Unmanaged)
       , data_(data)
     {
-      dataView_.NewPortableMDArray(data, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx2, int nx1)
-      : rank_(2)
-      , status_(DataStatus::Unmanaged)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx2, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx3, int nx2, int nx1)
-      : rank_(3)
-      , status_(DataStatus::Unmanaged)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx4, int nx3, int nx2, int nx1)
-      : rank_(4)
-      , status_(DataStatus::Unmanaged)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx4, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx5, int nx4, int nx3, int nx2, int nx1)
-      : rank_(5)
-      , status_(DataStatus::Unmanaged)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx5, nx4, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox(Real* data, int nx6, int nx5, int nx4, int nx3, int nx2, int nx1)
-      : rank_(6)
-      , status_(DataStatus::Unmanaged)
-      , data_(data)
-    {
-      dataView_.NewPortableMDArray(data, nx6, nx5, nx4, nx3, nx2, nx1);
+      dataView_.NewPortableMDArray(data, std::forward<Args>(args)...);
       setAllIndexed_();
     }
 
     // Rank constructors w/o pointer
-    inline __attribute__((nothrow)) DataBox(int nx1)
-      : rank_(1)
+    // args should be ints.
+    // example call
+    // DataBox(data, nx3, nx2, nx1)
+    template<typename... Args>
+    inline __attribute__((nothrow)) DataBox(AllocationTarget t, Args... args)
+      : rank_(sizeof...(args))
     {
-      allocate_(AllocationTarget::Host, nx1);
-      dataView_.NewPortableMDArray(data_, nx1);
+      allocate_(t, std::forward<Args>(args)...);
+      dataView_.NewPortableMDArray(data_, std::forward<Args>(args)...);
       setAllIndexed_();
     }
-    inline __attribute__((nothrow)) DataBox(int nx2, int nx1)
-      : rank_(2)
-    {
-      allocate_(AllocationTarget::Host, nx2, nx1);
-      dataView_.NewPortableMDArray(data_, nx2, nx1);
-      setAllIndexed_();
-    }
-    inline __attribute__((nothrow)) DataBox(int nx3, int nx2, int nx1)
-      : rank_(3)
-    {
-      allocate_(AllocationTarget::Host, nx3, nx2, nx1);
-      dataView_.NewPortableMDArray(data_, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    inline __attribute__((nothrow)) DataBox(int nx4, int nx3, int nx2, int nx1)
-      : rank_(4)
-    {
-      allocate_(AllocationTarget::Host, nx4, nx3, nx2, nx1);
-      dataView_.NewPortableMDArray(data_, nx4, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    inline __attribute__((nothrow)) DataBox(int nx5, int nx4, int nx3, int nx2, int nx1)
-      : rank_(5)
-    {
-      allocate_(AllocationTarget::Host, nx5, nx4, nx3, nx2, nx1);
-      dataView_.NewPortableMDArray(data_, nx5, nx4, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
-    inline __attribute__((nothrow)) DataBox(int nx6, int nx5, int nx4, int nx3, int nx2, int nx1)
-      : rank_(6)
-    {
-      allocate_(AllocationTarget::Host, nx6, nx5, nx4, nx3, nx2, nx1);
-      dataView_.NewPortableMDArray(data_, nx6, nx5, nx4, nx3, nx2, nx1);
-      setAllIndexed_();
-    }
+    template<typename... Args>
+    inline __attribute__((nothrow)) DataBox(Args... args)
+      : DataBox(AllocationTarget::Host, std::forward<Args>(args)...) { }
 
     // Copy and move constructors. All shallow.
     inline __attribute__((nothrow)) DataBox(PortableMDArray<Real> A)
@@ -218,16 +149,10 @@ namespace Spiner {
     // Re-allocates memory for DataBox either on host or device.
     // This is destructive. Memory is freed!
     template<typename... Args>
+    inline void resize(AllocationTarget t, Args... args);
+    template<typename... Args>
     inline void resize(Args... args) {
-      resizeHost(std::forward<Args>(args)...);
-    }
-    template<typename... Args>
-    inline void resizeHost(Args... args) {
-      resize_(AllocationTarget::Host, std::forward<Args>(args)...);
-    }
-    template<typename... Args>
-    inline void resizeDevice(Args... args) {
-      resize_(AllocationTarget::Device, std::forward<Args>(args)...);
+      resize(AllocationTarget::Host, std::forward<Args>(args)...);
     }
 
     // Index operators
@@ -362,13 +287,14 @@ namespace Spiner {
     }
     
     // TODO(JMM): Add more code for more portability strategies
-    DataBox getOnDevice() const {
+    DataBox getOnDevice() const { // getOnDevice is always a deep copy
 #ifdef PORTABILITY_STRATEGY_KOKKOS
       using HS = Kokkos::HostSpace;
       using DMS = Kokkos::DefaultExecutionSpace::memory_space;
       constexpr const bool execution_is_host {std::is_same<DMS,HS>::value};
       if (execution_is_host) {
-        DataBox a(*this);
+        DataBox a;
+        a.copy(*this);
         a.status_ = DataStatus::AllocatedDevice;
         return a;
       } else {
@@ -388,7 +314,8 @@ namespace Spiner {
         return a;
       }
 #else // no kokkos
-      DataBox a(*this);
+      DataBox a;
+      a.copy(*this);
       a.status_ = DataStatus::AllocatedDevice;
       return a;
 #endif // kokkos
@@ -442,9 +369,6 @@ namespace Spiner {
         status_ = DataStatus::AllocatedHost;
       }
     }
-    template<typename... Args>
-    inline void resize_(AllocationTarget t, Args... args);
-
   };
 
   // Read an array, shallow
@@ -456,7 +380,7 @@ namespace Spiner {
 
   // Allocate memory of constructed DataBox
   template<typename... Args>
-  inline void DataBox::resize_(AllocationTarget t, Args... args) {
+  inline void DataBox::resize(AllocationTarget t, Args... args) {
     assert( ownsAllocatedMemory() ) ;
     rank_ = sizeof...(args);
     allocate_(t, std::forward<Args>(args)...);
@@ -609,7 +533,7 @@ namespace Spiner {
     AllocationTarget t = (src.status_ == DataStatus::AllocatedDevice
                           ? AllocationTarget::Device
                           : AllocationTarget::Host);
-    resize_(t,src.dim(6),src.dim(5),src.dim(4),
+    resize(t,src.dim(6),src.dim(5),src.dim(4),
             src.dim(3),src.dim(2),src.dim(1));
     rank_ = src.rank_; // resize sets rank
     for (int i = 0; i < rank_; i++) {

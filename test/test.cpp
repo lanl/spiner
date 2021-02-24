@@ -11,6 +11,7 @@
 // copies to the public, perform publicly and display publicly, and to
 // permit others to do so.
 
+#include <memory>
 #include <vector>
 #include <array>
 #include <algorithm> // std::min, std::max
@@ -322,7 +323,7 @@ DataBox MakeFilledDB(int N, int &tot) {
   db.setRange(0,0,1,10);
   return db;
 }
-SCENARIO( "Reference Counting", "[DataBox]" ) {
+SCENARIO( "Moving a databox", "[DataBox]" ) {
   WHEN("A databox is asigned and the original one goes out of scope") {
     constexpr int N = 2;
     int tot;
@@ -338,6 +339,79 @@ SCENARIO( "Reference Counting", "[DataBox]" ) {
       }
     }
     free(db);
+  }
+}
+
+SCENARIO("Allocating a DataBox on device", "[Databox][Constructor]") {
+  GIVEN("A databox is allocated on device") {
+    constexpr int N = 2;
+    constexpr Real factor = 1.275; // something arbitrary
+    DataBox db_dev(Spiner::AllocationTarget::Device, N, N, N);
+    WHEN("It is set to a given value") {
+      portableFor("Fill the databox",
+                  0, N, 0, N, 0, N,
+                  PORTABLE_LAMBDA(int k, int j, int i) {
+                    db_dev(k, j, i) = factor;
+                  });
+      THEN("That value can be recovered") {
+        Real sum = 0;
+        portableReduce("Sum up the databox",
+                       0, N, 0, N, 0, N,
+                       PORTABLE_LAMBDA(int k, int j, int i, Real &val) {
+                         val += db_dev(k,j,i);
+                       }, sum);
+        REQUIRE( std::abs(sum - factor*N*N*N) <= EPSTEST );
+      }
+    }
+    free(db_dev);
+  }
+}
+
+SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
+  GIVEN("A databox allocated on the host") {
+    constexpr int N = 2;
+    constexpr Real factor = 1.275;
+    DataBox db_host(N, N, N);
+    for (int i = 0; i < db_host.size(); ++i) {
+      db_host(i) = factor;
+    }
+    WHEN("It is copied to device") {
+      DataBox db_dev = db_host.getOnDevice();
+      THEN("It can be read on device") {
+        Real sum = 0;
+        portableReduce("Sum up the databox",
+                       0, N, 0, N, 0, N,
+                       PORTABLE_LAMBDA(int k, int j, int i, Real &val) {
+                         val += db_dev(k,j,i);
+                       }, sum);
+        REQUIRE( std::abs(sum - factor*N*N*N) <= EPSTEST );
+      }
+      free(db_dev);
+    }
+    free(db_host);
+  }
+}
+
+struct DBDeleter {
+  template<typename T>
+  void operator()(T* ptr) {
+    ptr->finalize();
+    delete ptr;
+  }
+};
+SCENARIO("Using unique pointers to garbage collect DataBox",
+         "[DataBox][GarbageCollection]") {
+  constexpr int N = 1000;
+  GIVEN("A databox allocated on device with a unique pointer") {
+    std::unique_ptr<DataBox, DBDeleter>
+      pdb(new DataBox(Spiner::AllocationTarget::Device, N));
+    THEN("We can access it") {
+      auto db = *pdb; // shallow copy
+      portableFor("Just do something", 0, N,
+                  PORTABLE_LAMBDA(int i) {
+                    db(i) = 2.0*i;
+                  });
+    }
   }
 }
 

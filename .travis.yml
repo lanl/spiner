@@ -25,3 +25,4 @@ before_install:
 script:
   - cd test
   - make test USE_HDF5=yes
+  - valgrind --leak-check=yes --track-origins=yes ./test.bin
