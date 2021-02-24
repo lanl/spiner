@@ -110,7 +110,8 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
     }
 
     SECTION( "DataBox metadata can be copied" ) {
-      DataBox dbCopy; dbCopy.copyMetadata(db);
+      DataBox dbCopy;
+      dbCopy.copyMetadata(db);
       REQUIRE( dbCopy.rank() == db.rank() );
       for (int i = 0; i < db.rank(); i++ ) {
         REQUIRE( dbCopy.dim(i+1) == db.dim(i+1) );
@@ -342,6 +343,33 @@ SCENARIO( "Moving a databox", "[DataBox]" ) {
   }
 }
 
+SCENARIO("Decoupling two databoxes", "[DataBox][reset]") {
+  GIVEN("A databox") {
+    constexpr int N = 5;
+    DataBox db(N);
+    for (int i = 0; i < db.size(); ++i) {
+      db(i) = i;
+    }
+    WHEN("Another databox is copied from it") {
+      DataBox db2 = db;
+      THEN("The new databox can be decoupled from the original") {
+        db2.reset();
+        db2.resize(N);
+        for (int i = 0; i < db.size(); ++i) {
+          db2(i) = db(i) + 1;
+        }
+        AND_THEN("The original databox is unchanged") {
+          for (int i = 0; i < db.size(); ++i) {
+            REQUIRE( std::abs(db(i) - i) <= EPSTEST );
+          }
+        }
+        free(db2);
+      }
+    }
+    free(db);
+  }
+}
+
 SCENARIO("Allocating a DataBox on device", "[Databox][Constructor]") {
   GIVEN("A databox is allocated on device") {
     constexpr int N = 2;
@@ -392,18 +420,11 @@ SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
   }
 }
 
-struct DBDeleter {
-  template<typename T>
-  void operator()(T* ptr) {
-    ptr->finalize();
-    delete ptr;
-  }
-};
 SCENARIO("Using unique pointers to garbage collect DataBox",
          "[DataBox][GarbageCollection]") {
   constexpr int N = 1000;
   GIVEN("A databox allocated on device with a unique pointer") {
-    std::unique_ptr<DataBox, DBDeleter>
+    std::unique_ptr<DataBox, Spiner::DBDeleter>
       pdb(new DataBox(Spiner::AllocationTarget::Device, N));
     THEN("We can access it") {
       auto db = *pdb; // shallow copy

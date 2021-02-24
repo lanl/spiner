@@ -11,6 +11,7 @@ addons:
     packages:
       - build-essential
       - libhdf5-dev
+      - valgrind
 
 before_install:
   - wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh

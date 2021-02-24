@@ -53,9 +53,9 @@ namespace Spiner {
     PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
     DataBox()
       : rank_(0)
-      , status_(DataStatus::Empty)
-      , data_(nullptr)
-    {}
+    {
+      finalize();
+    }
 
     // Rank constructors w/ pointer
     // args should be ints.
@@ -269,6 +269,18 @@ namespace Spiner {
     inline bool operator== (const DataBox& other) const;
     inline bool operator!= (const DataBox& other) const { return !(*this == other); }
 
+    // call this to tell a databox it no longer owns its memory
+    PORTABLE_INLINE_FUNCTION void makeShallow() {
+      status_ = DataStatus::Unmanaged;
+    }
+    // call this to reset a databox to the default constructed state
+    // this decouples it from other databoxes that might point at the same memory
+    PORTABLE_INLINE_FUNCTION void reset() {
+      data_ = nullptr;
+      status_ = DataStatus::Empty;
+      rank_ = 0;
+    }
+
     PORTABLE_INLINE_FUNCTION Real* data() const { return data_; }
     PORTABLE_INLINE_FUNCTION Real min() const;
     PORTABLE_INLINE_FUNCTION Real max() const;
@@ -336,7 +348,7 @@ namespace Spiner {
     int rank_; // after dataView_ b/c dataView_ should be initialized first
     DataStatus status_ = DataStatus::Empty;
     // when we manage our own data on host, it lives here
-    Real* data_; // points at data, managed or not
+    Real* data_ = nullptr; // points at data, managed or not
     PortableMDArray<Real> dataView_; // always used
     IndexType indices_[MAXRANK];
     RegularGrid1D grids_[MAXRANK];
@@ -359,7 +371,7 @@ namespace Spiner {
     }
     template<typename... Args>
     inline void allocate_(AllocationTarget t, Args... args) {
-      this->finalize();
+      finalize();
       size_t size = sizeof(Real)*prod_(std::forward<Args>(args)...);
       if (t == AllocationTarget::Device) {
         data_ = (Real*)PORTABLE_MALLOC(size);
@@ -641,7 +653,6 @@ namespace Spiner {
                                     dims.data());
 
     // Allocate PortableMDArray and read it in to buffer
-    this->finalize();
     allocate_(AllocationTarget::Host,
               dims[5],dims[4],dims[3],dims[2],dims[1],dims[0]);
     dataView_.NewPortableMDArray(data_,
@@ -762,5 +773,12 @@ namespace Spiner {
     db.finalize();
   }
 
+  struct DBDeleter {
+    template<typename T>
+    void operator()(T* ptr) {
+      ptr->finalize();
+      delete ptr;
+    }
+  };
 }
 #endif // _SPINER_DATABOX_HPP_
