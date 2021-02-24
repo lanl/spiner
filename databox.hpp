@@ -120,7 +120,7 @@ namespace Spiner {
             const int dim,
             const int indx,
             const int nvar)
-      : status_(b.status_)
+      : status_(DataStatus::Unmanaged)
       , data_(b.data_) {
       dataView_.InitWithShallowSlice(b.dataView_,dim,indx,nvar);
       rank_ = dataView_.GetRank();
