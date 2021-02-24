@@ -50,12 +50,7 @@ namespace Spiner {
   public:
 
     // Base constructor
-    PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-    DataBox()
-      : rank_(0)
-    {
-      finalize();
-    }
+    DataBox() = default;
 
     // Rank constructors w/ pointer
     // args should be ints.
@@ -303,7 +298,7 @@ namespace Spiner {
 #ifdef PORTABILITY_STRATEGY_KOKKOS
       using HS = Kokkos::HostSpace;
       using DMS = Kokkos::DefaultExecutionSpace::memory_space;
-      constexpr const bool execution_is_host {std::is_same<DMS,HS>::value};
+      constexpr const bool execution_is_host {Kokkos::SpaceAccessibility<DMS,HS>::accessible};
       if (execution_is_host) {
         DataBox a;
         a.copy(*this);
@@ -345,7 +340,7 @@ namespace Spiner {
     }
 
   private:
-    int rank_; // after dataView_ b/c dataView_ should be initialized first
+    int rank_ = 0; // after dataView_ b/c dataView_ should be initialized first
     DataStatus status_ = DataStatus::Empty;
     // when we manage our own data on host, it lives here
     Real* data_ = nullptr; // points at data, managed or not
