@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+    tests:
+    name: Run Unit and Regression Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+          with:
+            submodules: true
+      - name: Set system to non-interactive mode
+        run: export DEBIAN_FRONTEND=noninteractive
+      - name: install hdf5 and valgrind
+        run: sudo apt-get install -y --force-yes -qq build-essential libhdf5-dev valgrind
+      - name: build and run tests
+        run: |
+          mkdir -p test
+          cd test
+          make test USE_HDF5=yes
+      - name: memcheck with valgrind
+        run: valgrind --leak-check=yes --track-origins=yes ./test.bin
