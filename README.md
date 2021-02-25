@@ -1,7 +1,7 @@
 Spiner
 ===
 
-[![Build Status](https://www.travis-ci.com/lanl/spiner.svg?token=1Son5aqoY35CxrTszRiD&branch=main)](https://www.travis-ci.com/lanl/spiner)
+![Build Status](https://github.com/LANL/spiner/actions/workflows/tests.yml/badge.svg)
 
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
