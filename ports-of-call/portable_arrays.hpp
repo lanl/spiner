@@ -18,9 +18,7 @@
 // distribute copies to the public, perform publicly and display
 // publicly, and to permit others to do so.
 // ========================================================================================
-// ! \file athena_arrays.hpp \brief provides array classes valid in 1D
-// to 5D.
-//
+
 //  The operator() is overloaded, e.g. elements of a 4D array of size [N4xN3xN2xN1]
 //  are accessed as:  A(n,k,j,i) = A[i + N1*(j + N2*(k + N3*n))]
 //  NOTE THE TRAILING INDEX INSIDE THE PARENTHESES IS INDEXED FASTEST

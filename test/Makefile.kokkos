@@ -12,8 +12,8 @@
 # permit others to do so.
 
 KOKKOS_PATH = ${HOME}/kokkos
-#SRC = test.cpp
-SRC = convergence.cpp
+SRC = test.cpp
+#SRC = convergence.cpp
 vpath %.cpp $(sort $(dir $(SRC)))
 
 KOKKOS_CXX_STANDARD=c++14
@@ -28,7 +28,7 @@ default: build
 
 ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
 CXX = ${KOKKOS_PATH}/bin/nvcc_wrapper
-CXXFLAGS = -O3 --expt-relaxed-constexpr
+CXXFLAGS = -O0 --expt-relaxed-constexpr -g
 CXXFLAGS += -DPORTABILITY_STRATEGY_KOKKOS #-DSPINER_USE_HDF
 LINK = ${CXX}
 #LDFLAGS = 
@@ -42,17 +42,17 @@ LDFLAGS =
 EXE = simple_test_cuda
 else
 CXX = g++
-CXXFLAGS = -O3 -g -DPORTABILITY_STRATEGY_KOKKOS #-DSPINER_USE_HDF
+CXXFLAGS = -O0 -g -DPORTABILITY_STRATEGY_KOKKOS #-DSPINER_USE_HDF
 LINK = ${CXX}
 LDFLAGS = #-lhdf5_hl -lhdf5 -Wl,-rpath=${H5_DIR}/lib/
-#EXE = simple_test
-EXE = convergence_test
+EXE = simple_test
+#EXE = convergence_test
 KOKKOS_DEVICES = "OpenMP"
 KOKKOS_ARCH = ""
 #KOKKOS_DEBUG=yes
 endif
 
-EXTRA_INC += -ICatch2/single_include/catch2 -Iports-of-call
+EXTRA_INC += -I../Catch2/single_include/catch2 -I../ports-of-call -I../
 #EXTRA_INC += ${H5_INCLUDE}
 DEPFLAGS = -M
 

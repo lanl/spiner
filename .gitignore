@@ -1,3 +1,4 @@
+*.a
 a.out
 *.o
 test.bin
@@ -8,3 +9,7 @@ convergence.dat
 *.sp5
 *.lst
 *.s
+KokkosCore_*
+core.*
+simple_test_cuda
+*.log

@@ -11,6 +11,7 @@
 // copies to the public, perform publicly and display publicly, and to
 // permit others to do so.
 
+#include <memory>
 #include <vector>
 #include <array>
 #include <algorithm> // std::min, std::max
@@ -77,6 +78,9 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
     DataBox db4(5,4,2,2);
     REQUIRE( db.rank() == 1 );
     REQUIRE( db4.rank() == 4 );
+
+    db.finalize(); // free data
+    db4.finalize();
   }
 
   SECTION( "A DataBox can be written to and read from" ) {
@@ -106,7 +110,8 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
     }
 
     SECTION( "DataBox metadata can be copied" ) {
-      DataBox dbCopy; dbCopy.copyMetadata(db);
+      DataBox dbCopy;
+      dbCopy.copyMetadata(db);
       REQUIRE( dbCopy.rank() == db.rank() );
       for (int i = 0; i < db.rank(); i++ ) {
         REQUIRE( dbCopy.dim(i+1) == db.dim(i+1) );
@@ -121,6 +126,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
         REQUIRE( dbCopy.dim(2) == 4 );
         REQUIRE( dbCopy.dim(3) == 5 );
       }
+      dbCopy.finalize(); // re-allocations require free
     }
 
     SECTION("DataBoxes can be shallow copied") {
@@ -134,6 +140,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
       DataBox db2;
       db2.copy(db);
       REQUIRE( &(db2(0)) != &(db(0)) );
+      db2.finalize(); // deep copies require free
     }
 
     SECTION( "DataBoxes can be sliced in 2D" ) {
@@ -156,6 +163,7 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
         REQUIRE( &(dbslc(0)) == &(db(0)) );
       }
     }
+    db.finalize(); // free original data
   }
 }
 
@@ -264,6 +272,7 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
       error = sqrt(error);
       REQUIRE( error <= EPSTEST );
     }
+    free(db2d);
   }
 
   SECTION( "interpFromDB 3D->1D" ) {
@@ -297,6 +306,133 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
     }
     error = sqrt(error);
     REQUIRE( error <= EPSTEST );
+    free(db1d);
+  }
+  free(db); // free databox
+}
+
+DataBox MakeFilledDB(int N, int &tot) {
+  DataBox db(N, N, N);
+  tot = 0;
+  for (int k = 0; k < N; k++) {
+    for (int j = 0; j < N; j++) {
+      for (int i = 0; i < N; i++) {
+        db(k,j,i) = tot++;
+      }
+    }
+  }
+  db.setRange(0,0,1,10);
+  return db;
+}
+SCENARIO( "Moving a databox", "[DataBox]" ) {
+  WHEN("A databox is asigned and the original one goes out of scope") {
+    constexpr int N = 2;
+    int tot;
+    DataBox db;
+    {
+      auto db2 = MakeFilledDB(N,tot);
+      db = db2;
+    }
+    THEN("The databox status is correct") {
+      REQUIRE( db.dataStatus() == Spiner::DataStatus::AllocatedHost );
+      AND_THEN( "The data is present" ) {
+        REQUIRE( db(N-1, N-1, N-1) == tot - 1 );
+      }
+    }
+    free(db);
+  }
+}
+
+SCENARIO("Decoupling two databoxes", "[DataBox][reset]") {
+  GIVEN("A databox") {
+    constexpr int N = 5;
+    DataBox db(N);
+    for (int i = 0; i < db.size(); ++i) {
+      db(i) = i;
+    }
+    WHEN("Another databox is copied from it") {
+      DataBox db2 = db;
+      THEN("The new databox can be decoupled from the original") {
+        db2.reset();
+        db2.resize(N);
+        for (int i = 0; i < db.size(); ++i) {
+          db2(i) = db(i) + 1;
+        }
+        AND_THEN("The original databox is unchanged") {
+          for (int i = 0; i < db.size(); ++i) {
+            REQUIRE( std::abs(db(i) - i) <= EPSTEST );
+          }
+        }
+        free(db2);
+      }
+    }
+    free(db);
+  }
+}
+
+SCENARIO("Allocating a DataBox on device", "[Databox][Constructor]") {
+  GIVEN("A databox is allocated on device") {
+    constexpr int N = 2;
+    constexpr Real factor = 1.275; // something arbitrary
+    DataBox db_dev(Spiner::AllocationTarget::Device, N, N, N);
+    WHEN("It is set to a given value") {
+      portableFor("Fill the databox",
+                  0, N, 0, N, 0, N,
+                  PORTABLE_LAMBDA(int k, int j, int i) {
+                    db_dev(k, j, i) = factor;
+                  });
+      THEN("That value can be recovered") {
+        Real sum = 0;
+        portableReduce("Sum up the databox",
+                       0, N, 0, N, 0, N,
+                       PORTABLE_LAMBDA(int k, int j, int i, Real &val) {
+                         val += db_dev(k,j,i);
+                       }, sum);
+        REQUIRE( std::abs(sum - factor*N*N*N) <= EPSTEST );
+      }
+    }
+    free(db_dev);
+  }
+}
+
+SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
+  GIVEN("A databox allocated on the host") {
+    constexpr int N = 2;
+    constexpr Real factor = 1.275;
+    DataBox db_host(N, N, N);
+    for (int i = 0; i < db_host.size(); ++i) {
+      db_host(i) = factor;
+    }
+    WHEN("It is copied to device") {
+      DataBox db_dev = db_host.getOnDevice();
+      THEN("It can be read on device") {
+        Real sum = 0;
+        portableReduce("Sum up the databox",
+                       0, N, 0, N, 0, N,
+                       PORTABLE_LAMBDA(int k, int j, int i, Real &val) {
+                         val += db_dev(k,j,i);
+                       }, sum);
+        REQUIRE( std::abs(sum - factor*N*N*N) <= EPSTEST );
+      }
+      free(db_dev);
+    }
+    free(db_host);
+  }
+}
+
+SCENARIO("Using unique pointers to garbage collect DataBox",
+         "[DataBox][GarbageCollection]") {
+  constexpr int N = 1000;
+  GIVEN("A databox allocated on device with a unique pointer") {
+    std::unique_ptr<DataBox, Spiner::DBDeleter>
+      pdb(new DataBox(Spiner::AllocationTarget::Device, N));
+    THEN("We can access it") {
+      auto db = *pdb; // shallow copy
+      portableFor("Just do something", 0, N,
+                  PORTABLE_LAMBDA(int i) {
+                    db(i) = 2.0*i;
+                  });
+    }
   }
 }
 
@@ -344,8 +480,10 @@ SCENARIO( "DataBox HDF5", "[DataBox],[HDF5]" ) {
           }
         }
       }
+      free(db2);
     }
   }
+  free(db);
 }
 #endif
 
@@ -353,7 +491,7 @@ SCENARIO( "DataBox HDF5", "[DataBox],[HDF5]" ) {
 #ifdef PORTABILITY_STRATEGY_KOKKOS
 SCENARIO( "Kokkos functionality: interpolation",
           "[DataBox],[Kokkos]" ) {
-  constexpr int NFINE = 100;
+  constexpr int NFINE = 1000;
   constexpr int RANK  = 3;
   constexpr int NZ    = 8; 
   constexpr int NY    = 10;
@@ -404,17 +542,19 @@ SCENARIO( "Kokkos functionality: interpolation",
   Kokkos::parallel_reduce(Policy3D({0,0,0},{NFINE,NFINE,NFINE}),
     PORTABLE_LAMBDA(const int iz, const int iy, const int ix, Real& update)
   {
+    DataBox db2 = db_dev; // checks that copying works on device
     const Real z = fine_grids[2].x(iz);
     const Real y = fine_grids[1].x(iy);
     const Real x = fine_grids[0].x(ix);
     const Real f_true = linearFunction(z,y,x);
-    const Real difference = db_dev.interpToReal(z,y,x) - f_true;
+    const Real difference = db2.interpToReal(z,y,x) - f_true;
     update += difference*difference;
   }, error );
   error = sqrt(error);
   REQUIRE( error <= EPSTEST );
   
   PORTABLE_FREE(device_data);
+  free(db);
 }
 #endif
 
