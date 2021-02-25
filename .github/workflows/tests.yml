@@ -25,5 +25,4 @@ jobs:
             mkdir -p test
             cd test
             make test USE_HDF5=yes
-        - name: memcheck with valgrind
-          run: valgrind --leak-check=yes --track-origins=yes ./test.bin
+            valgrind --leak-check=yes --track-origins=yes ./test.bin
