@@ -124,6 +124,32 @@ void portableFor(const char* name,
 #endif
 }
 
+template <typename Function>
+void portableFor(const char* name,
+		 int starta, int stopa,
+		 int startz, int stopz,
+		 int starty, int stopy,
+		 int startx, int stopx,
+		 Function function) {
+#ifdef PORTABILITY_STRATEGY_KOKKOS
+  using Policy4D = Kokkos::MDRangePolicy<Kokkos::Rank<4>>;
+  Kokkos::parallel_for(name,
+		       Policy3D({starta,startz,starty,startx},
+				{stopa,stopz,stopy,stopx}),
+		       function);
+#else
+  for (int ia = starta; ia < stopa; ia++) {
+    for (int iz = startz; iz < stopz; iz++) {
+      for (int iy = starty; iy < stopy; iy++) {
+	for (int ix = startx; ix < stopx; ix++) {
+	  function(ia,iz,iy,ix);
+	}
+      }
+    }
+  }
+#endif
+}
+
 template <typename Function, typename T>
 void portableReduce(const char* name,
 		    int startz, int stopz,
@@ -148,5 +174,34 @@ void portableReduce(const char* name,
   }
 #endif
 }
+
+template <typename Function, typename T>
+void portableReduce(const char* name,
+		    int starta, int stopa,
+		    int startz, int stopz,
+		    int starty, int stopy,
+		    int startx, int stopx,
+		    Function function,
+		    T& reduced) {
+#ifdef PORTABILITY_STRATEGY_KOKKOS
+  using Policy4D = Kokkos::MDRangePolicy<Kokkos::Rank<4>>;
+  Kokkos::parallel_reduce(name,
+			  Policy3D({starta,startz,starty,startx},
+				   {stopa,stopz,stopy,stopx}),
+			  function,
+			  reduced);
+#else
+  for (int ia = starta; ia < stopa; ia++) {
+    for (int iz = startz; iz < stopz; iz++) {
+      for (int iy = starty; iy < stopy; iy++) {
+	for (int ix = startx; ix < stopx; ix++) {
+	  function(iz,iy,ix, reduced);
+	}
+      }
+    }
+  }
+#endif
+}
+
 
 #endif // PORTABILITY_HPP

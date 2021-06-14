@@ -201,6 +201,23 @@ namespace Spiner {
     interpToReal(const Real x3,
                  const Real x2,
                  const Real x1) const;
+    PORTABLE_INLINE_FUNCTION Real
+    __attribute__((nothrow)) __attribute__((always_inline))
+    interpToReal(const Real x4,
+		 const Real x3,
+                 const Real x2,
+                 const Real x1) const;
+    // Interpolates the whole databox to a real number,
+    // with one intermediate, non-interpolatable index,
+    // which is simply indexed into
+    // JMM: Trust me---this is a common pattern
+    PORTABLE_INLINE_FUNCTION Real
+    __attribute__((nothrow)) __attribute__((always_inline))
+    interpToReal(const Real x4,
+		 const Real x3,
+                 const Real x2,
+		 const int idx,
+                 const Real x1) const;
     // Interpolates SLOWEST indices of databox to a new
     // DataBox, interpolated at that slowest index.
     // WARNING: requires memory to be pre-allocated.
@@ -415,12 +432,6 @@ namespace Spiner {
                    +w1[1]*dataView_(ix2,ix1+1))
             + w2[1]*(w1[0]*dataView_(ix2+1,ix1)
                      +w1[1]*dataView_(ix2+1,ix1+1)));
-    /*
-    return (   w2[0]*w1[0]*dataView_(ix2,   ix1  )
-             + w2[0]*w1[1]*dataView_(ix2,   ix1+1)
-             + w2[1]*w1[0]*dataView_(ix2+1, ix1  )
-             + w2[1]*w1[1]*dataView_(ix2+1, ix1+1));
-    */
   }
 
   PORTABLE_INLINE_FUNCTION Real
@@ -436,24 +447,108 @@ namespace Spiner {
     grids_[2].weights(x3,ix[2],w[2]);
     // TODO: prefect corners for speed?
     // TODO: re-order access pattern?
-    return (w[2][0]*(w[1][0]*(w[0][0]*dataView_(ix[2],ix[1],ix[0])
-                              +w[0][1]*dataView_(ix[2],ix[1],ix[0]+1))
-                     +(w[1][1]*(w[0][0]*dataView_(ix[2],ix[1]+1,ix[0])
-                                +w[0][1]*dataView_(ix[2],ix[1]+1,ix[0]+1))))
-            + w[2][1]*(w[1][0]*(w[0][0]*dataView_(ix[2]+1,ix[1],ix[0])
-                                +w[0][1]*dataView_(ix[2]+1,ix[1],ix[0]+1))
-                       + w[1][1]*(w[0][0]*dataView_(ix[2]+1,ix[1]+1,ix[0])
-                                  +w[0][1]*dataView_(ix[2]+1,ix[1]+1,ix[0]+1))));
-    /*
-    return (   w[2][0]*w[1][0]*w[0][0]*dataView_(ix[2],   ix[1],   ix[0]  )
-             + w[2][0]*w[1][0]*w[0][1]*dataView_(ix[2],   ix[1],   ix[0]+1)
-             + w[2][0]*w[1][1]*w[0][0]*dataView_(ix[2],   ix[1]+1, ix[0]  )
-             + w[2][0]*w[1][1]*w[0][1]*dataView_(ix[2],   ix[1]+1, ix[0]+1)
-             + w[2][1]*w[1][0]*w[0][0]*dataView_(ix[2]+1, ix[1],   ix[0]  )
-             + w[2][1]*w[1][0]*w[0][1]*dataView_(ix[2]+1, ix[1],   ix[0]+1)
-             + w[2][1]*w[1][1]*w[0][0]*dataView_(ix[2]+1, ix[1]+1, ix[0]  )
-             + w[2][1]*w[1][1]*w[0][1]*dataView_(ix[2]+1, ix[1]+1, ix[0]+1));
-    */
+    return (w[2][0] * (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0]) +
+                                  w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1)) +
+                       w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0]) +
+                                  w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1))) +
+            w[2][1] * (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0]) +
+                                  w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1)) +
+                       w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0]) +
+                                  w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
+  }
+
+  PORTABLE_INLINE_FUNCTION Real
+  __attribute__((nothrow)) __attribute__((always_inline))
+  DataBox::interpToReal(const Real x4,
+			const Real x3,
+			const Real x2,
+			const Real x1) const {
+    assert( canInterpToReal_(4) );
+    Real x[] = {x1, x2, x3, x4};
+    int ix[4];
+    weights_t w[4];
+    for (int i = 0; i < 4; ++i) {
+      grids_[i].weights(x[i], ix[i], w[i]);
+    }
+    // TODO(JMM): This is getty pretty gross. Should we automate?
+    // Hand-written is probably faster, though.
+    // Breaking line-limit to make this easier to read
+    return (
+        w[3][0] *
+            (w[2][0] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3], ix[2], ix[1], ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2], ix[1], ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0] + 1))) +
+             w[2][1] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0]) +
+			     w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0] + 1)))) +
+        w[3][1] *
+            (w[2][0] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0]) +
+                             w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0] + 1))) +
+             w[2][1] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1, ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1, ix[0] + 1))))
+
+    );
+  }
+
+  PORTABLE_INLINE_FUNCTION Real
+  __attribute__((nothrow)) __attribute__((always_inline))
+  DataBox::interpToReal(const Real x4,
+			const Real x3,
+			const Real x2,
+			const int idx,
+			const Real x1) const {
+    assert( rank_ == interpOrder + 1 );
+    assert( indices_[0] == IndexType::Interpolated );
+    assert( grids_[0].isWellFormed() );
+    for (int i = 2; i < 5; ++i) {
+      assert( indices_[i] == IndexType::Interpolated );
+      assert( grids_[i].isWellFormed() );
+    }
+    Real x[] = {x1, x2, x3, x4};
+    int ix[4];
+    weights_t w[4];
+    grids_[0].weights(x[0], ix[0], w[0]);
+    for (int i = 1; i < 4; ++i) {
+      grids_[i+1].weights(x[i], ix[i], w[i]);
+    }
+    // TODO(JMM): This is getty pretty gross. Should we automate?
+    // Hand-written is probably faster, though.
+    // Breaking line-limit to make this easier to read
+    return (
+        w[3][0] *
+            (w[2][0] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3], ix[2], ix[1], idx, ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2], ix[1], idx, ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0] + 1))) +
+             w[2][1] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0]) +
+                             w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx, ix[0]) +
+			     w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx, ix[0] + 1)))) +
+        w[3][1] *
+            (w[2][0] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0]) +
+                             w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx, ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx, ix[0] + 1))) +
+             w[2][1] *
+                 (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx, ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx, ix[0] + 1)) +
+                  w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1, idx, ix[0]) +
+			     w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1, idx, ix[0] + 1))))
+
+    );
   }
 
   PORTABLE_INLINE_FUNCTION void DataBox::interpFromDB(const DataBox& db,

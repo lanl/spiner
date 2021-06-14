@@ -34,6 +34,9 @@ const Real EPSTEST = std::sqrt(Spiner::EPS);
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
 }
+PORTABLE_INLINE_FUNCTION Real linearFunction(Real a, Real z, Real y, Real x) {
+  return x + y + z + a;
+}
 
 TEST_CASE( "PortableMDArrays can be allocated from a pointer",
            "[PortableMDArray]" ) {
@@ -168,6 +171,46 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
 }
 
 TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
+
+  GIVEN("A four-dimensional data box filled with a linear function") {
+    constexpr int NCOARSE = 5;
+    constexpr int NFINE = 20;
+    constexpr int RANK  = 4;
+    DataBox db(Spiner::AllocationTarget::Device, NCOARSe, NCOARSE, NCOARSe, NCOARSE);
+    
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+    
+    for (int i = 0; i < RANK; i++) db.setRange(i, xmin, xmax, NCOARSE);
+    
+    portableFor("Fill 4D databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
+		PORTABLE_LAMBDA(const int ia, const int iz, const int iy, const int ix) {
+		  RegularGrid1D grid(xmin,xmax,NCOARSE);
+		  Real a = grid.x(ia);
+		  Real z = grid.x(iz);
+		  Real y = grid.x(iy);
+		  Real x = grid.x(ix);
+		  db(ia, iz, iy, ix) = linearFunction(a,z,y,x);
+		});
+    THEN("interpToReal in 2D is exact for linear functions") {
+      Real error = 0;
+      portableReduce("Interpolate 4D databox", 0, NFINE, 0, NFINE, 0, NFINE, 0, NFINE,
+                     PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
+                                     const int ix, Real &accumulate){
+		       RegularGrid1D grid(xmin,xmax,NFINE);
+		       Real a = grid.x(ia);
+		       Real z = grid.x(iz);
+		       Real y = grid.x(iy);
+		       Real x = grid.x(ix);
+		       Real f_true = linearFunction(a,z,y,x);
+		       Real difference = db.interpToReal(a,z,y,x) - f_true;
+		       error += (difference*difference);
+                     }, error);
+      REQUIRE( error <= EPSTEST );
+    }
+    free(db);
+  }
+
   constexpr int NFINE = 100;
   constexpr int RANK  = 3;
   constexpr int NZ    = 8; 
