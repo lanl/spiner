@@ -162,7 +162,7 @@ void portableFor(const char* name,
   using Policy5D = Kokkos::MDRangePolicy<Kokkos::Rank<5>>;
   Kokkos::parallel_for(name,
 		       Policy5D({startb,starta,startz,starty,startx},
-				{stopa,stopz,stopy,stopx}),
+				{stopb,stopa,stopz,stopy,stopx}),
 		       function);
 #else
   for (int ib = startb; ib < stopb; ib++) {
@@ -244,7 +244,7 @@ void portableReduce(const char* name,
 #ifdef PORTABILITY_STRATEGY_KOKKOS
   using Policy5D = Kokkos::MDRangePolicy<Kokkos::Rank<5>>;
   Kokkos::parallel_reduce(name,
-			  Policy4D({startb, starta,startz,starty,startx},
+			  Policy5D({startb, starta,startz,starty,startx},
 				   {stopb, stopa,stopz,stopy,stopx}),
 			  function,
 			  reduced);
