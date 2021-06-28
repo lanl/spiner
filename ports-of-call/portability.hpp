@@ -134,7 +134,7 @@ void portableFor(const char* name,
 #ifdef PORTABILITY_STRATEGY_KOKKOS
   using Policy4D = Kokkos::MDRangePolicy<Kokkos::Rank<4>>;
   Kokkos::parallel_for(name,
-		       Policy3D({starta,startz,starty,startx},
+		       Policy4D({starta,startz,starty,startx},
 				{stopa,stopz,stopy,stopx}),
 		       function);
 #else
