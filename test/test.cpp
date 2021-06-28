@@ -176,7 +176,7 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
     constexpr int NCOARSE = 5;
     constexpr int NFINE = 20;
     constexpr int RANK  = 4;
-    DataBox db(Spiner::AllocationTarget::Device, NCOARSe, NCOARSE, NCOARSe, NCOARSE);
+    DataBox db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE, NCOARSE, NCOARSE);
     
     constexpr Real xmin = 0;
     constexpr Real xmax = 1;
@@ -192,7 +192,7 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
 		  Real x = grid.x(ix);
 		  db(ia, iz, iy, ix) = linearFunction(a,z,y,x);
 		});
-    THEN("interpToReal in 2D is exact for linear functions") {
+    THEN("interpToReal in 4D with one non-interpolated index is exact for linear functions") {
       Real error = 0;
       portableReduce("Interpolate 4D databox", 0, NFINE, 0, NFINE, 0, NFINE, 0, NFINE,
                      PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
@@ -204,7 +204,7 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
 		       Real x = grid.x(ix);
 		       Real f_true = linearFunction(a,z,y,x);
 		       Real difference = db.interpToReal(a,z,y,x) - f_true;
-		       error += (difference*difference);
+		       accumulate += (difference*difference);
                      }, error);
       REQUIRE( error <= EPSTEST );
     }
