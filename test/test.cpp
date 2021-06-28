@@ -34,6 +34,12 @@ const Real EPSTEST = std::sqrt(Spiner::EPS);
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
 }
+PORTABLE_INLINE_FUNCTION Real linearFunction(Real a, Real z, Real y, Real x) {
+  return x + y + z + a;
+}
+PORTABLE_INLINE_FUNCTION Real linearFunction(Real b, Real a, Real z, Real y, Real x) {
+  return x + y + z + a + b;
+}
 
 TEST_CASE( "PortableMDArrays can be allocated from a pointer",
            "[PortableMDArray]" ) {
@@ -168,6 +174,94 @@ TEST_CASE( "DataBox Basics", "[DataBox]" ) {
 }
 
 TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
+
+  GIVEN("A four-dimensional data box filled with a linear function") {
+    constexpr int NCOARSE = 5;
+    constexpr int NFINE = 20;
+    constexpr int RANK  = 4;
+    DataBox db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE, NCOARSE, NCOARSE);
+    
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+    
+    for (int i = 0; i < RANK; i++) db.setRange(i, xmin, xmax, NCOARSE);
+    
+    portableFor("Fill 4D databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
+		PORTABLE_LAMBDA(const int ia, const int iz, const int iy, const int ix) {
+		  RegularGrid1D grid(xmin,xmax,NCOARSE);
+		  Real a = grid.x(ia);
+		  Real z = grid.x(iz);
+		  Real y = grid.x(iy);
+		  Real x = grid.x(ix);
+		  db(ia, iz, iy, ix) = linearFunction(a,z,y,x);
+		});
+    THEN("interpToReal in 4D is exact for linear functions") {
+      Real error = 0;
+      portableReduce("Interpolate 4D databox", 0, NFINE, 0, NFINE, 0, NFINE, 0, NFINE,
+                     PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
+                                     const int ix, Real &accumulate){
+		       RegularGrid1D grid(xmin,xmax,NFINE);
+		       Real a = grid.x(ia);
+		       Real z = grid.x(iz);
+		       Real y = grid.x(iy);
+		       Real x = grid.x(ix);
+		       Real f_true = linearFunction(a,z,y,x);
+		       Real difference = db.interpToReal(a,z,y,x) - f_true;
+		       accumulate += (difference*difference);
+                     }, error);
+      REQUIRE( error <= EPSTEST );
+    }
+    free(db);
+  }
+
+  GIVEN("A data box filled with a linear function and some indexing") {
+    constexpr int NCOARSE = 5;
+    constexpr int NIDX = 5;
+    constexpr int NFINE = 20;
+    DataBox db(Spiner::AllocationTarget::Device,
+	       NCOARSE, NCOARSE, NCOARSE, NIDX, NCOARSE);
+    
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+    
+    db.setRange(0, xmin, xmax, NCOARSE);
+    db.setRange(2, xmin, xmax, NCOARSE);
+    db.setRange(3, xmin, xmax, NCOARSE);
+    db.setRange(4, xmin, xmax, NCOARSE);
+    portableFor("Fill 5D databox",
+		0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NIDX, 0, NCOARSE,
+		PORTABLE_LAMBDA(const int ib, const int ia,
+				const int iz, const int iy, const int ix) {
+		  RegularGrid1D grid(xmin,xmax,NCOARSE);
+		  Real b = grid.x(ib);
+		  Real a = grid.x(ia);
+		  Real z = grid.x(iz);
+		  Real y = grid.x(iy);
+		  Real x = grid.x(ix);
+		  db(ib, ia, iz, iy, ix) = linearFunction(b, a, z, y, x);
+		});
+    THEN("interpToReal in 4D with one non-interpolated index is exact for linear functions") {
+      Real error = 0;
+      portableReduce("Interpolate 5D databox",
+		     0, NFINE, 0, NFINE, 0, NFINE, 0, NIDX, 0, NFINE,
+		     PORTABLE_LAMBDA(const int ib, const int ia,
+				     const int iz, const int iy, const int ix,
+				     Real &accumulate) {
+		       RegularGrid1D grid1(xmin,xmax,NFINE);
+		       RegularGrid1D grid2(xmin,xmax, NIDX);
+		       Real b = grid1.x(ib);
+		       Real a = grid1.x(ia);
+		       Real z = grid1.x(iz);
+		       Real y = grid2.x(iy);
+		       Real x = grid1.x(ix);
+		       Real f_true = linearFunction(b, a, z, y, x);
+		       Real difference = db.interpToReal(b, a, z, iy, x) - f_true;
+		       accumulate += (difference*difference);
+		     }, error);
+      REQUIRE( error <= EPSTEST );
+    }
+  }
+
   constexpr int NFINE = 100;
   constexpr int RANK  = 3;
   constexpr int NZ    = 8; 
