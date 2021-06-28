@@ -186,7 +186,7 @@ void portableReduce(const char* name,
 #ifdef PORTABILITY_STRATEGY_KOKKOS
   using Policy4D = Kokkos::MDRangePolicy<Kokkos::Rank<4>>;
   Kokkos::parallel_reduce(name,
-			  Policy3D({starta,startz,starty,startx},
+			  Policy4D({starta,startz,starty,startx},
 				   {stopa,stopz,stopy,stopx}),
 			  function,
 			  reduced);
@@ -195,7 +195,7 @@ void portableReduce(const char* name,
     for (int iz = startz; iz < stopz; iz++) {
       for (int iy = starty; iy < stopy; iy++) {
 	for (int ix = startx; ix < stopx; ix++) {
-	  function(iz,iy,ix, reduced);
+	  function(ia,iz,iy,ix, reduced);
 	}
       }
     }
