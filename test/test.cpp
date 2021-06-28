@@ -218,7 +218,6 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
     constexpr int NCOARSE = 5;
     constexpr int NIDX = 5;
     constexpr int NFINE = 20;
-    constexpr int RANK  = 5;
     DataBox db(Spiner::AllocationTarget::Device,
 	       NCOARSE, NCOARSE, NCOARSE, NIDX, NCOARSE);
     
@@ -230,11 +229,11 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
     db.setRange(3, xmin, xmax, NCOARSE);
     db.setRange(4, xmin, xmax, NCOARSE);
     portableFor("Fill 5D databox",
-		0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NIDX, 0, NCOARSE
+		0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NIDX, 0, NCOARSE,
 		PORTABLE_LAMBDA(const int ib, const int ia,
 				const int iz, const int iy, const int ix) {
 		  RegularGrid1D grid(xmin,xmax,NCOARSE);
-		  Real b = grid.x(ib)
+		  Real b = grid.x(ib);
 		  Real a = grid.x(ia);
 		  Real z = grid.x(iz);
 		  Real y = grid.x(iy);

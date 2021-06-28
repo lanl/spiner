@@ -165,7 +165,7 @@ void portableFor(const char* name,
 				{stopa,stopz,stopy,stopx}),
 		       function);
 #else
-  for (int ib = starb; ib < stopb; ib++) {
+  for (int ib = startb; ib < stopb; ib++) {
     for (int ia = starta; ia < stopa; ia++) {
       for (int iz = startz; iz < stopz; iz++) {
 	for (int iy = starty; iy < stopy; iy++) {
@@ -254,7 +254,7 @@ void portableReduce(const char* name,
       for (int iz = startz; iz < stopz; iz++) {
 	for (int iy = starty; iy < stopy; iy++) {
 	  for (int ix = startx; ix < stopx; ix++) {
-	    function(ia,iz,iy,ix, reduced);
+	    function(ib, ia,iz,iy,ix, reduced);
 	  }
 	}
       }
