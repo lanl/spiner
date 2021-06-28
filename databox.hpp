@@ -507,7 +507,7 @@ namespace Spiner {
 			const Real x2,
 			const int idx,
 			const Real x1) const {
-    assert( rank_ == interpOrder + 1 );
+    assert( rank_ == 5 );
     assert( indices_[0] == IndexType::Interpolated );
     assert( grids_[0].isWellFormed() );
     for (int i = 2; i < 5; ++i) {
