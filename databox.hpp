@@ -317,9 +317,11 @@ namespace Spiner {
       using DMS = Kokkos::DefaultExecutionSpace::memory_space;
       constexpr const bool execution_is_host {Kokkos::SpaceAccessibility<DMS,HS>::accessible};
       if (execution_is_host) {
+	printf("Execution is host\n");
         DataBox a;
         a.copy(*this);
-        a.status_ = DataStatus::AllocatedDevice;
+	// Handled by copy
+        // a.status_ = DataStatus::AllocatedDevice;
         return a;
       } else {
         using memUnmanaged = Kokkos::MemoryUnmanaged;
@@ -340,7 +342,8 @@ namespace Spiner {
 #else // no kokkos
       DataBox a;
       a.copy(*this);
-      a.status_ = DataStatus::AllocatedDevice;
+      // Handled by copy
+      // a.status_ = DataStatus::AllocatedDevice;
       return a;
 #endif // kokkos
     }
