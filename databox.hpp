@@ -319,7 +319,7 @@ namespace Spiner {
       if (execution_is_host) {
         DataBox a;
         a.copy(*this);
-        a.status_ = DataStatus::AllocatedDevice;
+        a.status_ = DataStatus::AllocatedHost;
         return a;
       } else {
         using memUnmanaged = Kokkos::MemoryUnmanaged;
@@ -340,7 +340,7 @@ namespace Spiner {
 #else // no kokkos
       DataBox a;
       a.copy(*this);
-      a.status_ = DataStatus::AllocatedDevice;
+      a.status_ = DataStatus::AllocatedHost;
       return a;
 #endif // kokkos
     }
