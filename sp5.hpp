@@ -20,27 +20,27 @@
 
 namespace SP5 {
 
-  namespace DB {
-    constexpr char FILENAME[] = "databox.sp5";
-    constexpr char GRPNAME[]  = "databox";
-    constexpr char DSETNAME[] = "data";
-    constexpr char RANKNAME[] = "rank";
-    constexpr char DIMSNAME[] = "dims";
-    constexpr char IDXSNAME[] = "index_types";
-    constexpr char IDXINFONAME[] = "index_types_info";
-    constexpr char IDXINFO[]  = "Interpolated:0\nNamed:1\nIndexed:2";
-    constexpr char GRIDNAME[] = "grids";
-    const std::string GRID_FORMAT[] = {"grid_[","]"};
-  }
+namespace DB {
+constexpr char FILENAME[] = "databox.sp5";
+constexpr char GRPNAME[] = "databox";
+constexpr char DSETNAME[] = "data";
+constexpr char RANKNAME[] = "rank";
+constexpr char DIMSNAME[] = "dims";
+constexpr char IDXSNAME[] = "index_types";
+constexpr char IDXINFONAME[] = "index_types_info";
+constexpr char IDXINFO[] = "Interpolated:0\nNamed:1\nIndexed:2";
+constexpr char GRIDNAME[] = "grids";
+const std::string GRID_FORMAT[] = {"grid_[", "]"};
+} // namespace DB
 
-  namespace RG1D {
-    constexpr char RANGE_NAME[] = "range";
-    constexpr char N[] = "npoints";
-    constexpr char RANGE_INFONAME[] = "range columns";
-    constexpr char RANGE_INFO[] = "[0]:min [1]:max [2]:dx";
-    constexpr int RANGE_RANK = 1;
-  }
-  
-}
+namespace RG1D {
+constexpr char RANGE_NAME[] = "range";
+constexpr char N[] = "npoints";
+constexpr char RANGE_INFONAME[] = "range columns";
+constexpr char RANGE_INFO[] = "[0]:min [1]:max [2]:dx";
+constexpr int RANGE_RANK = 1;
+} // namespace RG1D
+
+} // namespace SP5
 
 #endif // _SPINER_SP5_HPP_

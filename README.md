@@ -64,6 +64,20 @@ To enable this, compile with the appropriate `HDF5` linking and the flag `-DSPIN
 
 `Spiner` uses the `ports-of-call` code to optionally support compilation with CUDA, Kokkos, or none of the above.
 
+### Clang-Format
+
+Currently `clang-format` is not required for committed code, but as good
+practice, we encourage running it. The code is currently formatted with versions:
+- 11+
+
+However, older versions may work. If you would like to try, please
+examine the diff and see if the formatting appears stable. Otherwise,
+you may need to upgrade your version of `clang-format`.
+
+In general, we recommend formatting regularly so that the format calls
+do not pollute the diffs. If a format call necessarily pollutes the
+diff, do it as a separate commit.
+
 ## Features
 
 - Spiner supports interpolation in arbitrary dimensions, and it's fast in 3d and fewer.
