@@ -203,6 +203,12 @@ namespace Spiner {
                  const Real x1) const;
     PORTABLE_INLINE_FUNCTION Real
     __attribute__((nothrow)) __attribute__((always_inline))
+    interpToReal(const Real x3,
+                 const Real x2,
+                 const Real x1,
+		 const int idx) const;
+    PORTABLE_INLINE_FUNCTION Real
+    __attribute__((nothrow)) __attribute__((always_inline))
     interpToReal(const Real x4,
 		 const Real x3,
                  const Real x2,
@@ -453,6 +459,34 @@ namespace Spiner {
                                   w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1)) +
                        w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0]) +
                                   w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
+  }
+
+  PORTABLE_INLINE_FUNCTION Real
+  __attribute__((nothrow)) __attribute__((always_inline))
+  DataBox::interpToReal(const Real x3,
+                        const Real x2,
+                        const Real x1,
+			const int idx) const {
+    assert( rank_ == 4 );
+    for (int r = 1; r < rank_; ++r) {
+      assert( indices_[r] == IndexType::Interpolated );
+      assert( grids_[r].isWellFormed() );
+    }
+    int ix[3];
+    weights_t w[3];
+    grids_[1].weights(x1,ix[0],w[0]);
+    grids_[2].weights(x2,ix[1],w[1]);
+    grids_[3].weights(x3,ix[2],w[2]);
+    // TODO: prefect corners for speed?
+    // TODO: re-order access pattern?
+    return (w[2][0] * (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0], idx) +
+                                  w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1, idx)) +
+                       w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0], idx) +
+                                  w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1, idx))) +
+            w[2][1] * (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0], idx) +
+                                  w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1, idx)) +
+                       w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0], idx) +
+                                  w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
   }
 
   PORTABLE_INLINE_FUNCTION Real

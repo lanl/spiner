@@ -211,6 +211,25 @@ TEST_CASE( "DataBox interpolation", "[DataBox]" ) {
                      }, error);
       REQUIRE( error <= EPSTEST );
     }
+    THEN("interpToReal in 3D with one index is exact for linear functions") {
+      Real error = 0;
+      portableReduce(
+          "Interpolate + index 4D databox", 0, NFINE, 0, NFINE, 0, NFINE, 0, NCOARSE,
+          PORTABLE_LAMBDA(const int ia, const int iz, const int iy, const int ix,
+                          Real &accumulate) {
+            RegularGrid1D grid(xmin, xmax, NFINE);
+            RegularGrid1D grid_coarse(xmin, xmax, NCOARSE);
+            Real a = grid.x(ia);
+            Real z = grid.x(iz);
+            Real y = grid.x(iy);
+            Real x = grid_coarse.x(ix);
+            Real f_true = linearFunction(a, z, y, x);
+            Real difference = db.interpToReal(a, z, y, ix) - f_true;
+            accumulate += (difference * difference);
+          },
+          error);
+      REQUIRE(error <= EPSTEST);
+    }
     free(db);
   }
 
