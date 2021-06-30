@@ -379,7 +379,8 @@ inline void DataBox::resize(AllocationTarget t, Args... args) {
   dataView_.NewPortableMDArray(data_, std::forward<Args>(args)...);
 }
 
-PORTABLE_INLINE_FUNCTION Real DataBox::interpToReal(const Real x) const {
+PORTABLE_INLINE_FUNCTION Real DataBox::interpToReal(const Real x)
+const noexcept {
   assert(canInterpToReal_(1));
   return grids_[0](x, dataView_);
 }
