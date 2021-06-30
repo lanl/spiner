@@ -290,6 +290,7 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
           error);
       REQUIRE(error <= EPSTEST);
     }
+    free(db);
   }
 
   constexpr int NFINE = 100;
