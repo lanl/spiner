@@ -56,8 +56,8 @@ class DataBox {
   // example call
   // DataBox(data, nx3, nx2, nx1)
   template <typename... Args>
-  PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
-  DataBox(Real *data, Args... args)
+  PORTABLE_INLINE_FUNCTION
+  DataBox(Real *data, Args... args) noexcept
       : rank_(sizeof...(args)), status_(DataStatus::Unmanaged), data_(data) {
     dataView_.NewPortableMDArray(data, std::forward<Args>(args)...);
     setAllIndexed_();
@@ -68,28 +68,28 @@ class DataBox {
   // example call
   // DataBox(data, nx3, nx2, nx1)
   template <typename... Args>
-  inline __attribute__((nothrow)) DataBox(AllocationTarget t, Args... args)
+  inline DataBox(AllocationTarget t, Args... args) noexcept
       : rank_(sizeof...(args)) {
     allocate_(t, std::forward<Args>(args)...);
     dataView_.NewPortableMDArray(data_, std::forward<Args>(args)...);
     setAllIndexed_();
   }
   template <typename... Args>
-  inline __attribute__((nothrow)) DataBox(Args... args)
+  inline DataBox(Args... args) noexcept
       : DataBox(AllocationTarget::Host, std::forward<Args>(args)...) {}
 
   // Copy and move constructors. All shallow.
-  inline __attribute__((nothrow)) DataBox(PortableMDArray<Real> A)
+  inline DataBox(PortableMDArray<Real> A) noexcept
       : rank_(A.GetRank()), status_(DataStatus::Unmanaged), data_(A.data()),
         dataView_(A) {
     setAllIndexed_();
   }
-  inline __attribute__((nothrow)) DataBox(PortableMDArray<Real> &A)
+  inline DataBox(PortableMDArray<Real> &A) noexcept
       : rank_(A.GetRank()), status_(DataStatus::Unmanaged), data_(A.data()),
         dataView_(A) {
     setAllIndexed_();
   }
-  PORTABLE_INLINE_FUNCTION __attribute__((nothrow)) DataBox(const DataBox &src)
+  PORTABLE_INLINE_FUNCTION DataBox(const DataBox &src) noexcept
       : rank_(src.rank_), status_(src.status_), data_(src.data_) {
     setAllIndexed_();
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
@@ -100,8 +100,9 @@ class DataBox {
   }
 
   // Slice constructor
-  PORTABLE_INLINE_FUNCTION __attribute__((nothrow))
+  PORTABLE_INLINE_FUNCTION
   DataBox(const DataBox &b, const int dim, const int indx, const int nvar)
+  noexcept
       : status_(DataStatus::Unmanaged), data_(b.data_) {
     dataView_.InitWithShallowSlice(b.dataView_, dim, indx, nvar);
     rank_ = dataView_.GetRank();
@@ -168,30 +169,25 @@ class DataBox {
 
   // Interpolates whole DataBox to a real number,
   // x1 is fastest index. xN is slowest.
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline)) interpToReal(const Real x) const;
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline))
-  interpToReal(const Real x2, const Real x1) const;
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline))
-  interpToReal(const Real x3, const Real x2, const Real x1) const;
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline))
+  PORTABLE_FORCEINLINE_FUNCTION Real
+  interpToReal(const Real x) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real
+  interpToReal(const Real x2, const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real
+  interpToReal(const Real x3, const Real x2, const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real
   interpToReal(const Real x3, const Real x2, const Real x1,
-               const int idx) const;
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline))
+               const int idx) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real
   interpToReal(const Real x4, const Real x3, const Real x2,
-               const Real x1) const;
+               const Real x1) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
   // JMM: Trust me---this is a common pattern
-  PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-  __attribute__((always_inline))
+  PORTABLE_FORCEINLINE_FUNCTION Real
   interpToReal(const Real x4, const Real x3, const Real x2, const int idx,
-               const Real x1) const;
+               const Real x1) const noexcept;
   // Interpolates SLOWEST indices of databox to a new
   // DataBox, interpolated at that slowest index.
   // WARNING: requires memory to be pre-allocated.
@@ -388,9 +384,8 @@ PORTABLE_INLINE_FUNCTION Real DataBox::interpToReal(const Real x) const {
   return grids_[0](x, dataView_);
 }
 
-PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-__attribute__((always_inline))
-DataBox::interpToReal(const Real x2, const Real x1) const {
+PORTABLE_FORCEINLINE_FUNCTION Real
+DataBox::interpToReal(const Real x2, const Real x1) const noexcept {
   assert(canInterpToReal_(2));
   int ix1, ix2;
   weights_t w1, w2;
@@ -404,9 +399,9 @@ DataBox::interpToReal(const Real x2, const Real x1) const {
                    w1[1] * dataView_(ix2 + 1, ix1 + 1)));
 }
 
-PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-__attribute__((always_inline))
-DataBox::interpToReal(const Real x3, const Real x2, const Real x1) const {
+PORTABLE_FORCEINLINE_FUNCTION Real
+DataBox::interpToReal(const Real x3, const Real x2,
+                      const Real x1) const noexcept {
   assert(canInterpToReal_(3));
   int ix[3];
   weights_t w[3];
@@ -427,10 +422,9 @@ DataBox::interpToReal(const Real x3, const Real x2, const Real x1) const {
                       w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
 }
 
-PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-__attribute__((always_inline))
+PORTABLE_FORCEINLINE_FUNCTION Real
 DataBox::interpToReal(const Real x3, const Real x2, const Real x1,
-                      const int idx) const {
+                      const int idx) const noexcept {
   assert(rank_ == 4);
   for (int r = 1; r < rank_; ++r) {
     assert(indices_[r] == IndexType::Interpolated);
@@ -457,10 +451,11 @@ DataBox::interpToReal(const Real x3, const Real x2, const Real x1,
                 w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
 }
 
-PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-__attribute__((always_inline))
+// DH: this is a large function to force an inline, perhaps just make it a 
+// suggestion to the compiler?
+PORTABLE_FORCEINLINE_FUNCTION Real
 DataBox::interpToReal(const Real x4, const Real x3, const Real x2,
-                      const Real x1) const {
+                      const Real x1) const noexcept {
   assert(canInterpToReal_(4));
   Real x[] = {x1, x2, x3, x4};
   int ix[4];
@@ -509,10 +504,9 @@ DataBox::interpToReal(const Real x4, const Real x3, const Real x2,
   );
 }
 
-PORTABLE_INLINE_FUNCTION Real __attribute__((nothrow))
-__attribute__((always_inline))
+PORTABLE_FORCEINLINE_FUNCTION Real
 DataBox::interpToReal(const Real x4, const Real x3, const Real x2,
-                      const int idx, const Real x1) const {
+                      const int idx, const Real x1) const noexcept {
   assert(rank_ == 5);
   assert(indices_[0] == IndexType::Interpolated);
   assert(grids_[0].isWellFormed());

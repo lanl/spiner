@@ -38,64 +38,65 @@ class PortableMDArray {
 
   // ctors
   // default ctor: simply set null PortableMDArray
-  PORTABLE_INLINE_FUNCTION
-  PortableMDArray()
+  PORTABLE_FUNCTION
+  PortableMDArray() noexcept
       : pdata_(nullptr), nx1_(0), nx2_(0), nx3_(0), nx4_(0), nx5_(0), nx6_(0) {}
-  PORTABLE_FUNCTION __attribute__((nothrow)) PortableMDArray(T *data, int nx1)
+  PORTABLE_FUNCTION PortableMDArray(T *data, int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(1), nx3_(1), nx4_(1), nx5_(1), nx6_(1) {}
-  PORTABLE_FUNCTION __attribute__((nothrow))
-  PortableMDArray(T *data, int nx2, int nx1)
+  PORTABLE_FUNCTION
+  PortableMDArray(T *data, int nx2, int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(1), nx4_(1), nx5_(1), nx6_(1) {
   }
-  PORTABLE_FUNCTION __attribute__((nothrow))
-  PortableMDArray(T *data, int nx3, int nx2, int nx1)
+  PORTABLE_FUNCTION
+  PortableMDArray(T *data, int nx3, int nx2, int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(1), nx5_(1),
         nx6_(1) {}
-  PORTABLE_FUNCTION __attribute__((nothrow))
-  PortableMDArray(T *data, int nx4, int nx3, int nx2, int nx1)
+  PORTABLE_FUNCTION
+  PortableMDArray(T *data, int nx4, int nx3, int nx2, int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(nx4), nx5_(1),
         nx6_(1) {}
-  PORTABLE_FUNCTION __attribute__((nothrow))
-  PortableMDArray(T *data, int nx5, int nx4, int nx3, int nx2, int nx1)
+  PORTABLE_FUNCTION
+  PortableMDArray(T *data, int nx5, int nx4, int nx3, int nx2, int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(nx4), nx5_(nx5),
         nx6_(1) {}
-  PORTABLE_FUNCTION __attribute__((nothrow))
+  PORTABLE_FUNCTION
   PortableMDArray(T *data, int nx6, int nx5, int nx4, int nx3, int nx2, int nx1)
+  noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(nx4), nx5_(nx5),
         nx6_(nx6) {}
 
   // define copy constructor and overload assignment operator so both do deep
   // copies.
-  __attribute__((nothrow)) PortableMDArray(const PortableMDArray<T> &t);
-  __attribute__((nothrow)) PortableMDArray<T> &
-  operator=(const PortableMDArray<T> &t);
+  PortableMDArray(const PortableMDArray<T> &t) noexcept;
+  PortableMDArray<T> &
+  operator=(const PortableMDArray<T> &t) noexcept;
 
   // public functions to allocate/deallocate memory for 1D-5D data
-  PORTABLE_FUNCTION __attribute__((nothrow)) void NewPortableMDArray(T *data,
-                                                                     int nx1);
-  PORTABLE_FUNCTION __attribute__((nothrow)) void
-  NewPortableMDArray(T *data, int nx2, int nx1);
-  PORTABLE_FUNCTION __attribute__((nothrow)) void
-  NewPortableMDArray(T *data, int nx3, int nx2, int nx1);
-  PORTABLE_FUNCTION __attribute__((nothrow)) void
-  NewPortableMDArray(T *data, int nx4, int nx3, int nx2, int nx1);
-  PORTABLE_FUNCTION __attribute__((nothrow)) void
-  NewPortableMDArray(T *data, int nx5, int nx4, int nx3, int nx2, int nx1);
-  PORTABLE_FUNCTION __attribute__((nothrow)) void
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx1) noexcept;
+  PORTABLE_FUNCTION void
+  NewPortableMDArray(T *data, int nx2, int nx1) noexcept;
+  PORTABLE_FUNCTION void
+  NewPortableMDArray(T *data, int nx3, int nx2, int nx1) noexcept;
+  PORTABLE_FUNCTION void
+  NewPortableMDArray(T *data, int nx4, int nx3, int nx2, int nx1) noexcept;
+  PORTABLE_FUNCTION void
+  NewPortableMDArray(T *data, int nx5, int nx4, int nx3, int nx2,
+                     int nx1) noexcept;
+  PORTABLE_FUNCTION void
   NewPortableMDArray(T *data, int nx6, int nx5, int nx4, int nx3, int nx2,
-                     int nx1);
+                     int nx1) noexcept;
 
   // public function to swap underlying data pointers of two equally-sized
   // arrays
   void SwapPortableMDArray(PortableMDArray<T> &array2);
 
   // functions to get array dimensions
-  PORTABLE_INLINE_FUNCTION int GetDim1() const { return nx1_; }
-  PORTABLE_INLINE_FUNCTION int GetDim2() const { return nx2_; }
-  PORTABLE_INLINE_FUNCTION int GetDim3() const { return nx3_; }
-  PORTABLE_INLINE_FUNCTION int GetDim4() const { return nx4_; }
-  PORTABLE_INLINE_FUNCTION int GetDim5() const { return nx5_; }
-  PORTABLE_INLINE_FUNCTION int GetDim6() const { return nx6_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim1() const { return nx1_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim2() const { return nx2_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim3() const { return nx3_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim4() const { return nx4_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim5() const { return nx5_; }
+  PORTABLE_FORCEINLINE_FUNCTION int GetDim6() const { return nx6_; }
   PORTABLE_INLINE_FUNCTION int GetDim(size_t i) const {
     // TODO: remove if performance cirtical
     assert(0 < i && i <= 6 && "PortableMDArrays are max 6D");
@@ -117,10 +118,10 @@ class PortableMDArray {
   }
 
   // a function to get the total size of the array
-  PORTABLE_INLINE_FUNCTION int GetSize() const {
+  PORTABLE_FORCEINLINE_FUNCTION int GetSize() const {
     return nx1_ * nx2_ * nx3_ * nx4_ * nx5_ * nx6_;
   }
-  PORTABLE_INLINE_FUNCTION std::size_t GetSizeInBytes() const {
+  PORTABLE_FORCEINLINE_FUNCTION std::size_t GetSizeInBytes() const {
     return nx1_ * nx2_ * nx3_ * nx4_ * nx5_ * nx6_ * sizeof(T);
   }
 
@@ -158,17 +159,17 @@ class PortableMDArray {
     Reshape(1, 1, 1, 1, 1, nx1);
   }
 
-  PORTABLE_INLINE_FUNCTION bool IsShallowSlice() { return true; }
-  PORTABLE_INLINE_FUNCTION bool IsEmpty() { return GetSize() < 1; }
+  PORTABLE_FORCEINLINE_FUNCTION bool IsShallowSlice() { return true; }
+  PORTABLE_FORCEINLINE_FUNCTION bool IsEmpty() { return GetSize() < 1; }
   // "getter" function to access private data member
   // TODO(felker): Replace this unrestricted "getter" with a limited, safer
   // alternative.
   // TODO(felker): Rename function. Conflicts with "PortableMDArray<> data"
   // OutputData member.
-  PORTABLE_INLINE_FUNCTION T *data() { return pdata_; }
-  PORTABLE_INLINE_FUNCTION const T *data() const { return pdata_; }
-  PORTABLE_INLINE_FUNCTION T *begin() { return pdata_; }
-  PORTABLE_INLINE_FUNCTION T *end() { return pdata_ + GetSize(); }
+  PORTABLE_FORCEINLINE_FUNCTION T *data() { return pdata_; }
+  PORTABLE_FORCEINLINE_FUNCTION const T *data() const { return pdata_; }
+  PORTABLE_FORCEINLINE_FUNCTION T *begin() { return pdata_; }
+  PORTABLE_FORCEINLINE_FUNCTION T *end() { return pdata_ + GetSize(); }
 
   // overload "function call" operator() to access 1d-5d data
   // provides Fortran-like syntax for multidimensional arrays vs. "subscript"
@@ -177,56 +178,58 @@ class PortableMDArray {
   // "non-const variants" called for "PortableMDArray<T>()" provide read/write
   // access via returning by reference, enabling assignment on returned l-value,
   // e.g.: a(3) = 3.0;
-  PORTABLE_INLINE_FUNCTION T &operator()() { return pdata_[0]; }
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()() { return pdata_[0]; }
 
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n) { return pdata_[n]; }
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n) { return pdata_[n]; }
   // "const variants" called for "const PortableMDArray<T>" returns T by value,
   // since T is typically a built-in type (versus "const T &" to avoid copying
   // for general types)
-  PORTABLE_INLINE_FUNCTION T &operator()() const { return pdata_[0]; }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()() const { return pdata_[0]; }
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n) const {
     return pdata_[n];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int i) {
     return pdata_[i + nx1_ * n];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int i) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int i) const {
     return pdata_[i + nx1_ * n];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int j,
-                                         const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int j,
+                                              const int i) {
     return pdata_[i + nx1_ * (j + nx2_ * n)];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int j,
-                                         const int i) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int j,
+                                              const int i) const {
     return pdata_[i + nx1_ * (j + nx2_ * n)];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int k, const int j,
-                                         const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int k,
+                                              const int j, const int i) {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * n))];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int n, const int k, const int j,
-                                         const int i) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int n, const int k,
+                                              const int j, const int i) const {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * n))];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int m, const int n, const int k,
-                                         const int j, const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int m, const int n,
+                                              const int k, const int j,
+                                              const int i) {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * (n + nx4_ * m)))];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int m, const int n, const int k,
-                                         const int j, const int i) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int m, const int n,
+                                              const int k, const int j,
+                                              const int i) const {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * (n + nx4_ * m)))];
   }
   // int l?, int o?
-  PORTABLE_INLINE_FUNCTION T &operator()(const int p, const int m, const int n,
-                                         const int k, const int j,
-                                         const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int p, const int m,
+                                              const int n, const int k,
+                                              const int j, const int i) {
     return pdata_[i +
                   nx1_ * (j + nx2_ * (k + nx3_ * (n + nx4_ * (m + nx5_ * p))))];
   }
-  PORTABLE_INLINE_FUNCTION T &operator()(const int p, const int m, const int n,
-                                         const int k, const int j,
-                                         const int i) const {
+  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int p, const int m,
+                                              const int n, const int k,
+                                              const int j, const int i) const {
     return pdata_[i +
                   nx1_ * (j + nx2_ * (k + nx3_ * (n + nx4_ * (m + nx5_ * p))))];
   }
@@ -271,8 +274,7 @@ class PortableMDArray {
 // copy constructor (does a shallow copy)
 
 template <typename T>
-__attribute__((nothrow))
-PortableMDArray<T>::PortableMDArray(const PortableMDArray<T> &src) {
+PortableMDArray<T>::PortableMDArray(const PortableMDArray<T> &src) noexcept {
   nx1_ = src.nx1_;
   nx2_ = src.nx2_;
   nx3_ = src.nx3_;
@@ -285,8 +287,8 @@ PortableMDArray<T>::PortableMDArray(const PortableMDArray<T> &src) {
 // shallow copy assignment operator
 
 template <typename T>
-__attribute__((nothrow)) PortableMDArray<T> &
-PortableMDArray<T>::operator=(const PortableMDArray<T> &src) {
+PortableMDArray<T> &
+PortableMDArray<T>::operator=(const PortableMDArray<T> &src) noexcept {
   if (this != &src) {
     nx1_ = src.nx1_;
     nx2_ = src.nx2_;
@@ -380,8 +382,8 @@ PortableMDArray<T>::InitWithShallowSlice(const PortableMDArray<T> &src,
 //  \brief allocate new 1D array with elements initialized to zero.
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
-PortableMDArray<T>::NewPortableMDArray(T *data, int nx1) {
+PORTABLE_FUNCTION void
+PortableMDArray<T>::NewPortableMDArray(T *data, int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = 1;
   nx3_ = 1;
@@ -396,8 +398,8 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx1) {
 //  \brief 2d data allocation
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
-PortableMDArray<T>::NewPortableMDArray(T *data, int nx2, int nx1) {
+PORTABLE_FUNCTION void
+PortableMDArray<T>::NewPortableMDArray(T *data, int nx2, int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = 1;
@@ -412,8 +414,9 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx2, int nx1) {
 //  \brief 3d data allocation
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
-PortableMDArray<T>::NewPortableMDArray(T *data, int nx3, int nx2, int nx1) {
+PORTABLE_FUNCTION void
+PortableMDArray<T>::NewPortableMDArray(T *data, int nx3, int nx2, int nx1)
+noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
@@ -428,9 +431,9 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx3, int nx2, int nx1) {
 //  \brief 4d data allocation
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
+PORTABLE_FUNCTION void
 PortableMDArray<T>::NewPortableMDArray(T *data, int nx4, int nx3, int nx2,
-                                       int nx1) {
+                                       int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
@@ -445,9 +448,9 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx4, int nx3, int nx2,
 //  \brief 5d data allocation
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
+PORTABLE_FUNCTION void
 PortableMDArray<T>::NewPortableMDArray(T *data, int nx5, int nx4, int nx3,
-                                       int nx2, int nx1) {
+                                       int nx2, int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
@@ -462,9 +465,9 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx5, int nx4, int nx3,
 //  \brief 6d data allocation
 
 template <typename T>
-PORTABLE_FUNCTION __attribute__((nothrow)) void
+PORTABLE_FUNCTION void
 PortableMDArray<T>::NewPortableMDArray(T *data, int nx6, int nx5, int nx4,
-                                       int nx3, int nx2, int nx1) {
+                                       int nx3, int nx2, int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
