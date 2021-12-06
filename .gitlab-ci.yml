@@ -10,7 +10,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_CLANG_FORMAT_VERSION: "12.0.0"
   SPINER_GCC_VERSION: "9.3.0"
-  SPINER_SPACK_SPEC: "spiner@main%gcc@${SPINER_GCC_VERSION}"
+  SPINER_SPACK_SPEC: "spiner-deps@main%gcc@${SPINER_GCC_VERSION}"
 
 before_script:
   - export HOME=${CI_PROJECT_DIR}
@@ -116,7 +116,7 @@ before_script:
     - mkdir sphinx_doc_env
     - spack env create --without-view -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack env activate -d ${CI_PROJECT_DIR}/sphinx_doc_env
-    - spack install --show-log-on-error spiner+doc%gcc@${SPINER_GCC_VERSION}
+    - spack install --show-log-on-error spiner-deps+doc%gcc@${SPINER_GCC_VERSION}
     - spack module tcl refresh -y
     - spack env loads -r
     - source ${CI_PROJECT_DIR}/sphinx_doc_env/loads
