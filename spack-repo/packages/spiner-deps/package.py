@@ -1,9 +1,9 @@
-# Spackage for Spiner
+# Spackage for Spiner Dependencies
 
 from spack import *
 
-class Spiner(BundlePackage):
-    """Spiner"""
+class SpinerDeps(BundlePackage):
+    """Spiner Dependencies"""
 
     homepage    = "https://github.com/lanl/spiner"
     url         = "https://github.com/lanl/spiner/archive/refs/heads/main.zip"
