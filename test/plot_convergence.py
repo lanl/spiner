@@ -7,13 +7,14 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import rc
+from argparse import ArgumentParser
 import os
 rc('font',size=14)
-# mpl.rcParams['xtick.minor.size'] = 0
-# mpl.rcParams['xtick.minor.width'] = 0
 
-DFILE = "convergence.dat"
-PLOTPATH = os.path.join("../","figs","convergence")
+parser = ArgumentParser("Plot convergence")
+parser.add_argument('dataset',type=str,help='error data')
+parser.add_argument('plotname', type=str,help='convergence plot name')
+args = parser.parse_args()
 
 KX,KY,KZ = 2,3,4
 xmin,xmax = 0,1
@@ -23,7 +24,7 @@ def test_function(y,x):
 x = np.linspace(0,1,100)
 X,Y = np.meshgrid(x,x)
 
-data = np.loadtxt(DFILE)
+data = np.loadtxt(args.dataset)
 
 fig,axarr = plt.subplots(1,2,figsize=(17,8))
 
@@ -42,7 +43,4 @@ cbar.set_label(r'$\sin(2\pi k_x x)\sin(2\pi k_y y)$')
 axarr[1].set_xlabel(r'$x$')
 axarr[1].set_ylabel(r'$y$')
 
-for postfix in ['.pdf','.png']:
-    plt.savefig(PLOTPATH+postfix,
-                bbox_inches='tight')
-                
+plt.savefig(args.plotname, bbox_inches='tight')

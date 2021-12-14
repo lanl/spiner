@@ -17,14 +17,14 @@
 #include <memory>
 #include <vector>
 
-#include "databox.hpp"
-#include "interpolation.hpp"
-#include "ports-of-call/portability.hpp"
-#include "ports-of-call/portable_arrays.hpp"
-#include "spiner_types.hpp"
+#include <ports-of-call/portability.hpp>
+#include <ports-of-call/portable_arrays.hpp>
+#include <spiner/databox.hpp>
+#include <spiner/interpolation.hpp>
+#include <spiner/spiner_types.hpp>
 
 #define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
+#include "catch2/catch.hpp"
 
 using Spiner::DataBox;
 using Spiner::IndexType;

@@ -16,10 +16,10 @@
 #include <iostream>
 #include <string>
 
-#include "databox.hpp"
-#include "interpolation.hpp"
-#include "portability.hpp"
-#include "spiner_types.hpp"
+#include <ports-of-call/portability.hpp>
+#include <spiner/databox.hpp>
+#include <spiner/interpolation.hpp>
+#include <spiner/spiner_types.hpp>
 
 using Spiner::DataBox;
 using Spiner::RegularGrid1D;
