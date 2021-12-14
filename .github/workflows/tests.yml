@@ -22,7 +22,9 @@ jobs:
           run: sudo apt-get install -y --force-yes -qq build-essential libhdf5-dev valgrind
         - name: build and run tests
           run: |
-            mkdir -p test
-            cd test
-            make test USE_HDF5=yes
-            valgrind --leak-check=yes --track-origins=yes ./test.bin
+            mkdir -p bin
+            cd bin
+            cmake -DSPINER_USE_HDF=ON -DSPINER_BUILD_TESTS=ON ..
+	    make -j
+	    make test
+            valgrind --leak-check=yes --track-origins=yes ./test/test.bin
