@@ -11,45 +11,72 @@ Spiner](https://en.wikipedia.org/wiki/Brent_Spiner).
 
 `Spiner` is compatible with code on CPU, GPU, and everything in between. Read the `ports-of-call` [README](ports-of-call/README.md) for more details.
 
-## Installation
+## Building and Installation
 
 `Spiner` is self-contained. Simply clone it as
 ```bash
 git clone git@gitlab.lanl.gov:jonahm/spiner.git
 ```
-If you want to use unit tests, clone with submodules to include `Catch2`.
-```bash
-git clone --recurse-submodules git@gitlab.lanl.gov:jonahm/spiner.git
-```
 To build and run unit tests,
 ```bash
-cd test
+mkdir bin
+cmake -DSPINER_BUILD_TESTS=ON ..
+make -j
 make test
 ```
 and to do convergence testing,
 ```bash
-cd test
 make convergence
 ```
-At the moment, `Spiner` cannot be installed into a system directory.
+after building.
 
-**Note that you may have to edit the `Makefile` to set paths to, e.g., `hdf5`.**
+To install,
+```bash
+make install
+```
+after configuring and building.
+
+### Build options
+
+- `SPINER_USE_HDF` enables or disables HDF5. Default is `OFF`
+- `SPINER_USE_KOKKOS` enables or disables Kokkos. Default is `OFF`.
+- `SPINER_USE_CUDA` enables or disables Cuda. Requires Kokkos. Default is `OFF`.
+- `SPINER_BUILD_TESTS` enables or disables tests. Default is `OFF`. If
+  this is disabled, then configuration *only* prepares for install, as
+  no build step si necessary.
+- `SPINER_HDF5_INSTALL_DIR` a hint for cmake about where you may have stashed HDF5.
+- `SPINER_KOKKOS_INSTALL_DIR` a hint for cmake about where you may have stashed Kokkos.
+
+## Including spiner in your project
+
+You can build `spiner` in-line with your project, or pre-install
+it. It's header-only and the include directories should have the
+expected structure. If you build inline, add the following targers to your `cmake`:
+```bash
+target_link_libraries(my_project PRIVATE spiner::flags spiner::libs)
+```
+`spiner::flags` contains compile and include flags, to be included at
+compile lines. `spiner::libs` contains linker flags. Since `spiner` is
+header-only, `spiner::libs` only contains link flags for dependencies,
+such as `HDF5` or `Kokkos`.
 
 ## Dependencies
 
-`Spiner` has no dependencies for the `databox` tool. Simply include it in your project. It is header-only and requires only a few files:
+`Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
 
-- `databox.hpp`
-- `interpolation.hpp`
-- `spiner_types.hpp`
-- `sp5.hpp`
+- `spiner/databox.hpp`
+- `spiner/interpolation.hpp`
+- `spiner/spiner_types.hpp`
+- `spiner/sp5.hpp`
 - `ports-of-call/portability.hpp`
 - `ports-of-call/portable_arrays.hpp`
+
+To use the build system (rather than simply cloning and including the files) requires `cmake`.
 
 The testing tooling requires a few different pieces:
 
 - Unit testing requires [Catch2](https://github.com/catchorg/Catch2),
-  which is header only. This is included via a git submodule.
+  which is downloaded automatically if needed.
 - Convergence testing requires the scientific python stack, including:
   - python3
   - numpy
@@ -58,11 +85,27 @@ The testing tooling requires a few different pieces:
 ### HDF5
 
 `Spiner` supports reading and writing DataBox objects into a custom HDF5 format called `SP5`. 
-To enable this, compile with the appropriate `HDF5` linking and the flag `-DSPINER_USE_HDF5`.
+To enable this, compile with the appropriate `HDF5` linking and the flag `-DSPINER_USE_HDF`.
+If you use the cmake build system, just configure with `-DSPINER_USE_HDF=ON`.
 
 ### CUDA and Kokkos
 
-`Spiner` uses the `ports-of-call` code to optionally support compilation with CUDA, Kokkos, or none of the above.
+`Spiner` uses the `ports-of-call` code to optionally support
+compilation with CUDA, Kokkos, or none of the above. If `Kokkos` is
+discoverable by cmake (for example if you installed it with `spack`),
+then the build system should find it automatically. Otherwise you can
+specify a location for Kokkos with `SPINER_KOKKOS_INSTALL_DIR`. 
+
+The following spack install was tested with a V100 GPU:
+```bash
+spack install kokkos-nvcc-wrapper
+spack install kokkos~shared+cuda+cuda_lambda+cuda_relocatable_device_code+wrapper cuda_arch=70
+```
+and then the following cmake configuration line
+```C++
+cmake -DSPINER_USE_KOKKOS=ON -DSPINER_USE_CUDA=ON -DSPINER_BUILD_TESTS=ON ..
+```
+builds the tests for CUDA.
 
 ### Clang-Format
 
