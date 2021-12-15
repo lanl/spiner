@@ -109,13 +109,19 @@ builds the tests for CUDA.
 
 ### Clang-Format
 
-Currently `clang-format` is not required for committed code, but as good
-practice, we encourage running it. The code is currently formatted with versions:
-- 11+
+Clang-format version 12 is required for committing, and a github
+workflow is used to check that code meets format requirements. We
+provide a make target in the build system. After configuration, simply
+type
+```bash
+make format
+```
+to format the code.
 
-However, older versions may work. If you would like to try, please
-examine the diff and see if the formatting appears stable. Otherwise,
-you may need to upgrade your version of `clang-format`.
+Other versions of `clang-format` may work. If you would like to try,
+please examine the diff and see if the formatting appears
+stable. Otherwise, you may need to upgrade your version of
+`clang-format`.
 
 In general, we recommend formatting regularly so that the format calls
 do not pollute the diffs. If a format call necessarily pollutes the
@@ -144,6 +150,11 @@ The underlying portability machinery in `ports-of-call` was primarily developed 
 - Jonah Miller
 - Daniel Holladay
 - Josh Dolence
+
+Continuous integration and build system support has been provided by
+- Jonah Miller
+- Karen Tsai
+- Christopher Mauney
 
 ## Copyright
 
