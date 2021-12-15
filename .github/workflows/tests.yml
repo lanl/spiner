@@ -25,6 +25,6 @@ jobs:
             mkdir -p bin
             cd bin
             cmake -DSPINER_USE_HDF=ON -DSPINER_BUILD_TESTS=ON ..
-	    make -j
-	    make test
+            make -j
+            make test
             valgrind --leak-check=yes --track-origins=yes ./test/test.bin
