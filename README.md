@@ -43,7 +43,7 @@ after configuring and building.
 - `SPINER_USE_CUDA` enables or disables Cuda. Requires Kokkos. Default is `OFF`.
 - `SPINER_BUILD_TESTS` enables or disables tests. Default is `OFF`. If
   this is disabled, then configuration *only* prepares for install, as
-  no build step si necessary.
+  no build step is necessary.
 - `SPINER_HDF5_INSTALL_DIR` a hint for cmake about where you may have stashed HDF5.
 - `SPINER_KOKKOS_INSTALL_DIR` a hint for cmake about where you may have stashed Kokkos.
 
