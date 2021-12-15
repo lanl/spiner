@@ -60,31 +60,27 @@ class PortableMDArray {
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(nx4), nx5_(nx5),
         nx6_(1) {}
   PORTABLE_FUNCTION
-  PortableMDArray(T *data, int nx6, int nx5, int nx4, int nx3, int nx2, int nx1)
-  noexcept
+  PortableMDArray(T *data, int nx6, int nx5, int nx4, int nx3, int nx2,
+                  int nx1) noexcept
       : pdata_(data), nx1_(nx1), nx2_(nx2), nx3_(nx3), nx4_(nx4), nx5_(nx5),
         nx6_(nx6) {}
 
   // define copy constructor and overload assignment operator so both do deep
   // copies.
   PortableMDArray(const PortableMDArray<T> &t) noexcept;
-  PortableMDArray<T> &
-  operator=(const PortableMDArray<T> &t) noexcept;
+  PortableMDArray<T> &operator=(const PortableMDArray<T> &t) noexcept;
 
   // public functions to allocate/deallocate memory for 1D-5D data
   PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx1) noexcept;
-  PORTABLE_FUNCTION void
-  NewPortableMDArray(T *data, int nx2, int nx1) noexcept;
-  PORTABLE_FUNCTION void
-  NewPortableMDArray(T *data, int nx3, int nx2, int nx1) noexcept;
-  PORTABLE_FUNCTION void
-  NewPortableMDArray(T *data, int nx4, int nx3, int nx2, int nx1) noexcept;
-  PORTABLE_FUNCTION void
-  NewPortableMDArray(T *data, int nx5, int nx4, int nx3, int nx2,
-                     int nx1) noexcept;
-  PORTABLE_FUNCTION void
-  NewPortableMDArray(T *data, int nx6, int nx5, int nx4, int nx3, int nx2,
-                     int nx1) noexcept;
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx2, int nx1) noexcept;
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx3, int nx2,
+                                            int nx1) noexcept;
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx4, int nx3, int nx2,
+                                            int nx1) noexcept;
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx5, int nx4, int nx3,
+                                            int nx2, int nx1) noexcept;
+  PORTABLE_FUNCTION void NewPortableMDArray(T *data, int nx6, int nx5, int nx4,
+                                            int nx3, int nx2, int nx1) noexcept;
 
   // public function to swap underlying data pointers of two equally-sized
   // arrays
@@ -210,9 +206,8 @@ class PortableMDArray {
                                               const int j, const int i) const {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * n))];
   }
-  PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int m, const int n,
-                                              const int k, const int j,
-                                              const int i) {
+  PORTABLE_FORCEINLINE_FUNCTION T &
+  operator()(const int m, const int n, const int k, const int j, const int i) {
     return pdata_[i + nx1_ * (j + nx2_ * (k + nx3_ * (n + nx4_ * m)))];
   }
   PORTABLE_FORCEINLINE_FUNCTION T &operator()(const int m, const int n,
@@ -415,8 +410,8 @@ PortableMDArray<T>::NewPortableMDArray(T *data, int nx2, int nx1) noexcept {
 
 template <typename T>
 PORTABLE_FUNCTION void
-PortableMDArray<T>::NewPortableMDArray(T *data, int nx3, int nx2, int nx1)
-noexcept {
+PortableMDArray<T>::NewPortableMDArray(T *data, int nx3, int nx2,
+                                       int nx1) noexcept {
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
