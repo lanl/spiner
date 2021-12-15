@@ -15,6 +15,15 @@
 cmake_minimum_required(VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+option (SPINER_USE_HDF "Pull in hdf5" OFF)
+option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
+option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
+option (SPINER_BUILD_TESTS "Build tests" OFF)
+
+if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
+  message(FATAL_ERROR "Currently cuda requires Kokkos")
+endif()
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS On)
 
@@ -44,15 +53,6 @@ include(CTest)
 
 # clang format
 include(cmake/Format.cmake)
-
-option (SPINER_USE_HDF "Pull in hdf5" OFF)
-option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
-option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
-option (SPINER_BUILD_TESTS "Build tests" OFF)
-
-if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
-  message(FATAL_ERROR "Currently cuda requires Kokkos")
-endif()
 
 # Add a library
 # mostly includes
@@ -101,8 +101,6 @@ if (SPINER_USE_KOKKOS)
       message(FATAL_ERROR "Kokkos was requested but not found. Can be disabled with -DSPINER_USE_KOKKOS=OFF")
     endif()
   endif()
-  # cuda specific flags
-  target_link_libraries(spiner::libs INTERFACE Kokkos::kokkos)
   if(SPINER_USE_CUDA)
     target_compile_options(
       spiner::flags
