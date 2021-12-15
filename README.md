@@ -42,8 +42,8 @@ after configuring and building.
 - `SPINER_USE_KOKKOS` enables or disables Kokkos. Default is `OFF`.
 - `SPINER_USE_CUDA` enables or disables Cuda. Requires Kokkos. Default is `OFF`.
 - `SPINER_BUILD_TESTS` enables or disables tests. Default is `OFF`. If
-  this is disabled, then configuration *only* prepares for install, as
-  no build step is necessary.
+  this is disabled, then configuration *only* prepares for install and
+  provides targets for in-tree builds, as no build step is necessary.
 - `SPINER_HDF5_INSTALL_DIR` a hint for cmake about where you may have stashed HDF5.
 - `SPINER_KOKKOS_INSTALL_DIR` a hint for cmake about where you may have stashed Kokkos.
 
@@ -51,7 +51,7 @@ after configuring and building.
 
 You can build `spiner` in-line with your project, or pre-install
 it. It's header-only and the include directories should have the
-expected structure. If you build inline, add the following targers to your `cmake`:
+expected structure. If you build inline, add the following targets to your `cmake`:
 ```bash
 target_link_libraries(my_project PRIVATE spiner::flags spiner::libs)
 ```
