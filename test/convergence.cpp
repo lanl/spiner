@@ -16,10 +16,10 @@
 #include <iostream>
 #include <string>
 
-#include "databox.hpp"
-#include "interpolation.hpp"
-#include "portability.hpp"
-#include "spiner_types.hpp"
+#include <ports-of-call/portability.hpp>
+#include <spiner/databox.hpp>
+#include <spiner/interpolation.hpp>
+#include <spiner/spiner_types.hpp>
 
 using Spiner::DataBox;
 using Spiner::RegularGrid1D;
@@ -38,7 +38,8 @@ Real errors[NGRIDS];
 constexpr Real NCOARSE[NGRIDS] = {8, 32, 128, 512};
 constexpr int NFINE = 1024;
 
-inline Real testFunction(Real z, Real y, Real x) {
+PORTABLE_INLINE_FUNCTION
+Real testFunction(Real z, Real y, Real x) {
   return sin(2 * M_PI * KX * x) * sin(2 * M_PI * KY * y) *
          sin(2 * M_PI * KZ * z);
 }

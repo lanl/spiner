@@ -34,8 +34,8 @@
 #include "cuda.h"
 #define PORTABLE_FUNCTION __host__ __device__
 #define PORTABLE_INLINE_FUNCTION __host__ __device__ inline
-#define PORTABLE_FORCEINLINE_FUNCTION \
-__host__ __device__ inline __attribute__((always_inline))
+#define PORTABLE_FORCEINLINE_FUNCTION                                          \
+  __host__ __device__ inline __attribute__((always_inline))
 #define PORTABLE_LAMBDA [=] __host__ __device__
 void *PORTABLE_MALLOC(size_t size) {
   void *devPtr cudaError_t e = cudaMalloc(devPtr, size);

@@ -1,0 +1,141 @@
+#------------------------------------------------------------------------------#
+# © 2021. Triad National Security, LLC. All rights reserved.  This
+# program was produced under U.S. Government contract 89233218CNA000001
+# for Los Alamos National Laboratory (LANL), which is operated by Triad
+# National Security, LLC for the U.S.  Department of Energy/National
+# Nuclear Security Administration. All rights in the program are
+# reserved by Triad National Security, LLC, and the U.S. Department of
+# Energy/National Nuclear Security Administration. The Government is
+# granted for itself and others acting on its behalf a nonexclusive,
+# paid-up, irrevocable worldwide license in this material to reproduce,
+# prepare derivative works, distribute copies to the public, perform
+# publicly and display publicly, and to permit others to do so.
+#------------------------------------------------------------------------------#
+
+cmake_minimum_required(VERSION 3.14)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+option (SPINER_USE_HDF "Pull in hdf5" OFF)
+option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
+option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
+
+if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
+  message(FATAL_ERROR "Currently cuda requires Kokkos")
+endif()
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+
+project(spiner VERSION 1.4.0)
+
+# Don't allow in-source builds
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+if(EXISTS "${LOC_PATH}")
+  message(FATAL_ERROR
+    "You cannot build in a source directory (or any directory with a CMakeLists.txt file). "
+    "Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+endif()
+
+# If the user doesn't specify a build type, prefer RelWithDebInfo
+set(default_build_type "RelWithDebInfo")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+    STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+# CTEST
+include(CTest)
+
+# clang format
+include(cmake/Format.cmake)
+
+# Add a library
+# mostly includes
+add_library(spiner::flags INTERFACE IMPORTED GLOBAL)
+# mostly just contains automated linker connections
+add_library(spiner::libs INTERFACE IMPORTED)
+
+# xl fix
+target_compile_options(spiner::flags INTERFACE
+  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
+target_link_options(spiner::flags INTERFACE
+  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
+
+# HDF5
+if(SPINER_USE_HDF)
+  if(SPINER_HDF5_INSTALL_DIR)
+    list(APPEND CMAKE_PREFIX_PATH "${SPINER_HDF5_INSTALL_DIR}")
+  endif()
+  find_package(HDF5 COMPONENTS C HL)
+  if (HDF5_FOUND)
+    add_library(spiner::hdf5 INTERFACE IMPORTED GLOBAL)
+    target_compile_definitions(spiner::flags
+      INTERFACE
+      SPINER_USE_HDF)
+    set_target_properties(spiner::hdf5 PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES};${HDF5_HL_LIBRARIES}"
+      INTERFACE_COMPILE_DEFINITIONS "SPINER_USE_HDF"
+      INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIRS}")
+  else()
+    message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
+  endif()
+  target_link_libraries(spiner::libs INTERFACE spiner::hdf5)
+endif()
+
+if (SPINER_USE_KOKKOS)
+  target_compile_definitions(spiner::flags INTERFACE
+    PORTABILITY_STRATEGY_KOKKOS)
+  # Import Kokkos if not already available as a build target
+  if (NOT TARGET Kokkos::kokkos)
+    if (SPINER_KOKKOS_INSTALL_DIR)
+      list(APPEND CMAKE_PREFIX_PATH "${SPINER_KOKKOS_INSTALL_DIR}")
+      set(Kokkos_ROOT "${SPINER_KOKKOS_INSTALL_DIR}/lib64/cmake/Kokkos")
+    endif()
+    find_package(Kokkos REQUIRED)
+    if(NOT Kokkos_FOUND)
+      message(FATAL_ERROR "Kokkos was requested but not found. Can be disabled with -DSPINER_USE_KOKKOS=OFF")
+    endif()
+  endif()
+  if(SPINER_USE_CUDA)
+    target_compile_options(
+      spiner::flags
+      INTERFACE # Generator expression shamelessly copied from EAP
+      "$<$<COMPILE_LANGUAGE:CXX>:--expt-relaxed-constexpr;>"
+      )
+  endif()
+  target_link_libraries(spiner::libs INTERFACE Kokkos::kokkos)
+endif ()
+
+# parent library
+# so the user can just import `spiner::spiner` rather than flags or libs.
+add_library(spiner::spiner INTERFACE IMPORTED GLOBAL)
+target_link_libraries(spiner::spiner INTERFACE spiner::flags spiner::libs)
+
+# Enables
+# #include <spiner>
+# and
+# #include <ports-of-call>
+target_include_directories(spiner::flags
+  INTERFACE
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
+
+# Enables includes
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
+  DESTINATION "include"
+  FILES_MATCHING PATTERN "*.hpp"
+  )
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ports-of-call"
+  DESTINATION "include"
+  FILES_MATCHING PATTERN "*.hpp"
+  )
+
+# Option imported from `CTest`
+if (BUILD_TESTING)
+  message("\nConfiguring tests")
+  add_subdirectory(test)
+endif()
+

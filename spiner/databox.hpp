@@ -56,8 +56,7 @@ class DataBox {
   // example call
   // DataBox(data, nx3, nx2, nx1)
   template <typename... Args>
-  PORTABLE_INLINE_FUNCTION
-  DataBox(Real *data, Args... args) noexcept
+  PORTABLE_INLINE_FUNCTION DataBox(Real *data, Args... args) noexcept
       : rank_(sizeof...(args)), status_(DataStatus::Unmanaged), data_(data) {
     dataView_.NewPortableMDArray(data, std::forward<Args>(args)...);
     setAllIndexed_();
@@ -101,8 +100,8 @@ class DataBox {
 
   // Slice constructor
   PORTABLE_INLINE_FUNCTION
-  DataBox(const DataBox &b, const int dim, const int indx, const int nvar)
-  noexcept
+  DataBox(const DataBox &b, const int dim, const int indx,
+          const int nvar) noexcept
       : status_(DataStatus::Unmanaged), data_(b.data_) {
     dataView_.InitWithShallowSlice(b.dataView_, dim, indx, nvar);
     rank_ = dataView_.GetRank();
@@ -169,25 +168,24 @@ class DataBox {
 
   // Interpolates whole DataBox to a real number,
   // x1 is fastest index. xN is slowest.
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x) const noexcept;
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x2, const Real x1) const noexcept;
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x3, const Real x2, const Real x1) const noexcept;
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x3, const Real x2, const Real x1,
-               const int idx) const noexcept;
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x4, const Real x3, const Real x2,
-               const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x2,
+                                                  const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x3, const Real x2,
+                                                  const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x3, const Real x2,
+                                                  const Real x1,
+                                                  const int idx) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x4, const Real x3,
+                                                  const Real x2,
+                                                  const Real x1) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
   // JMM: Trust me---this is a common pattern
-  PORTABLE_FORCEINLINE_FUNCTION Real
-  interpToReal(const Real x4, const Real x3, const Real x2, const int idx,
-               const Real x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION Real interpToReal(const Real x4, const Real x3,
+                                                  const Real x2, const int idx,
+                                                  const Real x1) const noexcept;
   // Interpolates SLOWEST indices of databox to a new
   // DataBox, interpolated at that slowest index.
   // WARNING: requires memory to be pre-allocated.
@@ -379,8 +377,8 @@ inline void DataBox::resize(AllocationTarget t, Args... args) {
   dataView_.NewPortableMDArray(data_, std::forward<Args>(args)...);
 }
 
-PORTABLE_INLINE_FUNCTION Real DataBox::interpToReal(const Real x)
-const noexcept {
+PORTABLE_INLINE_FUNCTION Real
+DataBox::interpToReal(const Real x) const noexcept {
   assert(canInterpToReal_(1));
   return grids_[0](x, dataView_);
 }
@@ -400,9 +398,8 @@ DataBox::interpToReal(const Real x2, const Real x1) const noexcept {
                    w1[1] * dataView_(ix2 + 1, ix1 + 1)));
 }
 
-PORTABLE_FORCEINLINE_FUNCTION Real
-DataBox::interpToReal(const Real x3, const Real x2,
-                      const Real x1) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
+    const Real x3, const Real x2, const Real x1) const noexcept {
   assert(canInterpToReal_(3));
   int ix[3];
   weights_t w[3];
@@ -423,9 +420,8 @@ DataBox::interpToReal(const Real x3, const Real x2,
                       w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
 }
 
-PORTABLE_FORCEINLINE_FUNCTION Real
-DataBox::interpToReal(const Real x3, const Real x2, const Real x1,
-                      const int idx) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
+    const Real x3, const Real x2, const Real x1, const int idx) const noexcept {
   assert(rank_ == 4);
   for (int r = 1; r < rank_; ++r) {
     assert(indices_[r] == IndexType::Interpolated);
@@ -452,11 +448,10 @@ DataBox::interpToReal(const Real x3, const Real x2, const Real x1,
                 w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
 }
 
-// DH: this is a large function to force an inline, perhaps just make it a 
+// DH: this is a large function to force an inline, perhaps just make it a
 // suggestion to the compiler?
-PORTABLE_FORCEINLINE_FUNCTION Real
-DataBox::interpToReal(const Real x4, const Real x3, const Real x2,
-                      const Real x1) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
+    const Real x4, const Real x3, const Real x2, const Real x1) const noexcept {
   assert(canInterpToReal_(4));
   Real x[] = {x1, x2, x3, x4};
   int ix[4];
