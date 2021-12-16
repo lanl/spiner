@@ -52,13 +52,18 @@ after configuring and building.
 You can build `spiner` in-line with your project, or pre-install
 it. It's header-only and the include directories should have the
 expected structure. If you build inline, add the following targets to your `cmake`:
-```bash
+```cmake
 target_link_libraries(my_project PRIVATE spiner::flags spiner::libs)
 ```
 `spiner::flags` contains compile and include flags, to be included at
 compile lines. `spiner::libs` contains linker flags. Since `spiner` is
 header-only, `spiner::libs` only contains link flags for dependencies,
 such as `HDF5` or `Kokkos`.
+
+For access to both, use
+```cmake
+target_link_libraries(my_project PRIVATE spiner::spiner)
+```
 
 ## Dependencies
 
@@ -103,7 +108,7 @@ spack install kokkos~shared+cuda+cuda_lambda+cuda_relocatable_device_code+wrappe
 ```
 and then the following cmake configuration line
 ```C++
-cmake -DSPINER_USE_KOKKOS=ON -DSPINER_USE_CUDA=ON -DSPINER_BUILD_TESTS=ON ..
+cmake -DSPINER_USE_KOKKOS=ON -DSPINER_USE_CUDA=ON -DBUILD_TESTING=ON -DCMAKE_CXX_COMPILER=nvcc_wrapper ..
 ```
 builds the tests for CUDA.
 
