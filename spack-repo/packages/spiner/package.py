@@ -1,9 +1,9 @@
-# Spackage for Spiner Dependencies
+# Spackage for Spiner
 
 from spack import *
 
-class SpinerDeps(BundlePackage):
-    """Spiner Dependencies"""
+class Spiner(CMakePackage):
+    """Spiner"""
 
     homepage    = "https://github.com/lanl/spiner"
     url         = "https://github.com/lanl/spiner/archive/refs/heads/main.zip"
@@ -20,3 +20,8 @@ class SpinerDeps(BundlePackage):
     depends_on('py-sphinx-rtd-theme@0.4.3', when='+doc')
     depends_on('py-sphinx-multiversion', when='+doc')
 
+    def cmake_args(self):
+        args = [
+            '-DBUILD_TESTING={0}'.format('ON' if self.run_tests else 'OFF'),
+        ]
+        return args
