@@ -38,7 +38,8 @@ Real errors[NGRIDS];
 constexpr Real NCOARSE[NGRIDS] = {8, 32, 128, 512};
 constexpr int NFINE = 1024;
 
-inline Real testFunction(Real z, Real y, Real x) {
+PORTABLE_INLINE_FUNCTION
+Real testFunction(Real z, Real y, Real x) {
   return sin(2 * M_PI * KX * x) * sin(2 * M_PI * KY * y) *
          sin(2 * M_PI * KZ * z);
 }
