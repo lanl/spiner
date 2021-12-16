@@ -10,6 +10,7 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
+# Unit tests
 if (NOT TARGET Catch2::Catch2)
   find_package(Catch2 QUIET)
 endif()
@@ -25,24 +26,20 @@ if(NOT Catch2_FOUND)
   list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
 endif()
 
-#Python
-include(FindPythonInterp)
-
 add_executable(test.bin test.cpp)
 target_link_libraries(test.bin
   PRIVATE
-  spiner::flags
-  spiner::libs
+  spiner::spiner
   Catch2::Catch2)
 
 include(Catch)
 catch_discover_tests(test.bin)
 
+# Convergence test
+include(FindPythonInterp)
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
-  PRIVATE
-  spiner::flags
-  spiner::libs)
+  PRIVATE spiner::spiner)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plot_convergence.py
   DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

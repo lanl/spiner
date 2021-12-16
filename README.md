@@ -20,7 +20,7 @@ git clone git@gitlab.lanl.gov:jonahm/spiner.git
 To build and run unit tests,
 ```bash
 mkdir bin
-cmake -DSPINER_BUILD_TESTS=ON ..
+cmake -DBUILD_TESTING=ON ..
 make -j
 make test
 ```
@@ -41,7 +41,7 @@ after configuring and building.
 - `SPINER_USE_HDF` enables or disables HDF5. Default is `OFF`
 - `SPINER_USE_KOKKOS` enables or disables Kokkos. Default is `OFF`.
 - `SPINER_USE_CUDA` enables or disables Cuda. Requires Kokkos. Default is `OFF`.
-- `SPINER_BUILD_TESTS` enables or disables tests. Default is `OFF`. If
+- `BUILD_TESTING` enables or disables tests. Default is `OFF`. If
   this is disabled, then configuration *only* prepares for install and
   provides targets for in-tree builds, as no build step is necessary.
 - `SPINER_HDF5_INSTALL_DIR` a hint for cmake about where you may have stashed HDF5.

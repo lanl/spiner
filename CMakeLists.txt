@@ -18,7 +18,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 option (SPINER_USE_HDF "Pull in hdf5" OFF)
 option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
 option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
-option (SPINER_BUILD_TESTS "Build tests" OFF)
 
 if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
   message(FATAL_ERROR "Currently cuda requires Kokkos")
@@ -111,6 +110,11 @@ if (SPINER_USE_KOKKOS)
   target_link_libraries(spiner::libs INTERFACE Kokkos::kokkos)
 endif ()
 
+# parent library
+# so the user can just import `spiner::spiner` rather than flags or libs.
+add_library(spiner::spiner INTERFACE IMPORTED GLOBAL)
+target_link_libraries(spiner::spiner INTERFACE spiner::flags spiner::libs)
+
 # Enables
 # #include <spiner>
 # and
@@ -129,7 +133,9 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ports-of-call"
   FILES_MATCHING PATTERN "*.hpp"
   )
 
-if (SPINER_BUILD_TESTS)
+# Option imported from `CTest`
+if (BUILD_TESTING)
   message("\nConfiguring tests")
   add_subdirectory(test)
 endif()
+
