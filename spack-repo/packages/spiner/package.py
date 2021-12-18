@@ -11,7 +11,8 @@ class Spiner(CMakePackage):
 
     version("main", branch="main")
 
-    variant('doc', default=False, description='Enable Sphinx Documentation Support')
+    variant('doc', default=False, description='Sphinx Documentation Support')
+    variant("format", default=False, description="Clang-Format Support")
 
     depends_on("cmake@3.12:")
     depends_on("catch2@2.13.4:2.13.6")
@@ -19,6 +20,8 @@ class Spiner(CMakePackage):
     depends_on('py-sphinx', when='+doc')
     depends_on('py-sphinx-rtd-theme@0.4.3', when='+doc')
     depends_on('py-sphinx-multiversion', when='+doc')
+
+    depends_on('llvm@12.0.0+clang', when='+format')
 
     def cmake_args(self):
         args = [
