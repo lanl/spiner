@@ -37,7 +37,7 @@ before_script:
   - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
   - spack env activate -d ${CI_PROJECT_DIR}/spack_env
   - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
-  - export SPINER_CMD="spack install --show-log-on-error ${SPINER_SPACK_SPEC}"
+  - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
   - ( echo "$SPINER_CMD" && $SPINER_CMD )
   - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
   - spack module tcl refresh -y
@@ -102,7 +102,7 @@ before_script:
     - mkdir clang_format_env
     - spack env create --without-view -d ${CI_PROJECT_DIR}/clang_format_env
     - spack env activate -d ${CI_PROJECT_DIR}/clang_format_env
-    - spack install --show-log-on-error spiner+format%gcc@${SPINER_GCC_VERSION}
+    - spack install --show-log-on-error --no-checksum --yes-to-all spiner+format%gcc@${SPINER_GCC_VERSION}
     - spack module tcl refresh -y
     - spack env loads -r
     - source ${CI_PROJECT_DIR}/clang_format_env/loads
@@ -118,7 +118,7 @@ before_script:
     - mkdir sphinx_doc_env
     - spack env create --without-view -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack env activate -d ${CI_PROJECT_DIR}/sphinx_doc_env
-    - spack install --show-log-on-error spiner+doc%gcc@${SPINER_GCC_VERSION}
+    - spack install --show-log-on-error --no-checksum --yes-to-all spiner+doc%gcc@${SPINER_GCC_VERSION}
     - spack module tcl refresh -y
     - spack env loads -r
     - source ${CI_PROJECT_DIR}/sphinx_doc_env/loads
