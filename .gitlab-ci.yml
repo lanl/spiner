@@ -41,7 +41,7 @@ before_script:
   - ( echo "$SPINER_CMD" && $SPINER_CMD )
   - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
   - spack module tcl refresh -y
-  - spack env loads -r
+  - spack env loads -r -x spiner
   - export modName="${CI_PROJECT_DIR}/spack_env/loads"
   - sed -i "1s;^;module load gcc/${SPINER_GCC_VERSION}\n;" ${modName}
   - sed -i "1s;^;#%Module\n;" ${modName}
