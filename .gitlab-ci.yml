@@ -133,13 +133,17 @@ before_script:
   extends:
     - .job
   script:
+    - cd ${CI_PROJECT_DIR}
     - module purge
     - module use ${CI_PROJECT_DIR}/spack_env
     - module load loads # module load compiler, deps, etc.
     - module list
-    - mkdir -p build
+    - mkdir -p build install
     - cd build
-    - cmake -DBUILD_TESTING=ON ..
+    - |
+      cmake -DBUILD_TESTING=ON \
+            -DCMAKE_INSTALL_PREFIX=${CI_PROJECT_DIR}/install \
+            ..
     - make -j
     - make install
     - make test
