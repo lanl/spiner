@@ -33,18 +33,6 @@ before_script:
   - spack compiler list
   - spack repo add --scope site ${CI_PROJECT_DIR}/spack-repo
   - spack repo list
-  - mkdir -p ${CI_PROJECT_DIR}/spack_env
-  - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
-  - spack env activate -d ${CI_PROJECT_DIR}/spack_env
-  - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
-  - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
-  - ( echo "$SPINER_CMD" && $SPINER_CMD )
-  - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
-  - spack module tcl refresh -y
-  - spack env loads -r -x spiner
-  - export modName="${CI_PROJECT_DIR}/spack_env/loads"
-  - sed -i "1s;^;module load gcc/${SPINER_GCC_VERSION}\n;" ${modName}
-  - sed -i "1s;^;#%Module\n;" ${modName}
 
 ##########################
 # Build Matrix Variables #
@@ -104,7 +92,7 @@ before_script:
     - spack env activate -d ${CI_PROJECT_DIR}/clang_format_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+format%gcc@${SPINER_GCC_VERSION}
     - spack module tcl refresh -y
-    - spack env loads -r
+    - spack env loads -r -x spiner
     - source ${CI_PROJECT_DIR}/clang_format_env/loads
     - clang-format -version
     - find ${CI_PROJECT_DIR} -regex '.*\.\(cpp\|hpp\)' | xargs clang-format -style=file -i && git diff --exit-code --ignore-submodules
@@ -120,7 +108,7 @@ before_script:
     - spack env activate -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+doc%gcc@${SPINER_GCC_VERSION}
     - spack module tcl refresh -y
-    - spack env loads -r
+    - spack env loads -r -x spiner
     - source ${CI_PROJECT_DIR}/sphinx_doc_env/loads
     - cd ${CI_PROJECT_DIR}/doc/sphinx
     - make html
@@ -133,7 +121,18 @@ before_script:
     - .job
   script:
     - cd ${CI_PROJECT_DIR}
-    - module purge
+    - mkdir -p ${CI_PROJECT_DIR}/spack_env
+    - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
+    - spack env activate -d ${CI_PROJECT_DIR}/spack_env
+    - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
+    - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
+    - ( echo "$SPINER_CMD" && $SPINER_CMD )
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
+    - spack module tcl refresh -y
+    - spack env loads -r -x spiner
+    - export modName="${CI_PROJECT_DIR}/spack_env/loads"
+    - sed -i "1s;^;module load gcc/${SPINER_GCC_VERSION}\n;" ${modName}
+    - sed -i "1s;^;#%Module\n;" ${modName}
     - module use ${CI_PROJECT_DIR}/spack_env
     - module load loads # module load compiler, deps, etc.
     - module list
