@@ -16,7 +16,7 @@ before_script:
   - export TMPDIR=${CI_PROJECT_DIR}
   - cd ${CI_PROJECT_DIR}
   - unset SPACK_ROOT
-  - echo "Spack Version:${XCAP_OSS_SPACK_REF}"
+  - echo "Spack Version:" ${XCAP_OSS_SPACK_REF}
   - git clone https://github.com/spack/spack.git
   - cd spack && git checkout ${XCAP_OSS_SPACK_REF##*-} && cd ${CI_PROJECT_DIR}
   - export SPACK_ARCH=`./spack/bin/spack arch`
@@ -91,6 +91,7 @@ before_script:
     - spack env create --without-view -d ${CI_PROJECT_DIR}/clang_format_env
     - spack env activate -d ${CI_PROJECT_DIR}/clang_format_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+format%gcc@${SPINER_GCC_VERSION}
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
     - source ${CI_PROJECT_DIR}/clang_format_env/loads
@@ -107,6 +108,7 @@ before_script:
     - spack env create --without-view -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack env activate -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+doc%gcc@${SPINER_GCC_VERSION}
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
     - source ${CI_PROJECT_DIR}/sphinx_doc_env/loads
