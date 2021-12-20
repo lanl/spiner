@@ -9,7 +9,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_GCC_VERSION: "9.3.0"
-  SPINER_SPACK_SPEC: "spiner@main%gcc@${SPINER_GCC_VERSION}"
+  SPINER_SPACK_SPEC: "spiner+python@main%gcc@${SPINER_GCC_VERSION}"
 
 before_script:
   - export HOME=${CI_PROJECT_DIR}

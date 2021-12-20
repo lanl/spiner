@@ -11,20 +11,25 @@ class Spiner(CMakePackage):
 
     version("main", branch="main")
 
-    variant('doc', default=False, description='Sphinx Documentation Support')
+    variant("python", default=False, description="Python, Numpy & Matplotlib Support")
+    variant("doc", default=False, description="Sphinx Documentation Support")
     variant("format", default=False, description="Clang-Format Support")
 
     depends_on("cmake@3.12:")
     depends_on("catch2@2.13.4:2.13.6")
 
-    depends_on('py-sphinx', when='+doc')
-    depends_on('py-sphinx-rtd-theme@0.4.3', when='+doc')
-    depends_on('py-sphinx-multiversion', when='+doc')
+    depends_on("python", when="+python")
+    depends_on("py-numpy", when="+python")
+    depends_on("py-matplotlib", when="+python")
 
-    depends_on('llvm@12.0.0+clang', when='+format')
+    depends_on("py-sphinx", when="+doc")
+    depends_on("py-sphinx-rtd-theme@0.4.3", when="+doc")
+    depends_on("py-sphinx-multiversion", when="+doc")
+
+    depends_on("llvm@12.0.0+clang", when="+format")
 
     def cmake_args(self):
         args = [
-            '-DBUILD_TESTING={0}'.format('ON' if self.run_tests else 'OFF'),
+            "-DBUILD_TESTING={0}".format("ON" if self.run_tests else "OFF"),
         ]
         return args
