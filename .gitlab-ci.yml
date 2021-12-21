@@ -143,6 +143,9 @@ before_script:
     - |
       cmake -DBUILD_TESTING=ON \
             -DCMAKE_INSTALL_PREFIX=${CI_PROJECT_DIR}/install \
+            -DSPINER_USE_HDF=ON \
+            -DSPINER_USE_KOKKOS=$([ ${CI_JOB_NAME} =~ "power9" ] && echo ON || echo OFF) \
+            -DSPINER_USE_CUDA=$([ ${CI_JOB_NAME} =~ "power9" ] && echo ON || echo OFF) \
             ..
     - make -j
     - make install
