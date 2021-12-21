@@ -9,6 +9,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_GCC_VERSION: "9.3.0"
+  SPINER_CUDA_VERSION: "11.4.2"
   SPINER_SPACK_SPEC: "spiner+python+cuda+kokkos@main%gcc@${SPINER_GCC_VERSION}"
 
 before_script:
@@ -132,6 +133,7 @@ before_script:
     - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
+    - module load cuda/${SPINER_CUDA_VERSION}
     - export modName="${CI_PROJECT_DIR}/spack_env/loads"
     - sed -i "1s;^;module load gcc/${SPINER_GCC_VERSION}\n;" ${modName}
     - sed -i "1s;^;#%Module\n;" ${modName}
