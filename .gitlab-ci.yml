@@ -129,7 +129,7 @@ before_script:
     - |
       if [[ ${CI_JOB_NAME} =~ "power9" ]];
       then
-        export SPINER_SPACK_SPEC="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}+kokkos+cuda cuda_arch=70";
+        export SPINER_SPACK_SPEC="${SPINER_SPACK_SPEC}+kokkos+cuda cuda_arch=70";
       fi
     - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
     - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
