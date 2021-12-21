@@ -9,7 +9,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_GCC_VERSION: "9.3.0"
-  SPINER_SPACK_SPEC: "spiner@main+python+kokkos+cuda cuda_arch=70 %gcc@${SPINER_GCC_VERSION}"
+  SPINER_SPACK_SPEC: "spiner@main+python%gcc@${SPINER_GCC_VERSION}"
 
 before_script:
   - export HOME=${CI_PROJECT_DIR}
@@ -126,6 +126,11 @@ before_script:
     - mkdir -p ${CI_PROJECT_DIR}/spack_env
     - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
     - spack env activate -d ${CI_PROJECT_DIR}/spack_env
+    - |
+      if [[ ${CI_JOB_NAME} =~ "power9" ]];
+      then
+        export SPINER_SPACK_SPEC="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}+kokkos+cuda cuda_arch=70";
+      fi
     - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
     - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
     - ( echo "$SPINER_CMD" && $SPINER_CMD )
