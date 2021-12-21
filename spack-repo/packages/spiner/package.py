@@ -12,7 +12,6 @@ class Spiner(CMakePackage, CudaPackage):
     version("main", branch="main")
 
     variant("kokkos", default=False, description="Enable kokkos")
-    variant("kokkos", default=False, description="Enable kokkos")
 
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
     variant("doc", default=False, description="Sphinx Documentation Support")
@@ -23,12 +22,11 @@ class Spiner(CMakePackage, CudaPackage):
 
     for _flag in list(CudaPackage.cuda_arch_values):
         depends_on("kokkos@3.3: cuda_arch=" +_flag, when="+cuda+kokkos cuda_arch=" + _flag)
-    
-    depends_on("kokkos@3.3:~shared+wrapper+cuda_lambda+cuda_relocatable_device_code", when="+cuda+kokkos")
-    depends_on("kokkos-nvcc-wrapper", when="+cuda+kokkos")
 
     for _flag in ("~cuda", "+cuda", "~openmp", "+openmp"):
         depends_on("kokkos@3.3:" + _flag, when="+kokkos" + _flag)
+
+    depends_on("kokkos@3.3:~shared+wrapper+cuda_lambda+cuda_relocatable_device_code", when="+cuda+kokkos")
 
     depends_on("python", when="+python")
     depends_on("py-numpy", when="+python")
