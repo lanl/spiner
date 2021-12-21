@@ -36,18 +36,32 @@ include(Catch)
 catch_discover_tests(test.bin)
 
 # Convergence test
-include(FindPythonInterp)
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
   PRIVATE spiner::spiner)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plot_convergence.py
-  DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
-add_custom_command(OUTPUT convergence.dat convergence.png
-  DEPENDS convergence.bin plot_convergence.py
-  COMMAND ${CMAKE_COMMAND} -E time ./convergence.bin
-  COMMAND ${PYTHON_EXECUTABLE} plot_convergence.py convergence.dat convergence.png)
-
-add_custom_target(convergence
-  DEPENDS convergence.png)
+find_package(Python3 COMPONENTS Interpreter NumPy)
+if (Python_FOUND)
+  execute_process(COMMAND ${Python_EXECUTABLE} -c "import matplotlib"
+    RESULT_VARAIBLE MATPLOTLIB_FOUND)
+endif()
+if (Python_FOUND AND MATPLOTLIB_FOUND)
+  message(INFO "Convergence plotting available. Setting up convergence test.")
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plot_convergence.py
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR})  
+  add_custom_command(OUTPUT convergence.dat convergence.png
+    DEPENDS convergence.bin plot_convergence.py
+    COMMAND ${CMAKE_COMMAND} -E time ./convergence.bin
+    COMMAND ${PYTHON_EXECUTABLE} plot_convergence.py convergence.dat convergence.png)
+  add_custom_target(convergence
+    DEPENDS convergence.png)
+else()
+  message(WARNING
+    "Python, numpy, or matplotlib is unavailable. "
+    "Convergence can be run, but no plots will be generated.")
+  add_custom_command(OUTPUT convergence.dat
+    DEPENDS convergence.bin
+    COMMAND ${CMAKE_COMMAND} -E time ./convergence.bin)
+  add_custom_target(convergence
+    DEPENDS convergence.dat)
+endif()
