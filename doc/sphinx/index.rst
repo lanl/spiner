@@ -3,15 +3,34 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Spiner's Documentation!
-=============================================
+Spiner: Performance portable routines for generic, tabulated, multi-dimensional data
+=====================================================================================
 
-Performance portable routines for generic, tabulated, multi-dimensional data.
+Spiner is a library for storing, indexing, and interpolating
+multidimensional data in a performance-portable way. It's intended to
+run on CPUs, GPUs and everything in-between. You can create a table on
+a CPU, copy it to a GPU, and interpolate on it in a GPU kernel, for
+example.
+
+Spiner also defines (via hdf5) a file format that bundles data
+together with instructions for interpolating it. This means you don't
+have to specify anything to start interpolating, simple load the file
+and evaluate where you want.
+
+Interpolation is linear. Here's an example of 3D interpolation (2D
+slice shown) on a GPU, with second-order convergence:
+
+.. image:: ../../figs/convergence.png
+
+See below for details of how to use spiner in your project and how to
+develop for it.
 
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
+   src/building
+   src/using-spiner
    src/ports-of-call
    src/sphinx-howto
 
