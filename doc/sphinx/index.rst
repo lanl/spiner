@@ -12,6 +12,7 @@ Performance portable routines for generic, tabulated, multi-dimensional data.
    :maxdepth: 1
    :caption: Contents:
 
+   src/ports-of-call
    src/sphinx-howto
 
 Indices and tables
