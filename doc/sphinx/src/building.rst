@@ -3,7 +3,7 @@
 Building and Installation
 ==========================
 
-``spiner`` is self-contained and header-only. Clone it as:
+``Spiner`` is self-contained and header-only. Clone it as:
 
 .. code-block:: bash
 
@@ -18,7 +18,7 @@ To build tests and install:
 .. code-block:: bash
 
   mkdir -p spiner/bin
-  cd spiner/bin
+  cd sppiner/bin
   cmake -DBUILD_TESTING=ON
   make -j
   make test
@@ -44,6 +44,11 @@ HDF5 is searched for and configured via the usual `cmake`_ machinery.
 A ``format`` target is also added if ``clang-format`` is found, so
 that ``make format`` will auto-format the repository.
 
+Testing is enabled via `Catch2`_, which is automatically downloaded
+during the cmake configure phase if needed.
+
+.. _`Catch2`: https://github.com/catchorg/Catch2
+
 Spack
 ^^^^^^
 
@@ -52,7 +57,7 @@ Spack
   Please report problems you have as github issues.
 
 Although the spackage has not yet made it to the main `Spack`_
-repositories, we provide a spackage for ``spiner`` within the
+repositories, we provide a spackage for ``Spiner`` within the
 the source repository. If you have spack installed,
 simply call
 

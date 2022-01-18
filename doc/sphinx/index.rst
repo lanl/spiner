@@ -30,8 +30,9 @@ develop for it.
    :caption: Contents:
 
    src/building
-   src/using-spiner
-   src/ports-of-call
+   src/getting-started
+   src/databox
+   src/interpolation
    src/sphinx-howto
 
 Indices and tables
@@ -40,3 +41,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+This documentation is approved for unlimited release, LA-UR-22-20363.
