@@ -189,7 +189,7 @@ otherwise.
 Using ``DataBox`` with smart pointers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Smart pointers can be used to managed a ``DataBox`` and automatically
+Smart pointers can be used to manage a ``DataBox`` and automatically
 call ``free`` for you, so long as you use them with a custom
 deleter. Spiner provides the following deleter for use in this
 scenario:
