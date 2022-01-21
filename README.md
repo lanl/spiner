@@ -5,17 +5,17 @@ Spiner
 
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
-Spiner](https://en.wikipedia.org/wiki/Brent_Spiner).
+Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see [here](https://lanl.github.io/spiner/main/index.html).
 
 ## Performance portability
 
-`Spiner` is compatible with code on CPU, GPU, and everything in between. Read the `ports-of-call` [README](ports-of-call/README.md) for more details.
+`Spiner` is compatible with code on CPU, GPU, and everything in between. We use [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html) for this feature.
 
 ## Building and Installation
 
 `Spiner` is self-contained. Simply clone it as
 ```bash
-git clone git@gitlab.lanl.gov:jonahm/spiner.git
+git clone --recursive git@gitlab.lanl.gov:jonahm/spiner.git
 ```
 To build and run unit tests,
 ```bash
@@ -67,14 +67,12 @@ target_link_libraries(my_project PRIVATE spiner::spiner)
 
 ## Dependencies
 
-`Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
+`Spiner relies on [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html) for performance portability. It is included as a submodule. Otherwise, `Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
 
 - `spiner/databox.hpp`
 - `spiner/interpolation.hpp`
 - `spiner/spiner_types.hpp`
 - `spiner/sp5.hpp`
-- `ports-of-call/portability.hpp`
-- `ports-of-call/portable_arrays.hpp`
 
 To use the build system (rather than simply cloning and including the files) requires `cmake`.
 
@@ -148,11 +146,6 @@ slice shown). Convergence is second-order, as expected.
 
 `Spiner` was primarily developed by Jonah Miller in collaboration with
 - Chad Meyer
-- Daniel Holladay
-- Josh Dolence
-
-The underlying portability machinery in `ports-of-call` was primarily developed by Chad Meyer in collaboration with
-- Jonah Miller
 - Daniel Holladay
 - Josh Dolence
 

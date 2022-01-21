@@ -46,15 +46,27 @@ from :code:`.gitlab-ci.yml`
 
 .. _Getting Started Guide: https://spack.readthedocs.io/en/latest/getting_started.html#installation
 
+Using Python
+^^^^^^^^^^^^
+
+With your favorite python package manager, e.g., ``pip``, install
+``sphinx``, ``spinx_multiversion``, and ``sphinx_rtd_theme``. For
+example:
+
+.. code-block::
+
+  pip install sphinx
+  pip install sphinx_multiversion
+  pip install sphinx_rtd_theme
+
 How to Build .rst into .html
 ----------------------------
 
 After you have the dependencies in your environment, then simply build your documentation as the following:
 
-.. literalinclude:: ../../../.gitlab-ci.yml
-   :lineno-match:
-   :language: yaml
-   :lines: 123-124
+.. code-block::
+
+  make html
 
 from :code:`.gitlab-ci.yml`
 

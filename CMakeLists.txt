@@ -110,6 +110,13 @@ if (SPINER_USE_KOKKOS)
   target_link_libraries(spiner::libs INTERFACE Kokkos::kokkos)
 endif ()
 
+# ports of call
+# TODO: Integrate with find-package
+if (NOT TARGET ports-of-call::ports-of-call)
+  add_subdirectory(ports-of-call)
+endif()
+target_link_libraries(spiner::flags INTERFACE ports-of-call::ports-of-call)
+
 # parent library
 # so the user can just import `spiner::spiner` rather than flags or libs.
 add_library(spiner::spiner INTERFACE IMPORTED GLOBAL)
@@ -117,18 +124,12 @@ target_link_libraries(spiner::spiner INTERFACE spiner::flags spiner::libs)
 
 # Enables
 # #include <spiner>
-# and
-# #include <ports-of-call>
 target_include_directories(spiner::flags
   INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
 
 # Enables includes
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
-  DESTINATION "include"
-  FILES_MATCHING PATTERN "*.hpp"
-  )
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ports-of-call"
   DESTINATION "include"
   FILES_MATCHING PATTERN "*.hpp"
   )
