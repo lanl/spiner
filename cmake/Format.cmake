@@ -59,7 +59,7 @@ set(
 file(GLOB_RECURSE FORMAT_SOURCES CONFIGURE_DEPENDS ${GLOBS})
 
 if (CLANG_FORMAT)
-  add_custom_target(format
+  add_custom_target(format_spiner
     COMMAND ${CLANG_FORMAT} -i ${FORMAT_SOURCES}
     VERBATIM)
 endif()

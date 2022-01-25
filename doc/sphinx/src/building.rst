@@ -41,8 +41,8 @@ HDF5 is searched for and configured via the usual `cmake`_ machinery.
 
 .. _`cmake`: https://cmake.org/
 
-A ``format`` target is also added if ``clang-format`` is found, so
-that ``make format`` will auto-format the repository.
+A ``format_spiner`` target is also added if ``clang-format`` is found, so
+that ``make format_spiner`` will auto-format the repository.
 
 Testing is enabled via `Catch2`_, which is automatically downloaded
 during the cmake configure phase if needed.
