@@ -80,5 +80,5 @@ Including Spiner in your Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Spiner can be included into a cmake project, either in-tree as a
-submodule or after installation. The cmake system provides
-the ``spiner::spiner`` cmake target.
+submodule or after installation via ``find_package``.
+The cmake system provides the ``spiner::spiner`` cmake target.
