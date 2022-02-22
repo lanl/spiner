@@ -11,15 +11,28 @@ class Spiner(CMakePackage, CudaPackage):
 
     version("main", branch="main")
 
+    # When overriding/overloading varaints, the last variant is always used, except for
+    # "when" clauses. Therefore, call the whens FIRST then the non-whens.
+    # https://spack.readthedocs.io/en/latest/packaging_guide.html#overriding-variants
+
     variant("kokkos", default=True, description="Enable kokkos",
             when="^kokkos")
     variant("openmp", default=True, description="Enable openmp kokkos backend",
             when="^openmp")
-    variant("cuda", default=False, description="Enable cuda backend",
+    variant("cuda", default=True, description="Enable cuda backend",
             when="^cuda")
+
     variant("kokkos", default=False, description="Enable kokkos",)
     variant("openmp", default=False, description="Enable openmp kokkos backend")
     variant("cuda", default=False, description="Enable cuda backend")
+
+    variant("hdf5", default=True, description="Enable hdf5",
+            when="^hdf5")
+    variant("mpi", default=True, description="Support parallel hdf5",
+            when="^mpi")
+
+    variant("hdf5", default=False, description="Enable hdf5")
+    variant("mpi", default=False, description="Support parallel hdf5")
 
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
     variant("doc", default=False, description="Sphinx Documentation Support")
@@ -37,6 +50,9 @@ class Spiner(CMakePackage, CudaPackage):
         depends_on("kokkos@3.2.00" + _flag, when="+kokkos" + _flag)
     depends_on("kokkos@3.2.00~shared+wrapper+cuda_lambda+cuda_relocatable_device_code", when="+cuda+kokkos")
 
+    depends_on("hdf5+cxx+hl~mpi", when="+hdf5~mpi")
+    depends_on("hdf5+cxx+hl+mpi", when="+hdf5+mpi")
+
     depends_on("python", when="+python")
     depends_on("py-numpy", when="+python")
     depends_on("py-matplotlib", when="+python")
@@ -47,6 +63,7 @@ class Spiner(CMakePackage, CudaPackage):
 
     depends_on("llvm@12.0.0+clang", when="+format")
 
+    conflicts("+mpi", when="~hdf5")
     conflicts("+cuda", when="~kokkos")
     conflicts("+openmp", when="~kokkos")
     conflicts("cuda_arch=none", when="+cuda", msg="CUDA architecture is required")
@@ -54,5 +71,8 @@ class Spiner(CMakePackage, CudaPackage):
     def cmake_args(self):
         args = [
             "-DBUILD_TESTING={0}".format("ON" if self.run_tests else "OFF"),
+            self.define_from_variant("SPINER_USE_KOKKOS","kokkos"),
+            self.define_from_variant("SPINER_USE_CUDA","cuda"),
+            self.define_from_variant("SPINER_USE_HDF", "hdf5")
         ]
         return args

@@ -32,10 +32,13 @@ Spiner supports a few ``cmake`` configuration options:
 * ``SPINER_USE_CUDA`` enables the Kokkos cuda backend
 * ``CMAKE_INSTALL_PREFIX`` sets the install location
 * ``CMAKE_BUILD_TYPE`` sets the build type
+* ``SPINER_FORCE_INTERNAL_PORTS`` forces use of a `ports-of-call`_ submodule rather than a system install
 
 .. _`hdf5`: https://www.hdfgroup.org/solutions/hdf5
 
 .. _`Kokkos`: https://github.com/kokkos/kokkos
+
+.. _`ports-of-call`: https://lanl.github.io/ports-of-call/main/index.html
 
 HDF5 is searched for and configured via the usual `cmake`_ machinery.
 
@@ -72,6 +75,8 @@ The spack repo supports a few variants:
 
 * ``+kokkos`` enables the Kokkos backend
 * ``+cuda`` enables the cuda backend. A ``cuda_arch`` must be specified.
+* ``+hdf5`` enables HDF5 file support.
+* ``+mpi`` enables parallel hdf5 support
 * ``+python`` installs python, numpy, and matplotlib support
 * ``+doc`` adds tooling for building the docs
 * ``+format`` adds support for clang-format
