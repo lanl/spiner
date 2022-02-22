@@ -81,6 +81,4 @@ Including Spiner in your Project
 
 Spiner can be included into a cmake project, either in-tree as a
 submodule or after installation. The cmake system provides
-``spiner::flags`` and ``spiner::libs`` cmake targets. The former adds
-appropriate compilation flags, the latter adds link flags for
-dependencies such as hdf5.
+the ``spiner::spiner`` cmake target.

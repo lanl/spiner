@@ -51,16 +51,7 @@ after configuring and building.
 
 You can build `spiner` in-line with your project, or pre-install
 it. It's header-only and the include directories should have the
-expected structure. If you build inline, add the following targets to your `cmake`:
-```cmake
-target_link_libraries(my_project PRIVATE spiner::flags spiner::libs)
-```
-`spiner::flags` contains compile and include flags, to be included at
-compile lines. `spiner::libs` contains linker flags. Since `spiner` is
-header-only, `spiner::libs` only contains link flags for dependencies,
-such as `HDF5` or `Kokkos`.
-
-For access to both, use
+expected structure. If you build inline, add the following target to your `cmake`:
 ```cmake
 target_link_libraries(my_project PRIVATE spiner::spiner)
 ```
