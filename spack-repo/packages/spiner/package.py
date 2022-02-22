@@ -11,7 +11,15 @@ class Spiner(CMakePackage, CudaPackage):
 
     version("main", branch="main")
 
-    variant("kokkos", default=False, description="Enable kokkos")
+    variant("kokkos", default=True, description="Enable kokkos",
+            when="^kokkos")
+    variant("openmp", default=True, description="Enable openmp kokkos backend",
+            when="^openmp")
+    variant("cuda", default=False, description="Enable cuda backend",
+            when="^cuda")
+    variant("kokkos", default=False, description="Enable kokkos",)
+    variant("openmp", default=False, description="Enable openmp kokkos backend")
+    variant("cuda", default=False, description="Enable cuda backend")
 
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
     variant("doc", default=False, description="Sphinx Documentation Support")
@@ -40,6 +48,7 @@ class Spiner(CMakePackage, CudaPackage):
     depends_on("llvm@12.0.0+clang", when="+format")
 
     conflicts("+cuda", when="~kokkos")
+    conflicts("+openmp", when="~kokkos")
     conflicts("cuda_arch=none", when="+cuda", msg="CUDA architecture is required")
 
     def cmake_args(self):
