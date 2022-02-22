@@ -20,6 +20,9 @@ class Spiner(CMakePackage, CudaPackage):
     depends_on("cmake@3.12:")
     depends_on("catch2@2.13.4:2.13.6")
 
+    # Currently the raw cuda backend of ports-of-call is not supported.
+    depends_on("ports-of-call portability_strategy=Kokkos", when="+kokkos")
+    depends_on("ports-of-call portability_strategy=None", when="~kokkos")
     for _flag in list(CudaPackage.cuda_arch_values):
         depends_on("kokkos@3.2.00 cuda_arch=" + _flag, when="+cuda+kokkos cuda_arch=" + _flag)
     for _flag in ("~cuda", "+cuda", "~openmp", "+openmp"):
