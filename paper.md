@@ -8,7 +8,7 @@ tags:
   - Interpolation
   - Tabulated data
 authors:
-  - name: Jonah M. Miller^[correspondig author]
+  - name: Jonah M. Miller^[corresponding author]
     orcid: 0000-0001-6432-7860
     affiliation: "1, 2"
   - name: Daniel Holladay
