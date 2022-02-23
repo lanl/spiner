@@ -1,5 +1,6 @@
+
 ---
-title: 'Spiner: Performance Portable Routines fro Generic, Tabulated, Multi-Dimensional Data'
+title: 'Spiner: Performance Portable Routines for Generic, Tabulated, Multi-Dimensional Data'
 tags:
   - C++
   - Performance portability
