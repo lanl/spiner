@@ -24,11 +24,16 @@ authors:
   - name: Karen Tsai
     affiliation: 3
 affiliations:
-  - CCS-2, Computational Physics and Methods, Los Alamos National Laboratory, Los Alamos, NM
-  - Center for Theoretical Astrophysics, Los Alamos National Laboratory, Los Alamos, NM
-  - CCS-7, Applied Computer Science, Los Alamos National Laboratory, Los ALamos, NM
-  - XCP-4, Continuum Models and Numerical Methods, Los Alamos National Laboratory, Los ALamos, NM
-  - HPC-ENV, HPC Environments, Los Alamo National Laboratory, Los Alamos, NM
+  - name: CCS-2, Computational Physics and Methods, Los Alamos National Laboratory, Los Alamos, NM
+    index: 1
+  - name: Center for Theoretical Astrophysics, Los Alamos National Laboratory, Los Alamos, NM
+    index: 2
+  - name: CCS-7, Applied Computer Science, Los Alamos National Laboratory, Los ALamos, NM
+    index: 3
+  - name: XCP-4, Continuum Models and Numerical Methods, Los Alamos National Laboratory, Los ALamos, NM
+    index: 4
+  - name: HPC-ENV, HPC Environments, Los Alamo National Laboratory, Los Alamos, NM
+    index: 5
 date: 22 February 2022
 bibliography: paper.bib
 
