@@ -110,7 +110,7 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION Real min() const { return min_; }
   PORTABLE_INLINE_FUNCTION Real max() const { return max_; }
   PORTABLE_INLINE_FUNCTION Real dx() const { return dx_; }
-  PORTABLE_INLINE_FUNCTION Real nPoints() const { return N_; }
+  PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
     return (std::isnan(min_) || std::isnan(max_) || std::isnan(dx_) ||
             std::isnan(idx_) || std::isnan((Real)N_));
