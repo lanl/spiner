@@ -78,6 +78,19 @@ TEST_CASE("PortableMDArrays can be allocated from a pointer",
   }
 }
 
+TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
+  SECTION("A regular grid 1d emits appropriate metadata") {
+    constexpr Real min = -1;
+    constexpr Real max = 1;
+    constexpr size_t N = 10;
+    RegularGrid1D g(min, max, N);
+    REQUIRE(g.min() == min);
+    REQUIRE(g.max() == max);
+    REQUIRE(g.nPoints() == N);
+    REQUIRE(g.dx() == (max - min)/((Real)(N-1)));
+  }
+}
+
 TEST_CASE("DataBox Basics", "[DataBox]") {
 
   SECTION("DataBoxes are initialized with correct rank") {

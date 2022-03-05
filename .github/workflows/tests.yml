@@ -19,7 +19,7 @@ jobs:
         - name: Set system to non-interactive mode
           run: export DEBIAN_FRONTEND=noninteractive
         - name: install hdf5 and valgrind
-          run: sudo apt-get install -y --force-yes -qq build-essential libhdf5-dev valgrind
+          run: sudo apt update && sudo apt upgrade && sudo apt install -y --force-yes -qq build-essential libhdf5-dev valgrind
         - name: build and run tests
           run: |
             mkdir -p bin
