@@ -67,12 +67,6 @@ set(SPLIB "spiner")
 add_library(${SPLIB} INTERFACE)
 add_library(${SPLIB}::${SPLIB} ALIAS ${SPLIB})
 
-# xl fix
-target_compile_options(${SPLIB} INTERFACE
-  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
-target_link_options(${SPLIB} INTERFACE
-  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
-
 # HDF5
 if(SPINER_USE_HDF)
   if(SPINER_HDF5_INSTALL_DIR)
