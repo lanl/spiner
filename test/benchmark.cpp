@@ -30,7 +30,7 @@
 using Spiner::DataBox;
 using Spiner::RegularGrid1D;
 
-using duration = std::chrono::microseconds;
+using duration = std::chrono::nanoseconds;
 
 constexpr Real KX = 2;
 constexpr Real KY = 3;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     RegularGrid1D gcoarse(xmin, xmax, ncoarse);
     std::vector<RegularGrid1D> gfine;
     for (const auto & n : nfine) {
-      gfine.push_back(xmin, xmax, n);
+      gfine.push_back(RegularGrid1D(xmin, xmax, n));
     }
 
     std::cout << "# ncoarse = " << ncoarse << std::endl;
@@ -83,16 +83,16 @@ int main(int argc, char *argv[]) {
       pdb->setRange(d, xmin, xmax, ncoarse);
     }
     auto db = *pdb;
-    portableFor("Filling databox", 0, ncoarse, 0, ncoarse, 0, ncoarse, 0, ncoarse,
+    portableFor("Filling databox", 0, ncoarse, 0, ncoarse, 0, ncoarse,
                 PORTABLE_LAMBDA(const int iz, const int iy, const int ix) {
-                  Real z = pdb->range(2).x(iz);
-                  Real y = pdb->range(1).x(iy);
-                  Real x = pdb->range(0).x(ix);
+                  Real z = gcoarse.x(iz);
+                  Real y = gcoarse.x(iy);
+                  Real x = gcoarse.x(ix);
                   db(iz, iy, ix) = testFunction(z, y, x);
                 });
 
     std::cout << "# nfine\ttime/point (us)\tL2 error" << std::endl;
-    for (const int ifine = 0; ifine < nfine.size(); ++ifine) {
+    for (int ifine = 0; ifine < nfine.size(); ++ifine) {
       auto n = nfine[ifine];
       auto g = gfine[ifine];
       Real d3x = g.dx()*g.dx()*g.dx();
@@ -110,16 +110,16 @@ int main(int argc, char *argv[]) {
                        Real f_interp = db.interpToReal(z, y, x);
                        Real f_true = testFunction(z, y, x);
                        Real difference = f_interp - f_true;
-                       reduced += difference * difference * d3x;
+                       reduce += difference * difference * d3x;
                      }, L2_error);
 #ifdef PORTABILITY_STRATEGY_KOKKOS
       Kokkos::fence();
 #endif
       auto stop = std::chrono::high_resolution_clock::now();
-      auto time = std::chrono::duration_cast<duration(stop - start);
+      auto time = std::chrono::duration_cast<duration>(stop - start);
       L2_error = std::sqrt(L2_error);
       printf("%d\t%.14e\t%.14e\n",
-             n, time.count() / static_cast<Real>(n * n * n), L2_error);
+             n, time.count() / std::pow(static_cast<Real>(n), 3), L2_error);
     }
   }
 #ifdef PORTABILITY_STRATEGY_KOKKOS

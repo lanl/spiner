@@ -88,8 +88,26 @@ if (SPINER_USE_KOKKOS)
   # Import Kokkos if not already available as a build target
   if (NOT TARGET Kokkos::kokkos)
     if (SPINER_USE_KOKKOS_SRC)
+      set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE BOOL
+        "Kokkos aggressive vectorization" FORCE)
       if (SPINER_USE_CUDA)
-        set(Kokkos_ENABLE_CUDA ON CACHE BOOL "" FORCE)
+        set(Kokkos_ENABLE_CUDA ON CACHE BOOL
+          "Cuda backend for Kokkos" FORCE)
+        set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE BOOL
+          "Enable cuda lambda" FORCE)
+        target_compile_options(
+          ${SPLIB}
+          INTERFACE # Generator expression shamelessly copied from EAP
+          "$<$<COMPILE_LANGUAGE:CXX>:--expt-relaxed-constexpr;>"
+          )
+      endif()
+      if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+        set(Kokkos_ENABLE_DEBUG ON CACHE BOOL
+          "Most general debug settings" FORCE)
+        set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK ON CACHE BOOL
+          "Bounds checking on Kokkos views" FORCE)
+        set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK ON CACHE BOOL
+          "Sanity checks on Kokkos DualView" FORCE)
       endif()
       if (EXISTS ${SPINER_USE_KOKKOS_SRC})
         message(STATUS "Kokkos source directory found. Adding source.")
@@ -115,13 +133,6 @@ if (SPINER_USE_KOKKOS)
           "Kokkos was requested but not found. You may have luck specifying the Kokkos install directory via -DSPINER_KOKKOS_INSTALL_DIR=/path/to/dir. Kokkos can be disabled with -DSPINER_USE_KOKKOS=OFF. You can also specify a source directory via -DSPINER_USE_KOKKOS_SRC=/path/to/kokkos or tell the build system to download Kokkos from the web via -DSPINER_USE_KOKKOS_SRC=ON.")
       endif()
     endif()
-  endif()
-  if(SPINER_USE_CUDA)
-    target_compile_options(
-      ${SPLIB}
-      INTERFACE # Generator expression shamelessly copied from EAP
-      "$<$<COMPILE_LANGUAGE:CXX>:--expt-relaxed-constexpr;>"
-      )
   endif()
   target_link_libraries(${SPLIB} INTERFACE Kokkos::kokkos)
 endif ()
@@ -153,56 +164,60 @@ target_include_directories(${SPLIB}
   INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
 
-# Coordinate external CMAKE export with targets
-install(TARGETS ${SPLIB}
-  EXPORT ${SPLIB}Targets
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  )
-
-configure_package_config_file(${SPLIB}Config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}
-)
-
-# ...and the version file
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
-  VERSION ${SPINER_VERSION}
-  COMPATIBILITY SameMajorVersion )
-
-# Install the cmake configuration files
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB} )
-
-# Install header files
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.hpp"
-  )
-
-# Install the export target. This will define the CMake target
-# for external projects when used with `find_package`
-install(EXPORT ${SPLIB}Targets
-  NAMESPACE ${SPLIB}::
-  FILE "${SPLIB}Targets.cmake"
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}"
-  COMPONENT dev)
-
-# Export configuration for external projects that reference
-# just our build-tree; e.g. for submodules. To use, ensure 
-# `CMAKE_PREFIX_PATH` points to this source directory.
-# NOTE: This config will not be relocatable!
-export(TARGETS ${SPLIB} NAMESPACE ${SPLIB}::
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Targets.cmake")
-export(PACKAGE ${SPLIB})
-
 # Option imported from `CTest`
 if (BUILD_TESTING)
   message("\nConfiguring tests")
   add_subdirectory(test)
 endif()
 
+# Coordinate external CMAKE export with targets
+if (SPINER_USE_KOKKOS_SRC)
+  message(WARNING
+    "Installation not supported when Kokkos built from source. Disabling.")
+else()
+  install(TARGETS ${SPLIB}
+    EXPORT ${SPLIB}Targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+  
+  configure_package_config_file(${SPLIB}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}
+    )
+  
+  # ...and the version file
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
+    VERSION ${SPINER_VERSION}
+    COMPATIBILITY SameMajorVersion )
+  
+  # Install the cmake configuration files
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB} )
+  
+  # Install header files
+  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+    )
+  
+  # Install the export target. This will define the CMake target
+  # for external projects when used with `find_package`
+  install(EXPORT ${SPLIB}Targets
+    NAMESPACE ${SPLIB}::
+    FILE "${SPLIB}Targets.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}"
+    COMPONENT dev)
+  
+  # Export configuration for external projects that reference
+  # just our build-tree; e.g. for submodules. To use, ensure 
+  # `CMAKE_PREFIX_PATH` points to this source directory.
+  # NOTE: This config will not be relocatable!
+  export(TARGETS ${SPLIB} NAMESPACE ${SPLIB}::
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Targets.cmake")
+  export(PACKAGE ${SPLIB})
+endif()
