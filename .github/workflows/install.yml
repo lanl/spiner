@@ -1,0 +1,36 @@
+name: Install
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+    tests:
+      name: Test installation
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
+          with:
+            submodules: recursive
+        - name: Set system to non-interactive mode
+          run: export DEBIAN_FRONTEND=noninteractive
+        - name: install dependencies
+          run: |
+            sudo apt-get install -y --force-yes -qq build-essential
+        - name: build and install
+          run: |
+            echo "Build"
+            mkdir -p ${HOME}/install
+            cmake -DCMAKE_INSTALL_PREFIX=${HOME}/install -B build .
+            cmake --build build
+            cmake --install build
+            echo "Now try find package from a separate directory"
+            rm -rf build
+            cmake -DCMAKE_PREFIX_PATH=${HOME}/install -B build installtest
+            echo "Now try and build with includes..."
+            cmake --build build
+            echo "Done"

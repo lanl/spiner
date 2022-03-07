@@ -15,9 +15,11 @@
 cmake_minimum_required(VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option (SPINER_USE_HDF "Pull in hdf5" OFF)
+option (SPINER_USE_HDF
+  "Pull in hdf5" OFF)
 option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
 option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
+option (SPINER_FORCE_INTERNAL_PORTS "Force use of internal ports of call" OFF)
 
 if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
   message(FATAL_ERROR "Currently cuda requires Kokkos")
@@ -26,7 +28,14 @@ endif()
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS On)
 
-project(spiner VERSION 1.4.0)
+set(SPINER_VERSION 1.4.0)
+project(spiner VERSION ${SPINER_VERSION})
+
+# bring in some helpful CMake scripts 
+# make cache variables for install destinations
+include(GNUInstallDirs)
+# package config file
+include(CMakePackageConfigHelpers)
 
 # Don't allow in-source builds
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
@@ -54,16 +63,9 @@ include(CTest)
 include(cmake/Format.cmake)
 
 # Add a library
-# mostly includes
-add_library(spiner::flags INTERFACE IMPORTED GLOBAL)
-# mostly just contains automated linker connections
-add_library(spiner::libs INTERFACE IMPORTED)
-
-# xl fix
-target_compile_options(spiner::flags INTERFACE
-  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
-target_link_options(spiner::flags INTERFACE
-  $<$<COMPILE_LANG_AND_ID:CXX,XL>:-std=c++1y;-qxflag=disable__cplusplusOverride>)
+set(SPLIB "spiner")
+add_library(${SPLIB} INTERFACE)
+add_library(${SPLIB}::${SPLIB} ALIAS ${SPLIB})
 
 # HDF5
 if(SPINER_USE_HDF)
@@ -72,22 +74,16 @@ if(SPINER_USE_HDF)
   endif()
   find_package(HDF5 COMPONENTS C HL)
   if (HDF5_FOUND)
-    add_library(spiner::hdf5 INTERFACE IMPORTED GLOBAL)
-    target_compile_definitions(spiner::flags
-      INTERFACE
-      SPINER_USE_HDF)
-    set_target_properties(spiner::hdf5 PROPERTIES
-      INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES};${HDF5_HL_LIBRARIES}"
-      INTERFACE_COMPILE_DEFINITIONS "SPINER_USE_HDF"
-      INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIRS}")
+    target_compile_definitions(${SPLIB} INTERFACE SPINER_USE_HDF)
+    target_link_libraries(${SPLIB} INTERFACE ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+    target_include_directories(${SPLIB} INTERFACE ${HDF5_INCLUDE_DIRS})
   else()
     message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
   endif()
-  target_link_libraries(spiner::libs INTERFACE spiner::hdf5)
 endif()
 
 if (SPINER_USE_KOKKOS)
-  target_compile_definitions(spiner::flags INTERFACE
+  target_compile_definitions(${SPLIB} INTERFACE
     PORTABILITY_STRATEGY_KOKKOS)
   # Import Kokkos if not already available as a build target
   if (NOT TARGET Kokkos::kokkos)
@@ -102,37 +98,87 @@ if (SPINER_USE_KOKKOS)
   endif()
   if(SPINER_USE_CUDA)
     target_compile_options(
-      spiner::flags
+      ${SPLIB}
       INTERFACE # Generator expression shamelessly copied from EAP
       "$<$<COMPILE_LANGUAGE:CXX>:--expt-relaxed-constexpr;>"
       )
   endif()
-  target_link_libraries(spiner::libs INTERFACE Kokkos::kokkos)
+  target_link_libraries(${SPLIB} INTERFACE Kokkos::kokkos)
 endif ()
 
 # ports of call
 # TODO: Integrate with find-package
 if (NOT TARGET ports-of-call::ports-of-call)
-  add_subdirectory(ports-of-call)
+  message(STATUS "Looking for ports-of-call")
+  if (SPINER_FORCE_INTERNAL_PORTS)
+    message(STATUS "Using in-system ports-of-call")
+    add_subdirectory(ports-of-call)
+  else()
+    find_package(ports-of-call CONFIG)
+    if (NOT ports-of-call_FOUND)
+      message(STATUS "Ports of call not available in-system. Using submodule.")
+      add_subdirectory(ports-of-call)
+    else()
+      message(STATUS "Ports of call is available. Using in-system installation.")
+    endif()
+  endif()
+else()
+  message(STATUS "Ports of call already in environment")
 endif()
-target_link_libraries(spiner::flags INTERFACE ports-of-call::ports-of-call)
-
-# parent library
-# so the user can just import `spiner::spiner` rather than flags or libs.
-add_library(spiner::spiner INTERFACE IMPORTED GLOBAL)
-target_link_libraries(spiner::spiner INTERFACE spiner::flags spiner::libs)
+target_link_libraries(${SPLIB} INTERFACE ports-of-call::ports-of-call)
 
 # Enables
 # #include <spiner>
-target_include_directories(spiner::flags
+target_include_directories(${SPLIB}
   INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
 
-# Enables includes
+# Coordinate external CMAKE export with targets
+install(TARGETS ${SPLIB}
+  EXPORT ${SPLIB}Targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+
+configure_package_config_file(${SPLIB}Config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}
+)
+
+# ...and the version file
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
+  VERSION ${SPINER_VERSION}
+  COMPATIBILITY SameMajorVersion )
+
+# Install the cmake configuration files
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB} )
+
+# Install header files
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
-  DESTINATION "include"
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING PATTERN "*.hpp"
   )
+
+# Install the export target. This will define the CMake target
+# for external projects when used with `find_package`
+install(EXPORT ${SPLIB}Targets
+  NAMESPACE ${SPLIB}::
+  FILE "${SPLIB}Targets.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}"
+  COMPONENT dev)
+
+# Export configuration for external projects that reference
+# just our build-tree; e.g. for submodules. To use, ensure 
+# `CMAKE_PREFIX_PATH` points to this source directory.
+# NOTE: This config will not be relocatable!
+export(TARGETS ${SPLIB} NAMESPACE ${SPLIB}::
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Targets.cmake")
+export(PACKAGE ${SPLIB})
 
 # Option imported from `CTest`
 if (BUILD_TESTING)
