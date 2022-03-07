@@ -28,7 +28,10 @@ Spiner supports a few ``cmake`` configuration options:
 
 * ``BUILD_TESTING`` enables tests
 * ``SPINER_USE_HDF5`` enables support for saving and loading tables as `hdf5`_.
+* ``SPINER_HDF5_INSTALL_DIR`` tells the build system where `hdf5`_ is located.
 * ``SPINER_USE_KOKKOS`` enables `Kokkos`_ as a backend
+* ``SPINER_USE_KOKKOS_SRC`` tells the build system to build `Kokkos`_ from source, and where the source directory is located
+* ``SPINER_KOKKOS_INSTALL_DIR`` tells the build system where to find pre-compiled `Kokkos`_
 * ``SPINER_USE_CUDA`` enables the Kokkos cuda backend
 * ``CMAKE_INSTALL_PREFIX`` sets the install location
 * ``CMAKE_BUILD_TYPE`` sets the build type
