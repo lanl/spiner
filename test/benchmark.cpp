@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   {
     if (argc < 3) {
       printf("Usage: %s ncoarse [nfine...]\n"
-             "where nfine is any number of fnie grids, with nfine > ncoarse "
+             "where nfine is any number of fine grids, with nfine > ncoarse "
              "increasing\n",
              argv[0]);
     }
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
           db(iz, iy, ix) = testFunction(z, y, x);
         });
 
-    std::cout << "# nfine\ttime/point (us)\tL2 error" << std::endl;
+    std::cout << "# nfine\ttime/point (ns)\tL2 error" << std::endl;
     for (int ifine = 0; ifine < nfine.size(); ++ifine) {
       auto n = nfine[ifine];
       auto g = gfine[ifine];
