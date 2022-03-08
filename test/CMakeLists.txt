@@ -35,6 +35,11 @@ target_link_libraries(test.bin
 include(Catch)
 catch_discover_tests(test.bin)
 
+# Benchmarking
+add_executable(benchmark.bin benchmark.cpp)
+target_link_libraries(benchmark.bin
+  PRIVATE spiner::spiner)
+
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
