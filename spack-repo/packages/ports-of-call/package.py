@@ -12,9 +12,6 @@ class PortsOfCall(CMakePackage, CudaPackage):
     version("main", branch="main")
     variant("doc", default=False, description="Sphinx Documentation Support")
     variant("portability_strategy", description="Portability strategy backend",
-            values=("Kokkos","Cuda","None"),multi=False,default="Kokkos",
-            when="^kokkos")
-    variant("portability_strategy", description="Portability strategy backend",
             values=("Kokkos","Cuda","None"),multi=False,default="None")
 
     depends_on("cmake@3.12:")
