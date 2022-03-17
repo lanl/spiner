@@ -49,3 +49,18 @@ format, based on HDF5, that couples the tabulated data to the
 information required to interpolate it, which Spiner can read and move
 to GPU.
 
+# Statement of Need
+
+As Moore's law comes to an end, more and more performance comes from
+specialized hardware, such as GPUs. A key tool in the toolbox for many
+scientific codes is tabulated data. Fluid and continuum dynamics codes
+often encapsulate the equation of state as data tabulated in density
+and temperature, for example as published in the Sesame database
+[@sesame] or the stellar collapse database
+[@stellarcollapsetables,@stellarcollapseweb]. Radiation transport,
+such as that performed by [@fornax] and [@nubhlight] uses emissivity
+and absorption opacity on tables such as those computed in
+[@SullivanWeak]. Spiner is now used in the open-source and on-going
+Singularity-EOS [@singularityeos], Singularity-Opac
+[@singularityopac], and Phoebus [@phoebus] projects, which have
+separate code papers in-prep.
