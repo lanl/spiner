@@ -7,7 +7,7 @@ Building and Installation
 
 .. code-block:: bash
 
-  git clone git@github.com:lanl/spiner.git
+  git clone --recursive git@github.com:lanl/spiner.git
 
 
 Building from source

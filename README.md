@@ -15,7 +15,7 @@ Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see
 
 `Spiner` is self-contained. Simply clone it as
 ```bash
-git clone git@gitlab.lanl.gov:jonahm/spiner.git
+git clone --recursive git@gitlab.lanl.gov:jonahm/spiner.git
 ```
 To build and run unit tests,
 ```bash
