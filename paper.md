@@ -137,3 +137,34 @@ the data. However, `DataBox`es can be managed via smart pointers---and
 we provide machinery to do so. We find this approach minimizes code
 complexity and carries most of the benefits of an automatically
 reference-counted data structure.
+
+# Performance And Accuracy
+
+Since it is usually sufficient for the intended use-cases, only
+multilinear interpolation is supported, although as discussed above,
+hooks are present in the code for more sophisticated approaches. A
+convergence test is available in the test suite and shows excellent
+second-order convergence as expected. Performance on both CPUs and
+GPUs is also excellent. For example, the figure below benchmarks
+trilinear interpolation from a $64^3$ grid on to a cubic grid of
+varying sizes. We test on a single Intel Xeon (Haswell) core, twenty
+cores accross two sockets (with a Kokkos OpenMP backend), and one
+Nvidia V100 GPU (with the Kokkos Cuda backend). We find an 8x speedup
+going from 1 core to two full sockets. This number can be likely
+improved with tuning of the Kokkos OpenMP backend. We also find that
+after the V100 GPU saturates, it offers an approximately 300x speedup
+over the serial calculation.
+
+![Performance of trilinear interpolation on one Haswell core, twenty Haswell cores, and a V100 GPU. Smaller is better. The rightmost point is over 68 billion interpolation operations.](spiner_interpolation_benchmark.png)
+
+# Acknowledgements
+
+This work was supported by the U.S. Department of Energy through the
+Los Alamos National Laboratory (LANL). LANL is operated by Triad
+National Security, LLC, for the National Nuclear Security
+Administration of U.S. Department of Energy (Contract
+No. 89233218CNA000001). This research used resources provided by the
+Darwin testbed at LANL which is funded by the Computational Systems
+and Software Environments subprogram of LANL's Advanced Simulation and
+Computing program (NNSA/DOE). This work is approved for unlimited
+release with report number LA-UR-22-22502.
