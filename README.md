@@ -15,7 +15,7 @@ Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see
 
 `Spiner` is self-contained. Simply clone it as
 ```bash
-git clone --recursive git@gitlab.lanl.gov:jonahm/spiner.git
+git clone git@gitlab.lanl.gov:jonahm/spiner.git
 ```
 To build and run unit tests,
 ```bash
@@ -133,12 +133,20 @@ slice shown). Convergence is second-order, as expected.
 
 ![convergence plot](figs/convergence.png)
 
+## Contributing
+
+If you use Spiner and need help, submit an issue to the Spiner
+repository. If you'd like to contribute, just fork and submit a pull
+request. There's a check list in the PR template, and one of the main
+Spiner developers will review your PR.
+
 ## Contributors
 
 `Spiner` was primarily developed by Jonah Miller in collaboration with
 - Chad Meyer
 - Daniel Holladay
 - Josh Dolence
+- Sriram Swaminarayan
 
 Continuous integration and build system support has been provided by
 - Jonah Miller
