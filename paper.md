@@ -44,9 +44,9 @@ We present `Spiner`, a new, performance-portable library for working
 with tabulated data. Spiner provides efficient routines for
 multi-dimensional interpolation and indexing on CPUs and GPUs,
 including interwoven interpolation and indexing access patterns, as
-needed for radiation transport. Importantly, Spiner defines a data
+needed for radiation transport. Importantly, `Spiner` defines a data
 format, based on HDF5, that couples the tabulated data to the
-information required to interpolate it, which Spiner can read and move
+information required to interpolate it, which `Spiner` can read and move
 to GPU.
 
 # Statement of Need
@@ -55,12 +55,33 @@ As Moore's law comes to an end, more and more performance comes from
 specialized hardware, such as GPUs. A key tool in the toolbox for many
 scientific codes is tabulated data. Fluid and continuum dynamics codes
 often encapsulate the equation of state as data tabulated in density
-and temperature, for example as published in the Sesame database
+and temperature, for example as published in the `Sesame` database
 [@sesame] or the stellar collapse database
 [@stellarcollapsetables,@stellarcollapseweb]. Radiation transport,
 such as that performed by [@fornax] and [@nubhlight] uses emissivity
 and absorption opacity on tables such as those computed in
-[@SullivanWeak]. Spiner is now used in the open-source and on-going
-Singularity-EOS [@singularityeos], Singularity-Opac
-[@singularityopac], and Phoebus [@phoebus] projects, which have
+[@SullivanWeak]. `Spiner` is now used in the open-source and on-going
+`Singularity-EOS` [@singularityeos], `Singularity-Opac`
+[@singularityopac], and Phoebus [@phoebus] `projects`, which have
 separate code papers in-prep.
+
+# State of the Field
+
+Interpolation is a common problem, implemented countless times across
+software projects, and a core part of any introductory text on
+scientific computing [@press2007numerical], however, a
+performance-portable implementation not tuned to a specific use-case
+or embedded in a larger project is (to our knowledge) not available in
+the literature. A common problem in performance-portable computing is
+the management of performance-portable data structures. Libraries,
+such as `Kokkos` [@Kokkos], often provide this functionality.
+
+Here we present `Spiner`, a performance-portable library for working
+with tabulated data, thus meeting the needs of simulation codes on
+emerging hardware. `Spiner` provides data structures for working with
+tabulated data on both CPU and GPU, routines for interpolating on and
+indexing into tabulated data, and a file format that couples data to
+the information required to interpolate it. `Spiner` therefore fills a
+gap in available open software, providing a needed service for GPU
+simulation codes.
+
