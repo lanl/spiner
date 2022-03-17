@@ -58,7 +58,7 @@ target_link_libraries(my_project PRIVATE spiner::spiner)
 
 ## Dependencies
 
-`Spiner relies on [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html) for performance portability. It is included as a submodule. Otherwise, `Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
+`Spiner` relies on [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html) for performance portability. It is included as a submodule. Otherwise, `Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
 
 - `spiner/databox.hpp`
 - `spiner/interpolation.hpp`
