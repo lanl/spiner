@@ -1,4 +1,3 @@
-
 ---
 title: 'Spiner: Performance Portable Routines for Generic, Tabulated, Multi-Dimensional Data'
 tags:
@@ -17,11 +16,11 @@ authors:
   - name: Chad D. Meyer
     affiliation: 4
   - name: Joshua C. Dolence
-    affiliation: "1 2"
+    affiliation: "1, 2"
   - name: Sriram Swaminarayan
     affiliation: 3
-  - name: Christopher C. Mauney
-    affiliation: "2 5"
+  - name: Christopher M. Mauney
+    affiliation: "2, 5"
   - name: Karen Tsai
     affiliation: 3
 affiliations:
@@ -35,9 +34,17 @@ affiliations:
     index: 4
   - name: HPC-ENV, HPC Environments, Los Alamo National Laboratory, Los Alamos, NM
     index: 5
-date: 22 February 2022
+date: 16 March 2022
 bibliography: paper.bib
 
 # Summary
 
-Our code is super awesome.
+We present `Spiner`, a new, performance-portable library for working
+with tabulated data. Spiner provides efficient routines for
+multi-dimensional interpolation and indexing on CPUs and GPUs,
+including interwoven interpolation and indexing access patterns, as
+needed for radiation transport. Importantly, Spiner defines a data
+format, based on HDF5, that couples the tabulated data to the
+information required to interpolate it, which Spiner can read and move
+to GPU.
+
