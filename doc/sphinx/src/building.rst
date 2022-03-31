@@ -58,14 +58,14 @@ during the cmake configure phase if needed.
 Spack
 ^^^^^^
 
-.. warning::
-  The spack build is currently experimental. 
-  Please report problems you have as github issues.
+Spiner is available through `Spack`_. If you have spack installed, simply call:
 
-Although the spackage has not yet made it to the main `Spack`_
-repositories, we provide a spackage for ``Spiner`` within the
-the source repository. If you have spack installed,
-simply call
+.. code-block:: bash
+
+  spack install spiner
+
+We also provide a spackage for ``Spiner`` within the
+the source repository. If you would like to use the source spackage:
 
 .. _Spack: https://spack.io/
 
