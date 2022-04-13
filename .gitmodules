@@ -4,4 +4,4 @@
 	branch = v2.x
 [submodule "ports-of-call"]
 	path = ports-of-call
-	url = git@github.com:lanl/ports-of-call.git
+	url = https://github.com/lanl/ports-of-call.git
