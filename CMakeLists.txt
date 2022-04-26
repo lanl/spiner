@@ -83,8 +83,9 @@ if(SPINER_USE_HDF)
 endif()
 
 if (SPINER_USE_KOKKOS)
-  target_compile_definitions(${SPLIB} INTERFACE
-    PORTABILITY_STRATEGY_KOKKOS)
+  set(PORTABILITY_STRATEGY_KOKKOS)
+  # target_compile_definitions(${SPLIB} INTERFACE
+  #   PORTABILITY_STRATEGY_KOKKOS)
   # Import Kokkos if not already available as a build target
   if (NOT TARGET Kokkos::kokkos)
     if (SPINER_USE_KOKKOS_SRC)
