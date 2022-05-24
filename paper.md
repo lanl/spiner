@@ -42,12 +42,12 @@ bibliography: paper.bib
 
 We present `Spiner`, a new, performance-portable library for working
 with tabulated data. Spiner provides efficient routines for
-multi-dimensional interpolation and indexing on CPUs and GPUs,
-including interwoven interpolation and indexing access patterns, as
-needed for radiation transport. Importantly, `Spiner` defines a data
-format, based on `HDF5`, that couples the tabulated data to the
-information required to interpolate it, which `Spiner` can read and move
-to GPU.
+multi-dimensional interpolation and indexing on both CPUs and
+GPUs---as well as more exotic hardware---including interwoven
+interpolation and indexing access patterns, as needed for radiation
+transport. Importantly, `Spiner` defines a data format, based on
+`HDF5`, that couples the tabulated data to the information required to
+interpolate it, which `Spiner` can read and move to GPU.
 
 # Statement of Need
 
@@ -60,21 +60,55 @@ and temperature, for example as published in the `Sesame` database
 first presented in [@stellarcollapsetables]. Radiation transport, such
 as that performed by [@fornax] and [@nubhlight] uses emissivity and
 absorption opacity on tables such as those computed in
-[@SullivanWeak]. `Spiner` is now used in the open-source and on-going
-`Singularity-EOS` [@singularityeos], `Singularity-Opac`
-[@singularityopac], and Phoebus [@phoebus] `projects`, which have
-separate code papers in-prep.
+[@SullivanWeak]. As continuum dynamics is required for a variety of
+applications, such as astrophysics, geophysics, climate science,
+vehicle engineering, and national security, utilizing a very large
+number of supercomputer cycles, providing tabulated data for these
+applications has the potential for significant impact.
+
+These capabilities must be supported on *all* hardware a code may be
+run on, whether this is an NVIDIA GPU, an Intel CPU, or a next
+generation accelerator manufactured by one of any number of hardware
+vendors. To our knowledge there is no performance portable
+interpolation library on which these codes can rely, and there is a
+clear need, which we have developed `Spiner` to meet. `Spiner` is now
+used in the open-source and on-going `Singularity-EOS`
+[@singularityeos], `Singularity-Opac` [@singularityopac], and Phoebus
+[@phoebus] `projects`, which have separate code papers in-prep.
 
 # State of the Field
 
 Interpolation is a common problem, implemented countless times across
 software projects, and a core part of any introductory text on
-scientific computing [@press2007numerical], however, a
-performance-portable implementation not tuned to a specific use-case
-or embedded in a larger project is (to our knowledge) not available in
-the literature. A common problem in performance-portable computing is
-the management of performance-portable data structures. Libraries,
-such as `Kokkos` [@Kokkos], often provide this functionality.
+scientific computing [@press2007numerical]. In graphics applications
+interpolation is so ubiquitous that hardware primitives are provided
+by GPUs. These hardware intrinsics are, however, severely limited for
+scientific application. For example, on NVIDIA GPUs, the values to be
+interpolated must be single precision floating point, and the
+interpolation coefficients themselves are only half-precision, which
+is often insufficient to capture the high precision required for
+scientific applications. As GPUs are inherently vector devices,
+hardware interpoaltion is also vectorized in nature. However,
+downstream applications may be easier to reason about if scalar
+operations are available. For example, equation of state lookups often
+require root finds on interpolated data, and this can be easier to
+implement as a scalar operation, even if the final operation is
+vectorized over warps. Texture interpolation also does not support
+multi-dimensional mixed indexing/interpoaltion operations where, say,
+three indices of a four-dimensional array are interpolated and one is
+merely indexed into.
+
+Moreover, relying on hardware intrinsics is not a *portable*
+solution. A software interpolation library can, if written with care,
+work on not only the current generation of accelerators, but also on
+general purpose CPUs and the next generation of hardware as well.
+
+Unfortunately, a performance-portable implementation not tuned to a
+specific use-case or embedded in a larger project is (to our
+knowledge) not available in the literature. A common problem in
+performance-portable computing is the management of
+performance-portable data structures. Libraries, such as `Kokkos`
+[@Kokkos], often provide this functionality.
 
 Here we present `Spiner`, a performance-portable library for working
 with tabulated data, thus meeting the needs of simulation codes on
@@ -82,8 +116,13 @@ emerging hardware. `Spiner` provides data structures for working with
 tabulated data on both CPU and GPU, routines for interpolating on and
 indexing into tabulated data, and a file format that couples data to
 the information required to interpolate it. `Spiner` therefore fills a
-gap in available open software, providing a needed service for GPU
-simulation codes.
+gap in available open software, providing a needed service for
+performance-portable simulation codes.
+
+Interpolation is far more ubiquitous than its application in continuum
+dynamics and radiation transport, and we expect `Spiner` will find
+applications in the broader space of applications, such as image
+resampling. However, the team built `Spiner` with simulations in mind.
 
 # Design Principles and Salient Features
 
@@ -126,10 +165,12 @@ the data to interpolate, as well as multiple `RegularGrid1D`s. Both
 objects know how to read from and write to an `HDF5` [@HDF5] file, and
 the intent is that the `RegularGrid1D` is a hook that could be
 extended into a more sophisticated gridding or interpolation
-procedure. A `DataBox` can manage its own memory and can automatically
-allocate on host or device at runtime. Deep copies host-to-host and
-host-to-device are supported. To encourage good performance, no deep
-copies are ever implicitly performed---they must be explicitly
+procedure. For example, one could implement a multi-level grid
+hierarchy or higher-order interpolation stencils. A `DataBox` can
+manage its own memory and can automatically allocate on host or device
+at runtime. Deep copies host-to-host and host-to-device are
+supported. To encourage good performance, no deep copies are ever
+implicitly performed---they must be explicitly
 requested. Consequently, `DataBox`es have reference semantics. By
 deliberate choice, `DataBox`es are not reference-counted and have
 trivial destructors. Instead, we provide an overload of `free` to free
