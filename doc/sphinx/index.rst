@@ -24,6 +24,12 @@ slice shown) on a GPU, with second-order convergence:
 
 .. image:: ../../figs/convergence.png
 
+Interpolation is fast and portable. Here's a benchmark showing
+performance on CPU and GPU for several architectures and problem
+sizes:
+
+.. image:: ../../figs/spiner_interpolation_benchmark.png
+
 See below for details of how to use spiner in your project and how to
 develop for it.
 
@@ -42,6 +48,7 @@ automatically integrated into the build system.
    :maxdepth: 1
    :caption: Contents:
 
+   src/statement-of-need
    src/building
    src/getting-started
    src/databox

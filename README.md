@@ -133,6 +133,12 @@ slice shown). Convergence is second-order, as expected.
 
 ![convergence plot](figs/convergence.png)
 
+Interpolation is fast and portable. Here's performance on several
+different problem sizes and several different architectures with
+different parallelism strategies:
+
+![performance plot](figs/spiner_interpolation_benchmark.png)
+
 ## Contributing
 
 If you use Spiner and need help, submit an issue to the Spiner
