@@ -7,13 +7,12 @@ As Moore's law comes to an end, more and more performance comes from
 specialized hardware, such as GPUs. A key tool in the toolbox for many
 scientific codes is tabulated data. Fluid and continuum dynamics codes
 often encapsulate the equation of state as data tabulated in density
-and temperature. Radiation transport uses emissivity and
-absorption opacity on tables such as those computed in
-[@SullivanWeak]. As continuum dynamics is required for a variety of
+and temperature. Radiation transport uses emissivity and absorption
+opacity on tables. As continuum dynamics is required for a variety of
 applications, such as astrophysics, geophysics, climate science,
 vehicle engineering, and national security, utilizing a very large
-number of supercomputer cycles, providing tabulated data for these
-applications has the potential for significant impact.
+number of supercomputer cycles, providing interpolation on tabulated
+data for these applications has the potential for significant impact.
 
 These capabilities must be supported on all hardware a code may be run
 on, whether this is an NVIDIA GPU, an Intel CPU, or a next generation
