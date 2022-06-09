@@ -1,7 +1,7 @@
 Spiner
 ===
 
-![Build Status](https://github.com/LANL/spiner/actions/workflows/tests.yml/badge.svg)
+[![Build Status](https://github.com/LANL/spiner/actions/workflows/tests.yml/badge.svg)](https://github.com/lanl/spiner/actions/workflows/tests.yml)
 
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
