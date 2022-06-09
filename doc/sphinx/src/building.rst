@@ -17,9 +17,10 @@ To build tests and install:
 
 .. code-block:: bash
 
-  mkdir -p spiner/bin
-  cd sppiner/bin
-  cmake -DBUILD_TESTING=ON
+  cd spiner  # cd to repo root
+  mkdir bin
+  cd bin
+  cmake -DBUILD_TESTING=ON ..
   make -j
   make test
   make install
