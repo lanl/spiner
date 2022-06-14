@@ -36,7 +36,7 @@ six (or ``Spiner::MAXRANK``) values. Zero shape values initializes an
 empty, size-zero array.
 
 .. note::
-  ``DataBox`` is column-major ordered. So ``x3`` is the
+  ``DataBox`` is row-major ordered. By convention, ``x3`` is the
   slowest moving index and ``x1`` is the fastest.
 
 .. note::
