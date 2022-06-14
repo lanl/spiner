@@ -11,6 +11,7 @@ on:
 
 jobs:
     docs:
+      if: github.repository_owner == 'lanl'
       name: build and deploy docs
       runs-on: ubuntu-latest
 
@@ -31,7 +32,6 @@ jobs:
             cd doc/sphinx
             make multiversion
         - name: Deploy
-          if: github.repository_owner == 'lanl'
           uses: peaceiris/actions-gh-pages@v3.7.3
           with:
             github_token: ${{ secrets.GITHUB_TOKEN }}
