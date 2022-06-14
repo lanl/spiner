@@ -33,16 +33,19 @@ sizes:
 See below for details of how to use spiner in your project and how to
 develop for it.
 
-If you use Spiner and need help, submit an issue to the Spiner
-repository. If you'd like to contribute, just fork and submit a pull
-request. There's a check list in the PR template, and one of the main
-Spiner developers will review your PR.
-
 Spiner also relies on `Ports of Call`_ as a simple performance
 portability layer. Ports of Call is included as a submodule, and
 automatically integrated into the build system.
 
 .. _Ports of Call: https://lanl.github.io/ports-of-call/main/index.html
+
+Contributing
+^^^^^^^^^^^^
+
+If you use Spiner and need help, submit an issue to the Spiner
+repository. If you'd like to contribute, just fork and submit a pull
+request. There's a check list in the PR template, and one of the main
+Spiner developers will review your PR.
 
 .. toctree::
    :maxdepth: 1
