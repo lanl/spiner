@@ -10,8 +10,8 @@ on:
       - created
 
 jobs:
-    if: github.repository_owner == 'lanl'
     docs:
+      if: github.repository_owner == 'lanl'
       name: build and deploy docs
       runs-on: ubuntu-latest
 
