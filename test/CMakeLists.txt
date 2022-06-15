@@ -48,17 +48,17 @@ target_link_libraries(convergence.bin
 find_package(Python3 COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)
   message(STATUS "Checking for numpy, matplotlib.")
-  execute_process(COMMAND ${Python_EXECUTABLE} -c "import numpy, matplotlib"
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy, matplotlib"
     RESULT_VARIABLE MATPLOTLIB_FOUND)
 endif()
-if (Python3_Interpreter_FOUND AND MATPLOTLIB_FOUND)
+if (Python3_Interpreter_FOUND AND MATPLOTLIB_FOUND EQUAL 0)
   message(STATUS "Convergence plotting available. Setting up convergence test.")
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plot_convergence.py
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})  
   add_custom_command(OUTPUT convergence.dat convergence.png
     DEPENDS convergence.bin plot_convergence.py
     COMMAND ${CMAKE_COMMAND} -E time ./convergence.bin
-    COMMAND ${PYTHON_EXECUTABLE} plot_convergence.py convergence.dat convergence.png)
+    COMMAND ${Python3_EXECUTABLE} plot_convergence.py convergence.dat convergence.png)
   add_custom_target(convergence
     DEPENDS convergence.png)
 else()
