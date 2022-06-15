@@ -45,13 +45,14 @@ add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
   PRIVATE spiner::spiner)
 
-find_package(Python3 COMPONENTS Interpreter NumPy)
-if (Python_FOUND)
-  execute_process(COMMAND ${Python_EXECUTABLE} -c "import matplotlib"
-    RESULT_VARAIBLE MATPLOTLIB_FOUND)
+find_package(Python3 COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+  message(STATUS "Checking for numpy, matplotlib.")
+  execute_process(COMMAND ${Python_EXECUTABLE} -c "import numpy, matplotlib"
+    RESULT_VARIABLE MATPLOTLIB_FOUND)
 endif()
-if (Python_FOUND AND MATPLOTLIB_FOUND)
-  message(INFO "Convergence plotting available. Setting up convergence test.")
+if (Python3_Interpreter_FOUND AND MATPLOTLIB_FOUND)
+  message(STATUS "Convergence plotting available. Setting up convergence test.")
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/plot_convergence.py
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})  
   add_custom_command(OUTPUT convergence.dat convergence.png
