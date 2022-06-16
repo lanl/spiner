@@ -96,7 +96,13 @@ implement as a scalar operation, even if the final operation is
 vectorized over warps. Texture interpolation also does not support
 multi-dimensional mixed indexing/interpoaltion operations where, say,
 three indices of a four-dimensional array are interpolated and one is
-merely indexed into.
+merely indexed into. Interpolation in the inner loop of a root-finding
+operation can be quite computationally expensive. For example, in the
+open-source general relativistic neutrino radiation hydrodynamics code
+nubhlight [@nubhlight], these operations cover approximately ten
+percent of the runtime. For simulations involving only fluid dynamics
+and no expensive six-dimensional Boltzmann solve as required for
+radiation, the fraction of a timestep can be significantly larger.
 
 Moreover, relying on hardware intrinsics is not a *portable*
 solution. A software interpolation library can, if written with care,
@@ -187,14 +193,12 @@ hooks are present in the code for more sophisticated approaches. A
 convergence test is available in the test suite and shows excellent
 second-order convergence as expected. Performance on both CPUs and
 GPUs is also excellent. For example, the figure below benchmarks
-trilinear interpolation from a $64^3$ grid on to a cubic grid of
-varying sizes. We test on a single Intel Xeon (Haswell) core, twenty
-cores accross two sockets (with a Kokkos OpenMP backend), and one
-Nvidia V100 GPU (with the Kokkos Cuda backend). We find an 8x speedup
-going from 1 core to two full sockets. This number can be likely
-improved with tuning of the Kokkos OpenMP backend. We also find that
-after the V100 GPU saturates, it offers an approximately 300x speedup
-over the serial calculation.
+trilinear interpolation at double precision from a $64^3$ grid on to a
+cubic grid of varying sizes. We test on a single Intel Xeon (Haswell)
+core, twenty cores accross two sockets (with a Kokkos OpenMP backend),
+and one Nvidia V100 GPU (with the Kokkos Cuda backend). On the V100,
+profiling tools report we achieve 15% of peak performance in terms of
+flops and 46% of peak in terms of memory bandwidth.
 
 ![Performance of trilinear interpolation on one Haswell core, twenty Haswell cores, and a V100 GPU. Smaller is better. The rightmost point is over 68 billion interpolation operations.](spiner_interpolation_benchmark.png)
 
