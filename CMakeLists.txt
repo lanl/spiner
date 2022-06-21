@@ -218,5 +218,11 @@ else()
   # NOTE: This config will not be relocatable!
   export(TARGETS ${SPLIB} NAMESPACE ${SPLIB}::
     FILE "${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Targets.cmake")
-  export(PACKAGE ${SPLIB})
+  # see https://cmake.org/cmake/help/latest/policy/CMP0090.html
+  # since v3.15, this command is a no-op. prior, it populates
+  # the user package directory.
+  # `spiner` is commonly used "in-tree" downstream, so this 
+  # *may* confuse downstream builds that still search the 
+  # `~/.cmake` when doing `find_package()`
+  #  export(PACKAGE ${SPLIB})
 endif()
