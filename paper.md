@@ -150,6 +150,7 @@ header-only. To ensure performance portability, we rely on the
 structures and parallel dispatch. However, we recognize that another
 performance portability paradigm may be desired. Hence, we developed a
 separate library, `Ports-of-Call`, which we open-sourced at
+[lanl/ports-of-call](https://github.com/lanl/ports-of-call) on GitHub
 [@portsofcall]. `Ports-of-Call` is a very thin abstraction around
 low-level device calls. It provides preprocessor macros to enable or
 disable Kokkos, an arbirtrary-dimensional array data structure, and
