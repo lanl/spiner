@@ -5,6 +5,8 @@ Spiner
 
 [![DOI](https://zenodo.org/badge/340131542.svg)](https://zenodo.org/badge/latestdoi/340131542)
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.04367/status.svg)](https://doi.org/10.21105/joss.04367)
+
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
 Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see [here](https://lanl.github.io/spiner/main/index.html).
