@@ -57,8 +57,8 @@ scientific codes is tabulated data. Fluid and continuum dynamics codes
 often encapsulate the equation of state as data tabulated in density
 and temperature, for example as published in the `Sesame` database
 [@sesame] or the stellar collapse database [@stellarcollapseweb],
-first presented in [@stellarcollapsetables]. Radiation transport, such
-as that performed by [@fornax] and [@nubhlight] uses emissivity and
+first presented in @stellarcollapsetables. Radiation transport, such
+as that performed by @fornax and @nubhlight uses emissivity and
 absorption opacity on tables such as those computed in
 @SullivanWeak. As continuum dynamics is required for a variety of
 applications, such as astrophysics, geophysics, climate science,
