@@ -3,6 +3,8 @@ Spiner
 
 [![Build Status](https://github.com/LANL/spiner/actions/workflows/tests.yml/badge.svg)](https://github.com/lanl/spiner/actions/workflows/tests.yml)
 
+[![DOI](https://zenodo.org/badge/340131542.svg)](https://zenodo.org/badge/latestdoi/340131542)
+
 Performance portable utilities for representing and interpolating
 tabulated data. Named for [Brent
 Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see [here](https://lanl.github.io/spiner/main/index.html).
