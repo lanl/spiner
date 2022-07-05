@@ -60,7 +60,7 @@ and temperature, for example as published in the `Sesame` database
 first presented in [@stellarcollapsetables]. Radiation transport, such
 as that performed by [@fornax] and [@nubhlight] uses emissivity and
 absorption opacity on tables such as those computed in
-[@SullivanWeak]. As continuum dynamics is required for a variety of
+@SullivanWeak. As continuum dynamics is required for a variety of
 applications, such as astrophysics, geophysics, climate science,
 vehicle engineering, and national security, utilizing a very large
 number of supercomputer cycles, providing tabulated data for these
@@ -74,13 +74,13 @@ interpolation library on which these codes can rely, and there is a
 clear need, which we have developed `Spiner` to meet. `Spiner` is now
 used in the open-source and on-going `Singularity-EOS`
 [@singularityeos], `Singularity-Opac` [@singularityopac], and Phoebus
-[@phoebus] `projects`, which have separate code papers in-prep.
+[@phoebus] `projects`, which have separate code papers in preparation.
 
 # State of the Field
 
 Interpolation is a common problem, implemented countless times across
 software projects, and a core part of any introductory text on
-scientific computing [@press2007numerical]. In graphics applications
+scientific computing [@press2007numerical]. In graphics applications,
 interpolation is so ubiquitous that hardware primitives are provided
 by GPUs. These hardware intrinsics are, however, severely limited for
 scientific application. For example, on NVIDIA GPUs, the values to be
