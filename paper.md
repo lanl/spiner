@@ -88,13 +88,13 @@ interpolated must be single precision floating point, and the
 interpolation coefficients themselves are only half-precision, which
 is often insufficient to capture the high precision required for
 scientific applications. As GPUs are inherently vector devices,
-hardware interpoaltion is also vectorized in nature. However,
+hardware interpolation is also vectorized in nature. However,
 downstream applications may be easier to reason about if scalar
 operations are available. For example, equation of state lookups often
 require root finds on interpolated data, and this can be easier to
 implement as a scalar operation, even if the final operation is
 vectorized over warps. Texture interpolation also does not support
-multi-dimensional mixed indexing/interpoaltion operations where, say,
+multi-dimensional mixed indexing/interpolation operations where, say,
 three indices of a four-dimensional array are interpolated and one is
 merely indexed into. Interpolation in the inner loop of a root-finding
 operation can be quite computationally expensive. For example, in the
