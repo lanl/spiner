@@ -627,10 +627,10 @@ SCENARIO("DataBox HDF5", "[DataBox],[HDF5]") {
 
 #ifdef PORTABILITY_STRATEGY_KOKKOS
 SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
-  constexpr int NFINE = 1000;
+  constexpr int NFINE = 100;
   constexpr int RANK = 3;
   constexpr int NZ = 8;
-  constexpr int NY = 10;
+  constexpr int NY = 9;
   constexpr int NX = 12;
   DataBox db(NZ, NY, NX);
 
@@ -645,7 +645,7 @@ SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
                                            RegularGrid1D(ymin, ymax, NY),
                                            RegularGrid1D(zmin, zmax, NZ)};
 
-  Kokkos::View<RegularGrid1D*> fine_grids("fine grids", RANK);
+  Kokkos::View<RegularGrid1D *> fine_grids("fine grids", RANK);
   auto fine_grids_h = Kokkos::create_mirror_view(fine_grids);
   fine_grids_h[0] = RegularGrid1D(xmin, xmax, NFINE);
   fine_grids_h[1] = RegularGrid1D(ymin, ymax, NFINE);
