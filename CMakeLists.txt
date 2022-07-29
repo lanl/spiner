@@ -56,6 +56,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# Disable cmake's package registry.
+message(STATUS "CMake's package registry can cause problems with ports-of-call. "
+  "It is therefore disabled by default. If you would like to re-enable it, "
+  "you can use "
+  "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=ON and -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=ON")
+set(CMAKE_FIND_USE_PACKAGE_REGISTRY OFF CACHE BOOL "" FORCE)
+set(CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY OFF CACHE BOOL "" FORCE)
+
 # CTEST
 include(CTest)
 
