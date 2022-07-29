@@ -627,10 +627,10 @@ SCENARIO("DataBox HDF5", "[DataBox],[HDF5]") {
 
 #ifdef PORTABILITY_STRATEGY_KOKKOS
 SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
-  constexpr int NFINE = 1000;
+  constexpr int NFINE = 100;
   constexpr int RANK = 3;
   constexpr int NZ = 8;
-  constexpr int NY = 10;
+  constexpr int NY = 9;
   constexpr int NX = 12;
   DataBox db(NZ, NY, NX);
 
@@ -641,17 +641,16 @@ SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
   constexpr Real zmin = -1;
   constexpr Real zmax = 0;
 
-  using Policy3D = Kokkos::MDRangePolicy<Kokkos::Rank<3>>;
-  using DeviceView_t = Kokkos::View<Real *, Kokkos::MemoryUnmanaged>;
-  using HostView_t =
-      Kokkos::View<Real *, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
-
   std::array<RegularGrid1D, RANK> grids = {RegularGrid1D(xmin, xmax, NX),
                                            RegularGrid1D(ymin, ymax, NY),
                                            RegularGrid1D(zmin, zmax, NZ)};
-  std::array<RegularGrid1D, RANK> fine_grids = {
-      RegularGrid1D(xmin, xmax, NFINE), RegularGrid1D(ymin, ymax, NFINE),
-      RegularGrid1D(zmin, zmax, NFINE)};
+
+  Kokkos::View<RegularGrid1D *> fine_grids("fine grids", RANK);
+  auto fine_grids_h = Kokkos::create_mirror_view(fine_grids);
+  fine_grids_h[0] = RegularGrid1D(xmin, xmax, NFINE);
+  fine_grids_h[1] = RegularGrid1D(ymin, ymax, NFINE);
+  fine_grids_h[2] = RegularGrid1D(zmin, zmax, NFINE);
+  Kokkos::deep_copy(fine_grids, fine_grids_h);
 
   for (int i = 0; i < RANK; i++)
     db.setRange(i, grids[i]);
@@ -667,6 +666,9 @@ SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
     }
   }
 
+  using DeviceView_t = Kokkos::View<Real *, Kokkos::MemoryUnmanaged>;
+  using HostView_t =
+      Kokkos::View<Real *, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
   Real *device_data = (Real *)PORTABLE_MALLOC(db.sizeBytes());
   DeviceView_t deviceView(device_data, db.size());
   HostView_t hostView(db.data(), db.size());
@@ -675,6 +677,7 @@ SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
   db_dev.copyShape(db);
 
   Real error = 0;
+  using Policy3D = Kokkos::MDRangePolicy<Kokkos::Rank<3>>;
   Kokkos::parallel_reduce(
       Policy3D({0, 0, 0}, {NFINE, NFINE, NFINE}),
       PORTABLE_LAMBDA(const int iz, const int iy, const int ix, Real &update) {

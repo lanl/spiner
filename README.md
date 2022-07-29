@@ -112,7 +112,7 @@ workflow is used to check that code meets format requirements. We
 provide a make target in the build system. After configuration, simply
 type
 ```bash
-make format
+make format_spiner
 ```
 to format the code.
 
