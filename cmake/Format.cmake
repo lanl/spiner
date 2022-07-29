@@ -54,6 +54,7 @@ set(
     ${PROJECT_SOURCE_DIR}/spiner/[^\.]*.cpp          ${PROJECT_SOURCE_DIR}/spiner/[^\.]*.hpp
     ${PROJECT_SOURCE_DIR}/ports-of-call/[^\.]*.cpp   ${PROJECT_SOURCE_DIR}/ports-of-call/[^\.]*.hpp
     ${PROJECT_SOURCE_DIR}/test/[^\.]*.cpp            ${PROJECT_SOURCE_DIR}/test/[^\.]*.hpp
+    ${PROJECT_SOURCE_DIR}/installtest/[^\.]*.cpp     ${PROJECT_SOURCE_DIR}/installtest/[^\.]*.hpp
 )
 
 file(GLOB_RECURSE FORMAT_SOURCES CONFIGURE_DEPENDS ${GLOBS})
