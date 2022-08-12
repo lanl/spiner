@@ -13,7 +13,8 @@ variables:
 
 before_script:
   - export HOME=${CI_PROJECT_DIR}
-  - export TMPDIR=${CI_PROJECT_DIR}
+  - export SPACK_DISABLE_LOCAL_CONFIG=true
+  - export SPACK_USER_CACHE_PATH=/tmp/spack-local
   - cd ${CI_PROJECT_DIR}
   - unset SPACK_ROOT
   - echo "Spack Version:" ${XCAP_OSS_SPACK_REF}
@@ -33,6 +34,9 @@ before_script:
   - spack compiler list
   - spack repo add --scope site ${CI_PROJECT_DIR}/spack-repo
   - spack repo list
+  - mkdir -p ${CI_PROJECT_DIR}/spack_env
+  - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
+  - spack env activate -d ${CI_PROJECT_DIR}/spack_env
 
 ##########################
 # Build Matrix Variables #
@@ -61,8 +65,8 @@ before_script:
     SCHEDULER_PARAMETERS: "--nodes=1 --partition=skylake-gold,skylake-platinum"
   only:
     refs:
-      - main
       - merge_requests
+      - pipelines
   except:
     refs:
 
@@ -87,14 +91,11 @@ before_script:
     GIT_SUBMODULE_STRATEGY: none
   script:
     - cd ${CI_PROJECT_DIR}
-    - mkdir clang_format_env
-    - spack env create --without-view -d ${CI_PROJECT_DIR}/clang_format_env
-    - spack env activate -d ${CI_PROJECT_DIR}/clang_format_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+format%gcc@${SPINER_GCC_VERSION}
-    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
-    - source ${CI_PROJECT_DIR}/clang_format_env/loads
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
+    - source ${CI_PROJECT_DIR}/spack_env/loads
     - clang-format -version
     - find ${CI_PROJECT_DIR} -regex '.*\.\(cpp\|hpp\)' | xargs clang-format -style=file -i && git diff --exit-code --ignore-submodules
 
@@ -104,14 +105,11 @@ before_script:
     GIT_SUBMODULE_STRATEGY: none
   script:
     - cd ${CI_PROJECT_DIR}
-    - mkdir sphinx_doc_env
-    - spack env create --without-view -d ${CI_PROJECT_DIR}/sphinx_doc_env
-    - spack env activate -d ${CI_PROJECT_DIR}/sphinx_doc_env
     - spack install --show-log-on-error --no-checksum --yes-to-all spiner+doc%gcc@${SPINER_GCC_VERSION}
-    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
-    - source ${CI_PROJECT_DIR}/sphinx_doc_env/loads
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
+    - source ${CI_PROJECT_DIR}/spack_env/loads
     - cd ${CI_PROJECT_DIR}/doc/sphinx
     - make html
     - rm -rf ${CI_PROJECT_DIR}/public
@@ -123,9 +121,6 @@ before_script:
     - .job
   script:
     - cd ${CI_PROJECT_DIR}
-    - mkdir -p ${CI_PROJECT_DIR}/spack_env
-    - spack env create --without-view -d ${CI_PROJECT_DIR}/spack_env
-    - spack env activate -d ${CI_PROJECT_DIR}/spack_env
     - |
       if [[ ${CI_JOB_NAME} =~ "power9" ]];
       then
@@ -134,9 +129,9 @@ before_script:
     - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
     - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
     - ( echo "$SPINER_CMD" && $SPINER_CMD )
-    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - spack module tcl refresh -y
     - spack env loads -r -x spiner
+    - source ${CI_PROJECT_DIR}/spack/share/spack/setup-env.sh
     - export modName="${CI_PROJECT_DIR}/spack_env/loads"
     - sed -i "1s;^;module load gcc/${SPINER_GCC_VERSION}\n;" ${modName}
     - sed -i "1s;^;#%Module\n;" ${modName}
@@ -170,11 +165,6 @@ format:
 pages_check:
   <<: *job_def
   extends: .sphinx-doc
-  only:
-    refs:
-      - merge_requests
-      - pipelines
-  except:
 
 pages:
   <<: *job_def
