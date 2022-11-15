@@ -47,10 +47,10 @@ include(CMakeDependentOption)
 
 # use HDF5
 option (SPINER_USE_HDF "Pull in hdf5" OFF)
-# use Kokkos offloading
-option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
+# use Kokkos offloading in tests
+cmake_dependent_option (SPINER_TEST_USE_KOKKOS "Pull in Kokkos" OFF "BUILD_TESTING" OFF)
 # only provide this option if `SPINER_USE_KOKKOS` is enabled
-cmake_dependent_option (SPINER_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_USE_KOKKOS" OFF)
+cmake_dependent_option (SPINER_TEST_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_TEST_USE_KOKKOS" OFF)
 
 option (SPINER_FORCE_INTERNAL_PORTS "Force use of internal ports of call" OFF)
 

@@ -40,12 +40,14 @@ if (SPINER_TEST_USE_KOKKOS)
   FetchContent_MakeAvailable(Kokkos)
   target_link_libraries(spiner_offload INTERFACE Kokkos::kokkos)
   target_compile_definitions(spiner_offload INTERFACE PORTABILITY_STRATEGY_KOKKOS)
+
+  set(is_cxx "$<COMPILE_LANGUAGE:CXX>")
+  set(test_use_cuda "$<BOOL:${SPINER_TEST_USE_KOKKOS_CUDA}>")
+  set(compiler_fix "$<AND:${is_cxx},${test_use_cuda}>")
+
   target_compile_options(spiner_offload
     INTERFACE
-      $<$<AND:
-          $<COMPILE_LANGUAGE:CXX>,
-          $<BOOL:${SPINER_TEST_USE_KOKKOS_CUDA}>
-        >:"--expt-relaxed-constexpr">
+         "$<${compiler_fix}:--expt-relaxed-constexpr>"
   )
 endif()
 
