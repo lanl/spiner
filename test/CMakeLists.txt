@@ -10,6 +10,29 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
+
+# instructions for local content
+# https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
+# TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
+if (SPINER_USE_KOKKOS)
+  FetchContent_Declare(
+    Kokkos
+    GIT_REPOSITORY https://github.com/kokkos/kokkos.git
+    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165)
+    FIND_PACKAGE_ARGS
+  )
+
+  set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE INTERNAL "")
+  if (SPINER_USE_CUDA)
+    set(Kokkos_ENABLE_CUDA ON CACHE INTERNAL "")
+    set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE INTERNAL "")
+  endif()
+  FetchContent_MakeAvailable(Kokkos)
+  target_link_libraries(${PROJECT_NAME} INTERFACE Kokkos::kokkos)
+  target_compile_definitions(${PROJECT_NAME} )
+endif ()
+
+
 # Unit tests
 if (NOT TARGET Catch2::Catch2)
   find_package(Catch2 QUIET)
