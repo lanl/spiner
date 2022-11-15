@@ -2,6 +2,3 @@
 	path = Catch2
 	url = https://github.com/catchorg/Catch2.git
 	branch = v2.x
-[submodule "ports-of-call"]
-	path = ports-of-call
-	url = ../ports-of-call.git
