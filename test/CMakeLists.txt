@@ -11,49 +11,52 @@
 # publicly and display publicly, and to permit others to do so.
 
 
+include(FetchContent)
+Set(FETCHCONTENT_QUIET FALSE)
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v2.13.7)
+FetchContent_MakeAvailable(Catch2)
+list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+
+add_library(spiner_offload INTERFACE)
 # instructions for local content
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
 # TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
-if (SPINER_USE_KOKKOS)
+if (SPINER_TEST_USE_KOKKOS)
   FetchContent_Declare(
     Kokkos
     GIT_REPOSITORY https://github.com/kokkos/kokkos.git
-    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165)
-    FIND_PACKAGE_ARGS
+    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
+    FIND_PACKAGE_ARGS 
   )
 
   set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE INTERNAL "")
-  if (SPINER_USE_CUDA)
+  if (SPINER_TEST_USE_KOKKOS_CUDA)
     set(Kokkos_ENABLE_CUDA ON CACHE INTERNAL "")
     set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE INTERNAL "")
   endif()
   FetchContent_MakeAvailable(Kokkos)
-  target_link_libraries(${PROJECT_NAME} INTERFACE Kokkos::kokkos)
-  target_compile_definitions(${PROJECT_NAME} )
-endif ()
-
-
-# Unit tests
-if (NOT TARGET Catch2::Catch2)
-  find_package(Catch2 QUIET)
+  target_link_libraries(spiner_offload INTERFACE Kokkos::kokkos)
+  target_compile_definitions(spiner_offload INTERFACE PORTABILITY_STRATEGY_KOKKOS)
+  target_compile_options(spiner_offload
+    INTERFACE
+      $<$<AND:
+          $<COMPILE_LANGUAGE:CXX>,
+          $<BOOL:${SPINER_TEST_USE_KOKKOS_CUDA}>
+        >:"--expt-relaxed-constexpr">
+  )
 endif()
-if(NOT Catch2_FOUND)
-  # Get catch2
-  message(STATUS "Fetching Catch2 as needed")
-  Include(FetchContent)
-  FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v2.13.1)
-  FetchContent_MakeAvailable(Catch2)
-  list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
-endif()
+
 
 add_executable(test.bin test.cpp)
 target_link_libraries(test.bin
   PRIVATE
-  spiner::spiner
-  Catch2::Catch2)
+    spiner::spiner
+    spiner_offload
+    Catch2::Catch2
+)
 
 include(Catch)
 catch_discover_tests(test.bin)
@@ -61,12 +64,18 @@ catch_discover_tests(test.bin)
 # Benchmarking
 add_executable(benchmark.bin benchmark.cpp)
 target_link_libraries(benchmark.bin
-  PRIVATE spiner::spiner)
+  PRIVATE 
+    spiner::spiner
+    spiner_offload
+)
 
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
-  PRIVATE spiner::spiner)
+  PRIVATE 
+    spiner::spiner
+    spiner_offload
+)
 
 find_package(Python3 COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)
