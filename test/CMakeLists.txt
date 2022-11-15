@@ -12,7 +12,7 @@
 
 
 include(FetchContent)
-Set(FETCHCONTENT_QUIET FALSE)
+
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -31,7 +31,6 @@ if (SPINER_TEST_USE_KOKKOS)
     GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
     FIND_PACKAGE_ARGS 
   )
-
   set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE INTERNAL "")
   if (SPINER_TEST_USE_KOKKOS_CUDA)
     set(Kokkos_ENABLE_CUDA ON CACHE INTERNAL "")

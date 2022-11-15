@@ -48,18 +48,13 @@ include(CMakeDependentOption)
 # use HDF5
 option (SPINER_USE_HDF "Pull in hdf5" OFF)
 # use Kokkos offloading in tests
-cmake_dependent_option (SPINER_TEST_USE_KOKKOS "Pull in Kokkos" OFF "BUILD_TESTING" OFF)
-# only provide this option if `SPINER_USE_KOKKOS` is enabled
-cmake_dependent_option (SPINER_TEST_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_TEST_USE_KOKKOS" OFF)
+option (SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests" OFF)
+option (SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" OFF)
 
-option (SPINER_FORCE_INTERNAL_PORTS "Force use of internal ports of call" OFF)
-
-# MAUNEYC
-# With dependent option change above, this is not
-# possible.
-#if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
-# message(FATAL_ERROR "Currently cuda requires Kokkos")
-#endif()
+# These didn't behave like I expected.
+# TODO: fix
+# cmake_dependent_option (SPINER_TEST_USE_KOKKOS "Pull in Kokkos" OFF "BUILD_TESTING" OFF)
+# cmake_dependent_option (SPINER_TEST_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_TEST_USE_KOKKOS" OFF)
 
 # CTEST
 include(CTest)
@@ -72,16 +67,21 @@ add_library(${PROJECT_NAME} INTERFACE)
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 include(FetchContent)
+# i like chatty cmakes
+set(FETCHCONTENT_QUIET FALSE)
 # poc
 FetchContent_Declare(
   ports-of-call
   GIT_REPOSITORY    https://github.com/lanl/ports-of-call
-  GIT_TAG           20de024a3a389301a03d0e694a5cabfc6481f623
+  # NOTE: This commit is still pending merge (PR16) 
+  GIT_TAG           50bf032aa1522aef6da317cd07a7b5dd8c26aa82
+  #  GIT_TAG           20de024a3a389301a03d0e694a5cabfc6481f623
   FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(ports-of-call)
 target_link_libraries(${PROJECT_NAME} INTERFACE ports-of-call::ports-of-call)
 
+# TODO: does FetchContent work here? not sure
 # HDF5
 if(SPINER_USE_HDF)
   find_package(HDF5 COMPONENTS C HL)
