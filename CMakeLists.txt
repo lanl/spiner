@@ -63,8 +63,8 @@ include(CTest)
 include(cmake/Format.cmake)
 
 # Add a library
-add_library(${PROJECT_NAME} INTERFACE)
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(spiner INTERFACE)
+add_library(spiner::spiner ALIAS spiner)
 
 include(FetchContent)
 # i like chatty cmakes
@@ -79,14 +79,14 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(ports-of-call)
-target_link_libraries(${PROJECT_NAME} INTERFACE ports-of-call::ports-of-call)
+target_link_libraries(spiner INTERFACE ports-of-call::ports-of-call)
 
 # TODO: does FetchContent work here? not sure
 # HDF5
 if(SPINER_USE_HDF)
   find_package(HDF5 COMPONENTS C HL)
   if (HDF5_FOUND)
-    target_link_libraries(${PROJECT_NAME} INTERFACE HDF5::HDF5)
+    target_link_libraries(spiner INTERFACE HDF5::HDF5)
   else()
     message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
   endif()
@@ -94,7 +94,7 @@ endif()
 
 # Enables
 # #include <spiner>
-target_include_directories(${PROJECT_NAME}
+target_include_directories(spiner
     INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -106,8 +106,8 @@ if (BUILD_TESTING)
 endif()
 
 install(
-  TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}Targets
+  TARGETS spiner
+  EXPORT spinerTargets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -115,43 +115,43 @@ install(
 )
 
 configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/spinerConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spiner
 )
  
 # ...and the version file
 write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfigVersion.cmake
   VERSION ${SPINER_VERSION}
   COMPATIBILITY SameMajorVersion
 )
   
 # Install the cmake configuration files
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME} )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/spinerConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spiner )
   
 # Install header files
 install(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spiner
   FILES_MATCHING PATTERN "*.hpp"
 )
   
 # Install the export target. This will define the CMake target
 # for external projects when used with `find_package`
-install(EXPORT ${PROJECT_NAME}Targets
-  NAMESPACE ${PROJECT_NAME}::
-  FILE "${PROJECT_NAME}Targets.cmake"
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+install(EXPORT spinerTargets
+  NAMESPACE spiner::
+  FILE "spinerTargets.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/spiner"
 ) 
 
 # Export configuration for external projects that reference
 # just our build-tree; e.g. for submodules. To use, ensure 
 # `CMAKE_PREFIX_PATH` points to this source directory.
 # NOTE: This config will not be relocatable!
-export(TARGETS ${PROJECT_NAME} 
-  NAMESPACE ${PROJECT_NAME}::
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+export(TARGETS spiner 
+  NAMESPACE spiner::
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/spinerTargets.cmake"
 )
