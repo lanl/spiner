@@ -49,7 +49,7 @@ macro(spiner_content_declare pkg_name)
 
   if(fp_NO_FETCH OR ${pkg_name}_FOUND)
     FetchContent_Declare(${pkg_name}
-      DOWNLOAD_COMMAND ""
+      DOWNLOAD_COMMAND ":"
     )
   else()
     FetchContent_Declare(${pkg_name}
