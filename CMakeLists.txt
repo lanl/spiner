@@ -12,7 +12,7 @@
 # publicly and display publicly, and to permit others to do so.
 #------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.20..3.23.2)
 
 set(SPINER_VERSION 1.4.0)
 project(spiner VERSION ${SPINER_VERSION})
@@ -66,31 +66,71 @@ include(cmake/Format.cmake)
 add_library(spiner INTERFACE)
 add_library(spiner::spiner ALIAS spiner)
 
+#####################################
+#            Dependencies           #
+#####################################
+
 include(FetchContent)
-# i like chatty cmakes
-set(FETCHCONTENT_QUIET FALSE)
-# poc
-FetchContent_Declare(
-  ports-of-call
-  GIT_REPOSITORY    https://github.com/lanl/ports-of-call
-  # NOTE: This commit is still pending merge (PR16) 
-  GIT_TAG           50bf032aa1522aef6da317cd07a7b5dd8c26aa82
-  #  GIT_TAG           20de024a3a389301a03d0e694a5cabfc6481f623
-  FIND_PACKAGE_ARGS
+
+# ports-of-call
+# use FC enhancments of `cmake@3.24:`
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
+  message(STATUS "FetchContent routines will try `find_package` first")
+else()
+  message(DEPRECATION 
+    "Detected cmake version (${CMAKE_VERSION}) older then 3.24. `spiner`"
+    "will begin requiring this version soon.  The current depedency "
+    "resolution is a soft-copy of the pattern of FetchContent introduced" 
+    "in cmake 3.24."
+  )
+endif()
+
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
+include(content)
+spiner_content_declare(ports-of-call
+  GIT_REPO    https://github.com/lanl/ports-of-call
+  # NOTE: main as of Nov. 28 2022 
+  GIT_TAG     3fffe08408b1ee754d0567a3de63cb47ce97d9f7
 )
-FetchContent_MakeAvailable(ports-of-call)
-target_link_libraries(spiner INTERFACE ports-of-call::ports-of-call)
+
+if(SPINER_USE_HDF)
+  if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+    set(_spiner_HDF5_targets "HDF5::HDF5")
+  else()
+    set(_spiner_HDF5_targets "hdf5::hdf5;hdf5::hdf5_hl")
+  endif()
+  spiner_content_declare(HDF5
+    NO_FETCH
+    COMPONENTS "C;HL"
+    NOTFOUND_MSG "disable with \"-DSPINER_USE_HDF=OFF\""
+    EXPECTED_TARGETS "${_spiner_HDF5_targets}"
+  )
+  target_compile_definitions(spiner
+    INTERFACE
+      SPINER_USE_HDF)
+endif()
+
+spiner_content_populate(
+  NAMESPACE spiner
+)
+
+target_link_libraries(spiner 
+  INTERFACE
+    ${spiner_POPULATED_TARGETS}
+)
 
 # TODO: does FetchContent work here? not sure
 # HDF5
-if(SPINER_USE_HDF)
-  find_package(HDF5 COMPONENTS C HL)
-  if (HDF5_FOUND)
-    target_link_libraries(spiner INTERFACE HDF5::HDF5)
-  else()
-    message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
-  endif()
-endif()
+#if(SPINER_USE_HDF)
+#  find_package(HDF5 COMPONENTS C HL)
+#  if (HDF5_FOUND)
+#    target_link_libraries(spiner INTERFACE HDF5::HDF5)
+#  else()
+#    message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
+#  endif()
+#endif()
 
 # Enables
 # #include <spiner>

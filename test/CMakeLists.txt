@@ -11,54 +11,58 @@
 # publicly and display publicly, and to permit others to do so.
 
 
-include(FetchContent)
-
-FetchContent_Declare(
-  Catch2
+spiner_content_declare(Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.7)
-FetchContent_MakeAvailable(Catch2)
-list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+  GIT_TAG        v2.13.7
+)
 
-add_library(spiner_offload INTERFACE)
+add_library(spiner_test INTERFACE)
 # instructions for local content
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
 # TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
 if (SPINER_TEST_USE_KOKKOS)
-  FetchContent_Declare(
+  spiner_content_declare(
     Kokkos
-    GIT_REPOSITORY https://github.com/kokkos/kokkos.git
+    GIT_REPO https://github.com/kokkos/kokkos.git
     GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
-    FIND_PACKAGE_ARGS 
+    EXPECTED_TARGETS Kokkos::kokkos
   )
-  set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE INTERNAL "")
+  list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
   if (SPINER_TEST_USE_KOKKOS_CUDA)
-    set(Kokkos_ENABLE_CUDA ON CACHE INTERNAL "")
-    set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE INTERNAL "")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
   endif()
-  FetchContent_MakeAvailable(Kokkos)
-  target_link_libraries(spiner_offload INTERFACE Kokkos::kokkos)
-  target_compile_definitions(spiner_offload INTERFACE PORTABILITY_STRATEGY_KOKKOS)
+  
+  target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 
   set(is_cxx "$<COMPILE_LANGUAGE:CXX>")
   set(test_use_cuda "$<BOOL:${SPINER_TEST_USE_KOKKOS_CUDA}>")
   set(compiler_fix "$<AND:${is_cxx},${test_use_cuda}>")
 
-  target_compile_options(spiner_offload
+  target_compile_options(spiner_test
     INTERFACE
          "$<${compiler_fix}:--expt-relaxed-constexpr>"
   )
 endif()
 
+spiner_content_populate(
+  NAMESPACE spinerTest
+  ENABLE_OPTS ${_spiner_content_opts}
+)
+
+target_link_libraries(spiner_test
+  INTERFACE
+    ${spinerTest_POPULATED_TARGETS}
+)
 
 add_executable(test.bin test.cpp)
 target_link_libraries(test.bin
   PRIVATE
     spiner::spiner
-    spiner_offload
-    Catch2::Catch2
+    spiner_test
 )
 
+list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
 include(Catch)
 catch_discover_tests(test.bin)
 
@@ -67,7 +71,7 @@ add_executable(benchmark.bin benchmark.cpp)
 target_link_libraries(benchmark.bin
   PRIVATE 
     spiner::spiner
-    spiner_offload
+    spiner_test
 )
 
 # Convergence test
@@ -75,7 +79,7 @@ add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
   PRIVATE 
     spiner::spiner
-    spiner_offload
+    spiner_test
 )
 
 find_package(Python3 COMPONENTS Interpreter)
