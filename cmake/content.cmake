@@ -1,5 +1,12 @@
 include(FetchContent)
 
+###############################################################
+# 
+# For dependency management, use the `FetchContent` pattern
+#
+# NOTE: We seek to replicate the implementation of `FetchContent`
+###############################################################
+
 macro(spiner_content_declare pkg_name)
   set(options
     NO_FETCH
@@ -29,22 +36,21 @@ macro(spiner_content_declare pkg_name)
         )
     endif()
 
-  endif()
-
-  
-  if(fp_NO_FETCH AND NOT ${pkg_name}_FOUND)
-    set(_scd_error
-        "${pkg_name} is requested, but it was not located and is "
-        "is not declared as fetchable. You may want to try:"
+    if(fp_NO_FETCH AND NOT ${pkg_name}_FOUND)
+      string(JOIN "\n" _scd_error
+        "${pkg_name} is requested, but it was not located and is not declared as fetchable."
+        "You may want to try:"
         "\t - if ${pkg_name} is installed, set \"-D${pkg_name}_ROOT=<install-dir>\""
-    )
-    if(fp_NOTFOUND_MSG)
-      set(_scd_error "${_scd_error}"
-          "\t - ${fp_NOTFOUND_MSG}"
       )
+      if(fp_NOTFOUND_MSG)
+        string(JOIN "\n" _scd_error 
+          "${_scd_error}"
+          "\t - ${fp_NOTFOUND_MSG}"
+        )
+      endif()
+      message(FATAL_ERROR "${_scd_error}")
+      unset(_spc_error)
     endif()
-    message(FATAL_ERROR "${_scd_error}")
-    unset(_spc_error)
   endif()
 
   if(fp_NO_FETCH)
