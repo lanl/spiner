@@ -19,12 +19,12 @@ macro(spiner_content_declare pkg_name)
   if (NOT CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
       find_package(${pkg_name} COMPONENTS ${fp_COMPONENTS} QUIET )
     if(${pkg_name}_FOUND)
-        message(STATUS
+      message(VERBOSE
             "${pkg_name} located with `find_package`"
             "${pkg_name}_DIR: ${${pkg_name}_DIR}"
         )
     else()
-        message(STATUS
+      message(VERBOSE
             "${pkg_name} NOT located with `find_package`"
         )
     endif()
@@ -47,16 +47,22 @@ macro(spiner_content_declare pkg_name)
     unset(_spc_error)
   endif()
 
-  if(fp_NO_FETCH OR ${pkg_name}_FOUND)
+  if(fp_NO_FETCH)
+    message(VERBOSE
+      "\"${pkg_name}\" is specified not fetchable, will rely on `find_package` for population"
+    )
     FetchContent_Declare(${pkg_name}
       DOWNLOAD_COMMAND ":"
     )
   else()
+    message(VERBOSE 
+      "\"${pkg_name}\" is fetchable, will fall-back to git clone [${fp_GIT_REPO}] if other population methods fail"
+    )
+
     FetchContent_Declare(${pkg_name}
-      GIT_REPO ${fp_GIT_REPO}
+      GIT_REPOSITORY ${fp_GIT_REPO}
       GIT_TAG  ${fp_GIT_TAG}
     )
-#  FetchContent_MakeAvailable(${pkg_name})
   endif()
   
   list(APPEND SPINER_DECLARED_EXTERNAL_CONTENT ${pkg_name})
@@ -79,15 +85,17 @@ macro(spiner_content_populate)
 
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
-  if(ENABLE_OPTS)
+  if(fp_ENABLE_OPTS)
     foreach(ext_opt IN LISTS fp_ENABLE_OPTS)
+      message(DEBUG "setting \"${ext_opt}\"=ON")
       set(${ext_opt} ON CACHE INTERNAL "")
     endforeach()
   endif()
 
   message(STATUS
       "Populating dependency targets ${SPINER_DECLARED_EXTERNAL_TARGETS}\n"
-      "Calling `FetchContent_MakeAvailable` with ${SPINER_DECLARED_EXTERNAL_CONTENT}"
+      "Calling `FetchContent_MakeAvailable` with ${SPINER_DECLARED_EXTERNAL_CONTENT}\n"
+      "This may take a few moments if a download is required...\n"
   )
   FetchContent_MakeAvailable(${SPINER_DECLARED_EXTERNAL_CONTENT})
 
@@ -98,6 +106,7 @@ macro(spiner_content_populate)
         )
     endif()
   endforeach()
+
   set(${fp_NAMESPACE}_POPULATED_TARGETS ${SPINER_DECLARED_EXTERNAL_TARGETS})
 
   unset(SPINER_DECLARED_EXTERNAL_CONTENT)
