@@ -72,8 +72,6 @@ add_library(spiner::spiner ALIAS spiner)
 
 include(FetchContent)
 
-# ports-of-call
-# use FC enhancments of `cmake@3.24:`
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
   message(STATUS "FetchContent routines will try `find_package` first")
@@ -96,16 +94,11 @@ spiner_content_declare(ports-of-call
 )
 
 if(SPINER_USE_HDF)
-  if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
-    set(_spiner_HDF5_targets "HDF5::HDF5")
-  else()
-    set(_spiner_HDF5_targets "hdf5::hdf5;hdf5::hdf5_hl")
-  endif()
   spiner_content_declare(HDF5
     NO_FETCH
-    COMPONENTS "C;HL"
+    COMPONENTS C HL
     NOTFOUND_MSG "disable with \"-DSPINER_USE_HDF=OFF\""
-    EXPECTED_TARGETS "${_spiner_HDF5_targets}"
+    EXPECTED_TARGETS hdf5::hdf5 hdf5::hdf5_hl
   )
   target_compile_definitions(spiner
     INTERFACE
@@ -120,17 +113,6 @@ target_link_libraries(spiner
   INTERFACE
     ${spiner_POPULATED_TARGETS}
 )
-
-# TODO: does FetchContent work here? not sure
-# HDF5
-#if(SPINER_USE_HDF)
-#  find_package(HDF5 COMPONENTS C HL)
-#  if (HDF5_FOUND)
-#    target_link_libraries(spiner INTERFACE HDF5::HDF5)
-#  else()
-#    message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
-#  endif()
-#endif()
 
 # Enables
 # #include <spiner>

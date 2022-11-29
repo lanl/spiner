@@ -23,8 +23,26 @@ macro(spiner_content_declare pkg_name)
 
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
+  # because the signature is different between versions,
+  # we build the cmake call beforehand
+  set(_fetch_content_cmd "FetchContent_Declare(${pkg_name}")
+  if(fp_NO_FETCH)
+    message(VERBOSE
+      "\"${pkg_name}\" is specified not fetchable, will rely on `find_package` for population"
+    )
+    string(APPEND _fetch_content_cmd " DOWNLOAD_COMMAND \":\"") 
+  else()
+    message(VERBOSE 
+      "\"${pkg_name}\" is fetchable, will fall-back to git clone [${fp_GIT_REPO}] if other population methods fail"
+    )
+    
+    string(APPEND _fetch_content_cmd " GIT_REPOSITORY ${fp_GIT_REPO} GIT_TAG ${fp_GIT_TAG}")
+  endif()
+
+  # bifurcation on cmake version
   if (NOT CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
-      find_package(${pkg_name} COMPONENTS ${fp_COMPONENTS} QUIET )
+    # do a quiet `find_package`
+    find_package(${pkg_name} COMPONENTS ${fp_COMPONENTS} QUIET )
     if(${pkg_name}_FOUND)
       message(VERBOSE
             "${pkg_name} located with `find_package`"
@@ -35,7 +53,8 @@ macro(spiner_content_declare pkg_name)
             "${pkg_name} NOT located with `find_package`"
         )
     endif()
-
+    # if no fetching and not found, produce an error
+    # conditionally include a custom error msg
     if(fp_NO_FETCH AND NOT ${pkg_name}_FOUND)
       string(JOIN "\n" _scd_error
         "${pkg_name} is requested, but it was not located and is not declared as fetchable."
@@ -51,26 +70,22 @@ macro(spiner_content_declare pkg_name)
       message(FATAL_ERROR "${_scd_error}")
       unset(_spc_error)
     endif()
-  endif()
-
-  if(fp_NO_FETCH)
-    message(VERBOSE
-      "\"${pkg_name}\" is specified not fetchable, will rely on `find_package` for population"
-    )
-    FetchContent_Declare(${pkg_name}
-      DOWNLOAD_COMMAND ":"
-    )
   else()
-    message(VERBOSE 
-      "\"${pkg_name}\" is fetchable, will fall-back to git clone [${fp_GIT_REPO}] if other population methods fail"
-    )
-
-    FetchContent_Declare(${pkg_name}
-      GIT_REPOSITORY ${fp_GIT_REPO}
-      GIT_TAG  ${fp_GIT_TAG}
-    )
+    # versions >= 3.24 will do an implicit `find_package`, so pass on
+    # requirements to declaration
+    string(APPEND _fetch_content_cmd " FIND_PACKAGE_ARGS COMPONENTS ${fp_COMPONENTS}")
   endif()
-  
+
+  # close the command
+  string(APPEND _fetch_content_cmd ")")
+
+  message(DEBUG "FC cmd: ${_fetch_content_cmd}")
+  # execute the built `FetchContent_Declare(...)`
+  cmake_language(EVAL CODE "${_fetch_content_cmd}")
+  # be safe and destroy the string
+  unset(_fetch_content_cmd)
+ 
+  # return some info
   list(APPEND SPINER_DECLARED_EXTERNAL_CONTENT ${pkg_name})
   if(fp_EXPECTED_TARGETS)
       list(APPEND SPINER_DECLARED_EXTERNAL_TARGETS ${fp_EXPECTED_TARGETS})
