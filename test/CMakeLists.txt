@@ -31,18 +31,15 @@ if (SPINER_TEST_USE_KOKKOS)
   if (SPINER_TEST_USE_KOKKOS_CUDA)
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_CONSTEXPR")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
+    endif()
   endif()
   
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 
-  set(is_cxx "$<COMPILE_LANGUAGE:CXX>")
-  set(test_use_cuda "$<BOOL:${SPINER_TEST_USE_KOKKOS_CUDA}>")
-  set(compiler_fix "$<AND:${is_cxx},${test_use_cuda}>")
-
-  target_compile_options(spiner_test
-    INTERFACE
-         "$<${compiler_fix}:--expt-relaxed-constexpr>"
-  )
 endif()
 
 spiner_content_populate(
