@@ -12,7 +12,7 @@
 # publicly and display publicly, and to permit others to do so.
 #------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.20..3.23.2)
+cmake_minimum_required(VERSION 3.23)
 
 set(SPINER_VERSION 1.4.0)
 project(spiner VERSION ${SPINER_VERSION})
