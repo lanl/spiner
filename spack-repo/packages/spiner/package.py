@@ -31,7 +31,6 @@ class Spiner(CMakePackage, CudaPackage):
     variant("mpi", default=False, description="Support parallel hdf5")
 
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
-    variant("doc", default=False, description="Sphinx Documentation Support")
     variant("format", default=False, description="Clang-Format Support")
 
     depends_on("cmake@3.12:")
@@ -51,10 +50,6 @@ class Spiner(CMakePackage, CudaPackage):
     depends_on("python", when="+python")
     depends_on("py-numpy", when="+python")
     depends_on("py-matplotlib", when="+python")
-
-    depends_on("py-sphinx", when="+doc")
-    depends_on("py-sphinx-rtd-theme@0.4.3", when="+doc")
-    depends_on("py-sphinx-multiversion", when="+doc")
 
     depends_on("llvm@12.0.0+clang", when="+format")
 
