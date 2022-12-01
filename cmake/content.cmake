@@ -7,6 +7,8 @@ include(FetchContent)
 # NOTE: We seek to replicate the implementation of `FetchContent`
 ###############################################################
 
+# Constructs `FetchContent_Declare` call, and records information
+# for popluation and linking
 macro(spiner_content_declare pkg_name)
   set(options
     NO_FETCH
@@ -19,58 +21,36 @@ macro(spiner_content_declare pkg_name)
   set(multi_value_args
     COMPONENTS
     EXPECTED_TARGETS
+    ENABLE_OPTS
   )
 
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
+  string(TOUPPER ${pkg_name} pkg_CAP)
+  string(REPLACE "-" "_" pkg_CAP "${pkg_CAP}")
+
+  message(STATUS
+    "[${pkg_name}] FetchContent_Declare wrapper: "
+  )
   # because the signature is different between versions,
   # we build the cmake call beforehand
   set(_fetch_content_cmd "FetchContent_Declare(${pkg_name}")
+  
   if(fp_NO_FETCH)
     message(VERBOSE
-      "\"${pkg_name}\" is specified not fetchable, will rely on `find_package` for population"
+      " :: \"${pkg_name}\" is specified not fetchable, will rely on `find_package` for population"
     )
     string(APPEND _fetch_content_cmd " DOWNLOAD_COMMAND \":\"") 
+    set(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_NOFETCH TRUE)
   else()
     message(VERBOSE 
-      "\"${pkg_name}\" is fetchable, will fall-back to git clone [${fp_GIT_REPO}] if other population methods fail"
+      " :: \"${pkg_name}\" is fetchable, will fall-back to git clone [${fp_GIT_REPO}] if other population methods fail"
     )
-    
     string(APPEND _fetch_content_cmd " GIT_REPOSITORY ${fp_GIT_REPO} GIT_TAG ${fp_GIT_TAG}")
   endif()
 
   # bifurcation on cmake version
-  if (NOT CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
-    # do a quiet `find_package`
-    find_package(${pkg_name} COMPONENTS ${fp_COMPONENTS} QUIET )
-    if(${pkg_name}_FOUND)
-      message(VERBOSE
-            "${pkg_name} located with `find_package`"
-            "${pkg_name}_DIR: ${${pkg_name}_DIR}"
-        )
-    else()
-      message(VERBOSE
-            "${pkg_name} NOT located with `find_package`"
-        )
-    endif()
-    # if no fetching and not found, produce an error
-    # conditionally include a custom error msg
-    if(fp_NO_FETCH AND NOT ${pkg_name}_FOUND)
-      string(JOIN "\n" _scd_error
-        "${pkg_name} is requested, but it was not located and is not declared as fetchable."
-        "You may want to try:"
-        "\t - if ${pkg_name} is installed, set \"-D${pkg_name}_ROOT=<install-dir>\""
-      )
-      if(fp_NOTFOUND_MSG)
-        string(JOIN "\n" _scd_error 
-          "${_scd_error}"
-          "\t - ${fp_NOTFOUND_MSG}"
-        )
-      endif()
-      message(FATAL_ERROR "${_scd_error}")
-      unset(_spc_error)
-    endif()
-  else()
+  if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
     # versions >= 3.24 will do an implicit `find_package`, so pass on
     # requirements to declaration
     string(APPEND _fetch_content_cmd " FIND_PACKAGE_ARGS COMPONENTS ${fp_COMPONENTS}")
@@ -79,18 +59,22 @@ macro(spiner_content_declare pkg_name)
   # close the command
   string(APPEND _fetch_content_cmd ")")
 
-  message(DEBUG "FC cmd: ${_fetch_content_cmd}")
+  message(DEBUG " :: FC cmd: ${_fetch_content_cmd}")
   # execute the built `FetchContent_Declare(...)`
   cmake_language(EVAL CODE "${_fetch_content_cmd}")
   # be safe and destroy the string
   unset(_fetch_content_cmd)
  
   # return some info
+
   list(APPEND SPINER_DECLARED_EXTERNAL_CONTENT ${pkg_name})
+  set(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS ${fp_COMPONENTS})
+  set(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS ${fp_ENABLE_OPTS})
+
   if(fp_EXPECTED_TARGETS)
-      list(APPEND SPINER_DECLARED_EXTERNAL_TARGETS ${fp_EXPECTED_TARGETS})
+      set(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS ${fp_EXPECTED_TARGETS})
   else()
-      list(APPEND SPINER_DECLARED_EXTERNAL_TARGETS "${pkg_name}::${pkg_name}")
+      set(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS "${pkg_name}::${pkg_name}")
   endif()
 
 endmacro()
@@ -101,37 +85,91 @@ macro(spiner_content_populate)
     NAMESPACE
   )
   set(multi_value_args
-    ENABLE_OPTS
   )
 
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
-  if(fp_ENABLE_OPTS)
-    foreach(ext_opt IN LISTS fp_ENABLE_OPTS)
-      message(DEBUG "setting \"${ext_opt}\"=ON")
-      set(${ext_opt} ON CACHE INTERNAL "")
-    endforeach()
-  endif()
+  message(STATUS 
+    "[${fp_NAMESPACE}] Populating declared content: "
+  )
+  # fill lists to populate
+  # if cmake@3.24+, these are just the lists prepared in spiner_content_declare
+  # otherwise, manually check `find_package` and remove content if found
+  foreach(pkg_name ${SPINER_DECLARED_EXTERNAL_CONTENT})
+    string(TOUPPER ${pkg_name} pkg_CAP)
+    string(REPLACE "-" "_" pkg_CAP "${pkg_CAP}")
+
+    # bifurcation on cmake version
+    if (NOT CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+      find_package(${pkg_name}
+        COMPONENTS ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS}
+        QUIET
+      )
+      if(${pkg_name}_FOUND)
+        message(VERBOSE
+          "${pkg_name} located with `find_package`"
+          "${pkg_name}_DIR: ${${pkg_name}_DIR}"
+        )
+      else()
+        # if no fetching and not found, produce an error
+        # conditionally include a custom error msg
+        if(SPINER_DECLARED_EXTERNAL_${pkg_CAP}_NOFETCH)
+          message(FATAL_ERROR
+            "${pkg_name} is requested, but it was not located and is not declared as fetchable.\n"
+            "if ${pkg_name} is installed, set \"-D${pkg_name}_ROOT=<install-dir>\""
+          )
+        endif() # NOFETCH
+        message(VERBOSE
+          "${pkg_name} NOT located with `find_package`, appending to populate list."
+          " Will attempt to clone repository when content is populated."
+        )
+        list(APPEND _fetchList ${pkg_name})
+        list(APPEND _fetchOpts ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS})
+        list(APPEND _fetchTars ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS})
+
+      endif() # FOUND
+    else()
+      list(APPEND _fetchList ${pkg_name})
+      list(APPEND _fetchOpts ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS})
+      list(APPEND _fetchTars ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS})
+    endif() #CMAKE_VERSION
+    # collect all targets, reguardless of populated
+    list(APPEND _expectedTars ${SPINER_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS})
+  endforeach()
+
+  # for content to be populated, set some cache options given in spiner_content_declare
+  foreach(ext_opt ${_fetchOpts})
+    message(DEBUG "setting \"${ext_opt}\"=ON")
+    set(${ext_opt} ON CACHE INTERNAL "")
+  endforeach()
 
   message(STATUS
-      "Populating dependency targets ${SPINER_DECLARED_EXTERNAL_TARGETS}\n"
-      "Calling `FetchContent_MakeAvailable` with ${SPINER_DECLARED_EXTERNAL_CONTENT}\n"
-      "This may take a few moments if a download is required...\n"
+      "FetchContent_MakeAvailable prepared\n"
+      " :: Populating dependency targets ${_fetchTars}\n"
+      " :: Calling `FetchContent_MakeAvailable` with ${_fetchList}\n"
+      " :: This may take a few moments if a download is required...\n"
   )
-  FetchContent_MakeAvailable(${SPINER_DECLARED_EXTERNAL_CONTENT})
+  # populate
+  FetchContent_MakeAvailable(${_fetchList})
 
-  foreach(expected_target IN LISTS SPINER_DECLARED_EXTERNAL_TARGETS)
-    if(NOT TARGET ${expected_target})
+  # check that declared targets exist
+  foreach(expected_target ${_expectedTars})
+      if(NOT TARGET ${expected_target})
         message(FATAL_ERROR
             "target \"${expected_target}\" was expected, but does not exist after population!"
         )
     endif()
   endforeach()
 
-  set(${fp_NAMESPACE}_POPULATED_TARGETS ${SPINER_DECLARED_EXTERNAL_TARGETS})
+  # return target list
+  set(${fp_NAMESPACE}_POPULATED_TARGETS ${_expectedTars})
 
+  # try to keep scope clean
+  unset(_fetchList)
+  unset(_fetchOpts)
+  unset(_fetchTars)
+  unset(_expectedTars)
   unset(SPINER_DECLARED_EXTERNAL_CONTENT)
-  unset(SPINER_DECLARED_EXTERNAL_TARGETS)
 endmacro()
 
 

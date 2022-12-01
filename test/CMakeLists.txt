@@ -21,12 +21,6 @@ add_library(spiner_test INTERFACE)
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
 # TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
 if (SPINER_TEST_USE_KOKKOS)
-  spiner_content_declare(
-    Kokkos
-    GIT_REPO https://github.com/kokkos/kokkos.git
-    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
-    EXPECTED_TARGETS Kokkos::kokkos
-  )
   list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
   if (SPINER_TEST_USE_KOKKOS_CUDA)
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
@@ -37,14 +31,21 @@ if (SPINER_TEST_USE_KOKKOS)
       list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
     endif()
   endif()
-  
+ 
+  spiner_content_declare(
+    Kokkos
+    GIT_REPO https://github.com/kokkos/kokkos.git
+    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
+    EXPECTED_TARGETS Kokkos::kokkos
+    ENABLE_OPTS ${_spiner_content_opts}
+  )
+ 
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 
 endif()
 
 spiner_content_populate(
   NAMESPACE spinerTest
-  ENABLE_OPTS ${_spiner_content_opts}
 )
 
 target_link_libraries(spiner_test
