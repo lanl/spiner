@@ -34,7 +34,7 @@ class Spiner(CMakePackage, CudaPackage):
     variant("format", default=False, description="Clang-Format Support")
 
     depends_on("cmake@3.12:")
-    depends_on("catch2@2.13.4:2.13.6")
+    depends_on("catch2@2.13.7:2.13.10", type="test")
     depends_on("ports-of-call@1.2.0:")
 
     # Currently the raw cuda backend of ports-of-call is not supported.
