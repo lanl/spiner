@@ -30,7 +30,7 @@ macro(spiner_content_declare pkg_name)
   string(REPLACE "-" "_" pkg_CAP "${pkg_CAP}")
 
   message(STATUS
-    "[${pkg_name}] FetchContent_Declare wrapper: "
+    "[${pkg_name}] FetchContent_Declare wrapper"
   )
   # because the signature is different between versions,
   # we build the cmake call beforehand
@@ -90,7 +90,7 @@ macro(spiner_content_populate)
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
   message(STATUS 
-    "[${fp_NAMESPACE}] Populating declared content: "
+    "[${fp_NAMESPACE}] Populating declared content"
   )
   # fill lists to populate
   # if cmake@3.24+, these are just the lists prepared in spiner_content_declare
@@ -143,21 +143,23 @@ macro(spiner_content_populate)
     set(${ext_opt} ON CACHE INTERNAL "")
   endforeach()
 
-  message(STATUS
-      "FetchContent_MakeAvailable prepared\n"
+  message(VERBOSE "\n"
       " :: Populating dependency targets ${_fetchTars}\n"
       " :: Calling `FetchContent_MakeAvailable` with ${_fetchList}\n"
-      " :: This may take a few moments if a download is required...\n"
   )
-  # populate
+  message(STATUS
+      "FetchContent_MakeAvailable prepared, "
+      "this may take a few moments if a download is required...\n"
+  )
+   # populate
   FetchContent_MakeAvailable(${_fetchList})
 
   # check that declared targets exist
   foreach(expected_target ${_expectedTars})
-      if(NOT TARGET ${expected_target})
-        message(FATAL_ERROR
-            "target \"${expected_target}\" was expected, but does not exist after population!"
-        )
+    if(NOT TARGET ${expected_target})
+      message(FATAL_ERROR
+          "target \"${expected_target}\" was expected, but does not exist after population!"
+          ) # NOT TARGET
     endif()
   endforeach()
 

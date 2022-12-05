@@ -21,15 +21,17 @@ add_library(spiner_test INTERFACE)
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
 # TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
 if (SPINER_TEST_USE_KOKKOS)
+  # put together a list of kokkos configure options
   list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
   if (SPINER_TEST_USE_KOKKOS_CUDA)
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
     list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_CONSTEXPR")
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
-      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
-    endif()
+  endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK")
   endif()
  
   spiner_content_declare(
