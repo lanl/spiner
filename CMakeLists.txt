@@ -87,6 +87,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 include(content)
 spiner_content_declare(ports-of-call
+  NAMESPACE spinerDeps
   GIT_REPO    https://github.com/lanl/ports-of-call
   # NOTE: main as of Nov. 28 2022 
   GIT_TAG     3fffe08408b1ee754d0567a3de63cb47ce97d9f7
@@ -95,6 +96,7 @@ spiner_content_declare(ports-of-call
 if(SPINER_USE_HDF)
   spiner_content_declare(HDF5
     NO_FETCH
+    NAMESPACE spinerDeps
     COMPONENTS C HL
     NOTFOUND_MSG "disable with \"-DSPINER_USE_HDF=OFF\""
     EXPECTED_TARGETS hdf5::hdf5 hdf5::hdf5_hl
@@ -105,12 +107,25 @@ if(SPINER_USE_HDF)
 endif()
 
 spiner_content_populate(
-  NAMESPACE spiner
+  NAMESPACE spinerDeps
 )
+
+if(HDF5_IS_PARALLEL)
+  spiner_content_declare(MPI
+    NO_FETCH
+    COMPONENTS CXX
+    EXPECTED_TARGETS MPI::MPI_CXX
+    NAMESPACE spinerMPI
+  )
+  spiner_content_populate(
+    NAMESPACE spinerMPI
+  )
+endif()
 
 target_link_libraries(spiner 
   INTERFACE
-    ${spiner_POPULATED_TARGETS}
+    ${spinerDeps_POPULATED_TARGETS}
+    ${spinerMPI_POPULATED_TARGETS}
 )
 
 # Enables

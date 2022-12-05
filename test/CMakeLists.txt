@@ -13,6 +13,7 @@
 spiner_content_declare(Catch2
   GIT_REPO       https://github.com/catchorg/Catch2.git
   GIT_TAG        v2.13.7
+  NAMESPACE spinerTest
 )
 
 add_library(spiner_test INTERFACE)
@@ -39,6 +40,7 @@ if (SPINER_TEST_USE_KOKKOS)
     GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
     EXPECTED_TARGETS Kokkos::kokkos
     ENABLE_OPTS ${_spiner_content_opts}
+    NAMESPACE spinerTest
   )
  
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
