@@ -111,7 +111,7 @@ before_script:
         export SPINER_SPACK_SPEC="${SPINER_SPACK_SPEC}+kokkos+cuda cuda_arch=70";
       fi
     - spack dev-build -q ${SPINER_SPACK_SPEC} || ( cat spack-build-out.txt && exit 1 )
-    - export SPINER_CMD="spack install --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
+    - export SPINER_CMD="spack install --test --show-log-on-error --no-checksum --yes-to-all ${SPINER_SPACK_SPEC}"
     - ( echo "$SPINER_CMD" && $SPINER_CMD )
     - spack module tcl refresh -y
     - spack env loads -r -x spiner

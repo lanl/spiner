@@ -98,7 +98,6 @@ if(SPINER_USE_HDF)
     NO_FETCH
     NAMESPACE spinerDeps
     COMPONENTS C HL
-    NOTFOUND_MSG "disable with \"-DSPINER_USE_HDF=OFF\""
     EXPECTED_TARGETS hdf5::hdf5 hdf5::hdf5_hl
   )
   target_compile_definitions(spiner
@@ -137,7 +136,7 @@ target_include_directories(spiner
 )
 # Option imported from `CTest`
 if (BUILD_TESTING)
-  message("\nConfiguring tests")
+  message(STATUS "\nConfiguring tests")
   add_subdirectory(test)
 endif()
 

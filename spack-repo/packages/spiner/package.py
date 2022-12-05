@@ -33,7 +33,7 @@ class Spiner(CMakePackage, CudaPackage):
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
     variant("format", default=False, description="Clang-Format Support")
 
-    depends_on("cmake@3.12:")
+    depends_on("cmake@3.23:")
     depends_on("catch2@2.13.7:2.13.10", type="test")
     depends_on("ports-of-call@1.2.0:")
 
@@ -61,8 +61,8 @@ class Spiner(CMakePackage, CudaPackage):
     def cmake_args(self):
         args = [
             self.define("BUILD_TESTING", self.run_tests),
-            self.define_from_variant("SPINER_USE_KOKKOS", "kokkos"),
-            self.define_from_variant("SPINER_USE_CUDA", "cuda"),
+            self.define_from_variant("SPINER_TEST_USE_KOKKOS", "kokkos"),
+            self.define_from_variant("SPINER_TEST_USE_CUDA", "cuda"),
             self.define_from_variant("SPINER_USE_HDF", "hdf5")
         ]
         if '+cuda' in self.spec:
