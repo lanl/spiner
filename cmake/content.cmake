@@ -16,7 +16,6 @@ macro(spiner_content_declare pkg_name)
   set(one_value_args
     GIT_REPO
     GIT_TAG
-    NOTFOUND_MSG
     NAMESPACE
   )
   set(multi_value_args
