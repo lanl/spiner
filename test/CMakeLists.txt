@@ -10,7 +10,6 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
-
 spiner_content_declare(Catch2
   GIT_REPO       https://github.com/catchorg/Catch2.git
   GIT_TAG        v2.13.7
@@ -44,7 +43,8 @@ if (SPINER_TEST_USE_KOKKOS)
  
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 
-endif()
+=======
+# Unit tests
 
 spiner_content_populate(
   NAMESPACE spinerTest

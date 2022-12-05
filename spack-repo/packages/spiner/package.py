@@ -31,21 +31,18 @@ class Spiner(CMakePackage, CudaPackage):
     variant("mpi", default=False, description="Support parallel hdf5")
 
     variant("python", default=False, description="Python, Numpy & Matplotlib Support")
-    variant("doc", default=False, description="Sphinx Documentation Support")
     variant("format", default=False, description="Clang-Format Support")
 
     depends_on("cmake@3.12:")
-    depends_on("catch2@2.13.4:2.13.6")
+    depends_on("catch2@2.13.7:2.13.10", type="test")
     depends_on("ports-of-call@1.2.0:")
 
     # Currently the raw cuda backend of ports-of-call is not supported.
-    depends_on("ports-of-call portability_strategy=Kokkos", when="+kokkos")
-    depends_on("ports-of-call portability_strategy=None", when="~kokkos")
     for _flag in list(CudaPackage.cuda_arch_values):
-        depends_on("kokkos@3.2.00: cuda_arch=" + _flag, when="+cuda+kokkos cuda_arch=" + _flag)
+        depends_on("kokkos@3.3.00: cuda_arch=" + _flag, when="+cuda+kokkos cuda_arch=" + _flag)
     for _flag in ("~cuda", "+cuda", "~openmp", "+openmp"):
-        depends_on("kokkos@3.2.00: " + _flag, when="+kokkos" + _flag)
-    depends_on("kokkos@3.2.00: ~shared+wrapper+cuda_lambda+cuda_relocatable_device_code", when="+cuda+kokkos")
+        depends_on("kokkos@3.3.00: " + _flag, when="+kokkos" + _flag)
+    depends_on("kokkos@3.3.00: ~shared+wrapper+cuda_lambda+cuda_constexpr+cuda_relocatable_device_code", when="+cuda+kokkos")
 
     depends_on("hdf5+hl~mpi", when="+hdf5~mpi")
     depends_on("hdf5+hl+mpi", when="+hdf5+mpi")
@@ -53,10 +50,6 @@ class Spiner(CMakePackage, CudaPackage):
     depends_on("python", when="+python")
     depends_on("py-numpy", when="+python")
     depends_on("py-matplotlib", when="+python")
-
-    depends_on("py-sphinx", when="+doc")
-    depends_on("py-sphinx-rtd-theme@0.4.3", when="+doc")
-    depends_on("py-sphinx-multiversion", when="+doc")
 
     depends_on("llvm@12.0.0+clang", when="+format")
 
