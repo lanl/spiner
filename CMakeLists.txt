@@ -43,8 +43,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-include(CMakeDependentOption)
-
 # use HDF5
 option (SPINER_USE_HDF "Pull in hdf5" OFF)
 # use Kokkos offloading in tests
@@ -53,6 +51,7 @@ option (SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" OFF)
 
 # These didn't behave like I expected.
 # TODO: fix
+# include(CMakeDependentOption)
 # cmake_dependent_option (SPINER_TEST_USE_KOKKOS "Pull in Kokkos" OFF "BUILD_TESTING" OFF)
 # cmake_dependent_option (SPINER_TEST_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_TEST_USE_KOKKOS" OFF)
 
