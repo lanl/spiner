@@ -42,19 +42,18 @@ if (SPINER_TEST_USE_KOKKOS)
   )
  
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
+endif()
 
-=======
-# Unit tests
-
+# populate test content
+# places targets in `spinerTest_POPULATED_TARGETS`
 spiner_content_populate(
   NAMESPACE spinerTest
 )
-
 target_link_libraries(spiner_test
   INTERFACE
     ${spinerTest_POPULATED_TARGETS}
 )
-
+# add unit tests
 add_executable(test.bin test.cpp)
 target_link_libraries(test.bin
   PRIVATE
