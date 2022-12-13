@@ -44,9 +44,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # use HDF5
-# This option defaults ON, as it's the most common
-# use-case
-option (SPINER_USE_HDF "Use HDF5 for I/O" ON)
+option (SPINER_USE_HDF "Use HDF5 for I/O" OFF)
 # use Kokkos offloading in tests
 option (SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests" OFF)
 option (SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" OFF)
