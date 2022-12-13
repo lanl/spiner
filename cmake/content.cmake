@@ -9,6 +9,43 @@ include(FetchContent)
 
 # Constructs `FetchContent_Declare` call, and records information
 # for popluation and linking
+# 
+# ::Overview
+#   With `cmake@3.24` and higher, the functionality of `FetchContent_` has
+#   been updated to provide the capability to try a `find_package` at the
+#   content population stage. This allows for the flexibility provided by 
+#   `FetchContent_` to easily coexist with the dependency configuration
+#   provided by `find_package`. Some benefits include:
+#   - automated fetching of content if it is unavailable
+#   - content population at configure. This allows for a package import
+#     to utilize `find_package()` or `add_subdirectory()` operations
+#   - local clones can be given priority with `FETCHCONTENT_SOURCE_DIR_<uppercaseName>`,
+#     which lets developers use dependencies explicitly in-tree
+#   The case where i.) the content or dependency is unavailable or ii.) it cannot
+#   be fetched (due, for example, to a failure of a download step) is an 
+#   unavoidable error.
+#
+#   As this cmake version is relatively fresh, we also want to provide a bridge
+#   to downstream code that still is pinned to an earlier releases of `cmake`. 
+#   To that end, these macros provide for replicating the main features introduced 
+#   to `FetchContent_` in `cmake@3.24`. Future releases of `spiner` will require 
+#   a minimum of `cmake@3.24`.
+#
+# :: Arguments 
+#   pkg_name - the name of the package or content. usually the argument to `find_package(<pkg_name>)`
+#   options:
+#   - NO_FETCH - disables all download steps. If `find_package(<pkg_name>)` fails, produce an error
+#   single_value:
+#   - GIT_REPO - the URL of the git repository to clone, if necessary
+#   - GIT_TAG  - the tag or commit to use 
+#   - NAMESPACE - prefix book-keeping variables with this
+#   multi_value:
+#   - COMPONENTS - specify required components of <pkg_name>. same as used in to `find_package`
+#   - EXPECTED_TARGETS - a list of targets that expected at population.
+#                       if these targets are not available after the population stage, an error is produced. 
+#                       if not specified, will default to `<pkg_name>::<pkg_name>`
+#   - ENABLE_OPTS - a list of cache vars used to configure content that is imported using `add_subdirectory()`
+#
 macro(spiner_content_declare pkg_name)
   set(options
     NO_FETCH
@@ -80,6 +117,15 @@ macro(spiner_content_declare pkg_name)
 
 endmacro()
 
+#
+# :: Overview
+#   This macro wraps a call to `FetchContent_MakeAvailable`.
+#   If we are using a `cmake` prior to 3.24, explicitly do a 
+#   `find_package()` with the declared options 
+# :: Arguments 
+#   single_value:
+#   - NAMESPACE - the namespace used in the corrisponding `spiner_content_declare` call
+#
 macro(spiner_content_populate)
   set(options)
   set(one_value_args

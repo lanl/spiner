@@ -44,18 +44,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # use HDF5
-option (SPINER_USE_HDF "Pull in hdf5" OFF)
+# This option defaults ON, as it's the most common
+# use-case
+option (SPINER_USE_HDF "Use HDF5 for I/O" ON)
 # use Kokkos offloading in tests
 option (SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests" OFF)
 option (SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" OFF)
 
-# These didn't behave like I expected.
-# TODO: fix
-# include(CMakeDependentOption)
-# cmake_dependent_option (SPINER_TEST_USE_KOKKOS "Pull in Kokkos" OFF "BUILD_TESTING" OFF)
-# cmake_dependent_option (SPINER_TEST_USE_KOKKOS_CUDA "Use the Kokkos cuda backend" OFF "SPINER_TEST_USE_KOKKOS" OFF)
-
-# CTEST
+# CTest
 include(CTest)
 
 # clang format
@@ -71,6 +67,8 @@ add_library(spiner::spiner ALIAS spiner)
 
 include(FetchContent)
 
+# If we are on version 3.24+, then set FetchContent to always try 
+# to `find_package` before trying a download method
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
   message(STATUS "FetchContent routines will try `find_package` first")
@@ -85,6 +83,7 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+# content is a wrapper to `FetchContent` calls
 include(content)
 spiner_content_declare(ports-of-call
   NAMESPACE spinerDeps
@@ -109,6 +108,9 @@ spiner_content_populate(
   NAMESPACE spinerDeps
 )
 
+# We don't know about this until HDF5 is 
+# populated, so we need to delay until it's been
+# (NB: newer versions of HDF5/CMake appear to fix this)
 if(HDF5_IS_PARALLEL)
   spiner_content_declare(MPI
     NO_FETCH
