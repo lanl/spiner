@@ -8,7 +8,7 @@ include(FetchContent)
 ###############################################################
 
 # Constructs `FetchContent_Declare` call, and records information
-# for popluation and linking
+# for population and linking
 # 
 # ::Overview
 #   With `cmake@3.24` and higher, the functionality of `FetchContent_` has
