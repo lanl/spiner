@@ -15,4 +15,5 @@ detail.  Why is this change required?  What problem does it solve?-->
 
 - [ ] Code is formatted. (You can use the format_spiner make target.)
 - [ ] Adds a test for any bugs fixed. Adds tests for new features.
+- [ ] If preparing for a new release, update the version in cmake.
 
