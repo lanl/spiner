@@ -10,40 +10,78 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
-# Unit tests
-if (NOT TARGET Catch2::Catch2)
-  find_package(Catch2 QUIET)
-endif()
-if(NOT Catch2_FOUND)
-  # Get catch2
-  message(STATUS "Fetching Catch2 as needed")
-  Include(FetchContent)
-  FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v2.13.7)
-  FetchContent_MakeAvailable(Catch2)
-  list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+spiner_content_declare(Catch2
+  GIT_REPO       https://github.com/catchorg/Catch2.git
+  GIT_TAG        v2.13.7
+  NAMESPACE spinerTest
+)
+
+add_library(spiner_test INTERFACE)
+# instructions for local content
+# https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
+# TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
+if (SPINER_TEST_USE_KOKKOS)
+  # put together a list of kokkos configure options
+  list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
+  if (SPINER_TEST_USE_KOKKOS_CUDA)
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_CONSTEXPR")
+  endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK")
+  endif()
+ 
+  spiner_content_declare(
+    Kokkos
+    GIT_REPO https://github.com/kokkos/kokkos.git
+    GIT_TAG        61d7db55fceac3318c987a291f77b844fd94c165
+    EXPECTED_TARGETS Kokkos::kokkos
+    ENABLE_OPTS ${_spiner_content_opts}
+    NAMESPACE spinerTest
+  )
+ 
+  target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 endif()
 
+# populate test content
+# places targets in `spinerTest_POPULATED_TARGETS`
+spiner_content_populate(
+  NAMESPACE spinerTest
+)
+target_link_libraries(spiner_test
+  INTERFACE
+    ${spinerTest_POPULATED_TARGETS}
+)
+# add unit tests
 add_executable(test.bin test.cpp)
 target_link_libraries(test.bin
   PRIVATE
-  spiner::spiner
-  Catch2::Catch2)
+    spiner::spiner
+    spiner_test
+)
 
+list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
 include(Catch)
 catch_discover_tests(test.bin)
 
 # Benchmarking
 add_executable(benchmark.bin benchmark.cpp)
 target_link_libraries(benchmark.bin
-  PRIVATE spiner::spiner)
+  PRIVATE 
+    spiner::spiner
+    spiner_test
+)
 
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
-  PRIVATE spiner::spiner)
+  PRIVATE 
+    spiner::spiner
+    spiner_test
+)
 
 find_package(Python3 COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)

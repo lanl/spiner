@@ -12,16 +12,12 @@
 # publicly and display publicly, and to permit others to do so.
 #------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.14)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+cmake_minimum_required(VERSION 3.23)
 
 project(spiner-cmake-test)
 
 # Don't allow in-source builds
-file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
-if(EXISTS "${LOC_PATH}")
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR
     "You cannot build in a source directory (or any directory with a CMakeLists.txt file). "
     "Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")

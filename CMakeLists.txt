@@ -12,24 +12,12 @@
 # publicly and display publicly, and to permit others to do so.
 #------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.14)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-option (SPINER_USE_HDF
-  "Pull in hdf5" OFF)
-option (SPINER_USE_KOKKOS "Pull in Kokkos" OFF)
-option (SPINER_USE_CUDA "Use the Kokkos cuda backend" OFF)
-option (SPINER_FORCE_INTERNAL_PORTS "Force use of internal ports of call" OFF)
-
-if (SPINER_USE_CUDA AND NOT SPINER_USE_KOKKOS)
-  message(FATAL_ERROR "Currently cuda requires Kokkos")
-endif()
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+cmake_minimum_required(VERSION 3.23)
 
 set(SPINER_VERSION 1.4.0)
 project(spiner VERSION ${SPINER_VERSION})
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # bring in some helpful CMake scripts 
 # make cache variables for install destinations
@@ -38,8 +26,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Don't allow in-source builds
-file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
-if(EXISTS "${LOC_PATH}")
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR
     "You cannot build in a source directory (or any directory with a CMakeLists.txt file). "
     "Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
@@ -56,173 +43,150 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# CTEST
+# use HDF5
+option (SPINER_USE_HDF "Use HDF5 for I/O" OFF)
+# use Kokkos offloading in tests
+option (SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests" OFF)
+option (SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" OFF)
+
+# CTest
 include(CTest)
 
 # clang format
 include(cmake/Format.cmake)
 
 # Add a library
-set(SPLIB "spiner")
-add_library(${SPLIB} INTERFACE)
-add_library(${SPLIB}::${SPLIB} ALIAS ${SPLIB})
+add_library(spiner INTERFACE)
+add_library(spiner::spiner ALIAS spiner)
 
-# HDF5
-if(SPINER_USE_HDF)
-  if(SPINER_HDF5_INSTALL_DIR)
-    list(APPEND CMAKE_PREFIX_PATH "${SPINER_HDF5_INSTALL_DIR}")
-  endif()
-  find_package(HDF5 COMPONENTS C HL)
-  if (HDF5_FOUND)
-    target_compile_definitions(${SPLIB} INTERFACE SPINER_USE_HDF)
-    target_link_libraries(${SPLIB} INTERFACE ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
-    target_include_directories(${SPLIB} INTERFACE ${HDF5_INCLUDE_DIRS})
-  else()
-    message(FATAL_ERROR "HDF5 was requested but not found. Can be disabled with -SPINER_USE_HDF=OFF")
-  endif()
-endif()
+#####################################
+#            Dependencies           #
+#####################################
 
-if (SPINER_USE_KOKKOS)
-  set(PORTABILITY_STRATEGY "Kokkos" CACHE STRING "Portability strategy" FORCE)
-  # Import Kokkos if not already available as a build target
-  if (NOT TARGET Kokkos::kokkos)
-    if (SPINER_USE_KOKKOS_SRC)
-      set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION ON CACHE BOOL
-        "Kokkos aggressive vectorization" FORCE)
-      if (SPINER_USE_CUDA)
-        set(Kokkos_ENABLE_CUDA ON CACHE BOOL
-          "Cuda backend for Kokkos" FORCE)
-        set(Kokkos_ENABLE_CUDA_LAMBDA ON CACHE BOOL
-          "Enable cuda lambda" FORCE)
-        target_compile_options(
-          ${SPLIB}
-          INTERFACE # Generator expression shamelessly copied from EAP
-          "$<$<COMPILE_LANGUAGE:CXX>:--expt-relaxed-constexpr;>"
-          )
-      endif()
-      if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-        set(Kokkos_ENABLE_DEBUG ON CACHE BOOL
-          "Most general debug settings" FORCE)
-        set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK ON CACHE BOOL
-          "Bounds checking on Kokkos views" FORCE)
-        set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK ON CACHE BOOL
-          "Sanity checks on Kokkos DualView" FORCE)
-      endif()
-      if (EXISTS ${SPINER_USE_KOKKOS_SRC})
-        message(STATUS "Kokkos source directory found. Adding source.")
-        add_subdirectory(${SPINER_USE_KOKKOS_SRC} ${PROJECT_BINARY_DIR}/kokkos)
-      else()
-        message(STATUS "No Kokkos found. Getting it from web.")
-        Include(FetchContent)
-        FetchContent_Declare(
-          Kokkos
-          GIT_REPOSITORY https://github.com/kokkos/kokkos.git
-          GIT_TAG        3.4.00)
-        FetchContent_MakeAvailable(Kokkos)
-      endif()
-    else()
-      message(STATUS "Looking for Kokkos via find package")
-      if (SPINER_KOKKOS_INSTALL_DIR)
-        list(APPEND CMAKE_PREFIX_PATH "${SPINER_KOKKOS_INSTALL_DIR}")
-        set(Kokkos_ROOT "${SPINER_KOKKOS_INSTALL_DIR}/lib64/cmake/Kokkos")
-      endif()
-      find_package(Kokkos REQUIRED)
-      if(NOT Kokkos_FOUND)
-        message(FATAL_ERROR
-          "Kokkos was requested but not found. You may have luck specifying the Kokkos install directory via -DSPINER_KOKKOS_INSTALL_DIR=/path/to/dir. Kokkos can be disabled with -DSPINER_USE_KOKKOS=OFF. You can also specify a source directory via -DSPINER_USE_KOKKOS_SRC=/path/to/kokkos or tell the build system to download Kokkos from the web via -DSPINER_USE_KOKKOS_SRC=ON.")
-      endif()
-    endif()
-  endif()
-  target_link_libraries(${SPLIB} INTERFACE Kokkos::kokkos)
-endif ()
+include(FetchContent)
 
-# ports of call
-# TODO: Integrate with find-package
-if (NOT TARGET ports-of-call::ports-of-call)
-  message(STATUS "Looking for ports-of-call")
-  if (SPINER_FORCE_INTERNAL_PORTS)
-    message(STATUS "Using in-system ports-of-call")
-    add_subdirectory(ports-of-call)
-  else()
-    find_package(ports-of-call CONFIG)
-    if (NOT ports-of-call_FOUND)
-      message(STATUS "Ports of call not available in-system. Using submodule.")
-      add_subdirectory(ports-of-call)
-    else()
-      message(STATUS "Ports of call is available. Using in-system installation.")
-    endif()
-  endif()
+# If we are on version 3.24+, then set FetchContent to always try 
+# to `find_package` before trying a download method
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
+  message(STATUS "FetchContent routines will try `find_package` first")
 else()
-  message(STATUS "Ports of call already in environment")
+  message(DEPRECATION 
+    "Detected cmake version (${CMAKE_VERSION}) older then 3.24. `spiner`"
+    "will begin requiring this version soon.  The current depedency "
+    "resolution is a soft-copy of the pattern of FetchContent introduced" 
+    "in cmake 3.24."
+  )
 endif()
-target_link_libraries(${SPLIB} INTERFACE ports-of-call::ports-of-call)
+
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
+# content is a wrapper to `FetchContent` calls
+include(content)
+spiner_content_declare(ports-of-call
+  NAMESPACE spinerDeps
+  GIT_REPO    https://github.com/lanl/ports-of-call
+  # NOTE: main as of Nov. 28 2022 
+  GIT_TAG     3fffe08408b1ee754d0567a3de63cb47ce97d9f7
+)
+
+if(SPINER_USE_HDF)
+  spiner_content_declare(HDF5
+    NO_FETCH
+    NAMESPACE spinerDeps
+    COMPONENTS C HL
+    EXPECTED_TARGETS hdf5::hdf5 hdf5::hdf5_hl
+  )
+  target_compile_definitions(spiner
+    INTERFACE
+      SPINER_USE_HDF)
+endif()
+
+spiner_content_populate(
+  NAMESPACE spinerDeps
+)
+
+# We don't know about this until HDF5 is 
+# populated, so we need to delay until it's been
+# (NB: newer versions of HDF5/CMake appear to fix this)
+if(HDF5_IS_PARALLEL)
+  spiner_content_declare(MPI
+    NO_FETCH
+    COMPONENTS CXX
+    EXPECTED_TARGETS MPI::MPI_CXX
+    NAMESPACE spinerMPI
+  )
+  spiner_content_populate(
+    NAMESPACE spinerMPI
+  )
+endif()
+
+target_link_libraries(spiner 
+  INTERFACE
+    ${spinerDeps_POPULATED_TARGETS}
+    ${spinerMPI_POPULATED_TARGETS}
+)
 
 # Enables
 # #include <spiner>
-target_include_directories(${SPLIB}
-  INTERFACE
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
-
+target_include_directories(spiner
+    INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 # Option imported from `CTest`
 if (BUILD_TESTING)
-  message("\nConfiguring tests")
+  message(STATUS "\nConfiguring tests")
   add_subdirectory(test)
 endif()
 
-# Coordinate external CMAKE export with targets
-if (SPINER_USE_KOKKOS_SRC)
-  message(WARNING
-    "Installation not supported when Kokkos built from source. Disabling.")
-else()
-  install(TARGETS ${SPLIB}
-    EXPORT ${SPLIB}Targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    )
+install(
+  TARGETS spiner
+  EXPORT spinerTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+configure_package_config_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/spinerConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spiner
+)
+ 
+# ...and the version file
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfigVersion.cmake
+  VERSION ${SPINER_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
   
-  configure_package_config_file(${SPLIB}Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}
-    )
+# Install the cmake configuration files
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/spinerConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/spinerConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spiner )
   
-  # ...and the version file
-  write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
-    VERSION ${SPINER_VERSION}
-    COMPATIBILITY SameMajorVersion )
+# Install header files
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.hpp"
+)
   
-  # Install the cmake configuration files
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}ConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB} )
-  
-  # Install header files
-  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/spiner"
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hpp"
-    )
-  
-  # Install the export target. This will define the CMake target
-  # for external projects when used with `find_package`
-  install(EXPORT ${SPLIB}Targets
-    NAMESPACE ${SPLIB}::
-    FILE "${SPLIB}Targets.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SPLIB}"
-    COMPONENT dev)
-  
-  # Export configuration for external projects that reference
-  # just our build-tree; e.g. for submodules. To use, ensure 
-  # `CMAKE_PREFIX_PATH` points to this source directory.
-  # NOTE: This config will not be relocatable!
-  export(TARGETS ${SPLIB} NAMESPACE ${SPLIB}::
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/${SPLIB}Targets.cmake")
-  # see https://cmake.org/cmake/help/latest/policy/CMP0090.html
-  # since v3.15, this command is a no-op. prior, it populates
-  # the user package directory.
-  # `spiner` is commonly used "in-tree" downstream, so this 
-  # *may* confuse downstream builds that still search the 
-  # `~/.cmake` when doing `find_package()`
-  #  export(PACKAGE ${SPLIB})
-endif()
+# Install the export target. This will define the CMake target
+# for external projects when used with `find_package`
+install(EXPORT spinerTargets
+  NAMESPACE spiner::
+  FILE "spinerTargets.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/spiner"
+) 
+
+# Export configuration for external projects that reference
+# just our build-tree; e.g. for submodules. To use, ensure 
+# `CMAKE_PREFIX_PATH` points to this source directory.
+# NOTE: This config will not be relocatable!
+export(TARGETS spiner 
+  NAMESPACE spiner::
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/spinerTargets.cmake"
+)
