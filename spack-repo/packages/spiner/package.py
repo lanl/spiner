@@ -17,6 +17,7 @@ class Spiner(CMakePackage, CudaPackage):
     maintainers = ['rbberger']
 
     version("main", branch="main")
+    version('1.6.0', sha256='afa5526d87c78c1165ead06c09c5c2b9e4a913687443e5adff7b709ea4dd7edf')
     version('1.5.1', sha256='dd1cada84446443e8925438b8da53ab5a6cb9f373f1a993905ef0bf51f48223c')
     version('1.5.0', sha256='b27ddabc0d21870b845444c24307d3a0c1b175483e72cc138139d6e0dd29b244')
     version('1.4.0', sha256='c3801b9eab26feabec33ff8c59e4056f384287f407d23faba010d354766f3ac5')
