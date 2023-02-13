@@ -46,7 +46,7 @@ include(FetchContent)
 #                       if not specified, will default to `<pkg_name>::<pkg_name>`
 #   - ENABLE_OPTS - a list of cache vars used to configure content that is imported using `add_subdirectory()`
 #
-macro(spiner_content_declare pkg_name)
+function(spiner_content_declare pkg_name)
   set(options
     NO_FETCH
   )
@@ -99,23 +99,22 @@ macro(spiner_content_declare pkg_name)
   message(DEBUG " :: FC cmd: ${_fetch_content_cmd}")
   # execute the built `FetchContent_Declare(...)`
   cmake_language(EVAL CODE "${_fetch_content_cmd}")
-  # be safe and destroy the string
-  unset(_fetch_content_cmd)
  
   # return some info
 
   list(APPEND ${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT ${pkg_name})
-  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS ${fp_COMPONENTS})
-  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS ${fp_ENABLE_OPTS})
-  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_PRIORS ${fp_PRIORS})
+  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT "${${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT}" PARENT_SCOPE)
+  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS ${fp_COMPONENTS} PARENT_SCOPE)
+  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS ${fp_ENABLE_OPTS} PARENT_SCOPE)
+  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_PRIORS ${fp_PRIORS} PARENT_SCOPE)
 
   if(fp_EXPECTED_TARGETS)
-      set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS ${fp_EXPECTED_TARGETS})
+    set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS ${fp_EXPECTED_TARGETS} PARENT_SCOPE)
   else()
-      set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS "${pkg_name}::${pkg_name}")
+    set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_TARGETS "${pkg_name}::${pkg_name}" PARENT_SCOPE)
   endif()
 
-endmacro()
+endfunction()
 
 #
 # :: Overview
@@ -126,7 +125,7 @@ endmacro()
 #   single_value:
 #   - NAMESPACE - the namespace used in the corrisponding `spiner_content_declare` call
 #
-macro(spiner_content_populate)
+function(spiner_content_populate)
   set(options)
   set(one_value_args
     NAMESPACE
@@ -210,15 +209,8 @@ macro(spiner_content_populate)
   endforeach()
 
   # return target list
-  set(${fp_NAMESPACE}_POPULATED_TARGETS ${_expectedTars})
-
-  # try to keep scope clean
-  unset(_fetchList)
-  unset(_fetchOpts)
-  unset(_fetchTars)
-  unset(_expectedTars)
-  unset(${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT)
-endmacro()
+  set(${fp_NAMESPACE}_POPULATED_TARGETS ${_expectedTars} PARENT_SCOPE)
+endfunction()
 
 
 # © 2021. Triad National Security, LLC. All rights reserved.  This
