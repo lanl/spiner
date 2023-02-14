@@ -66,8 +66,8 @@ function(spiner_content_declare pkg_name)
   string(TOUPPER ${pkg_name} pkg_CAP)
   string(REPLACE "-" "_" pkg_CAP "${pkg_CAP}")
 
-  message(STATUS
-    "[${pkg_name}] FetchContent_Declare wrapper"
+  message(VERBOSE
+    "[${fp_NAMESPACE}::${pkg_name}] content declared"
   )
   # because the signature is different between versions,
   # we build the cmake call beforehand
@@ -135,9 +135,6 @@ function(spiner_content_populate)
 
   cmake_parse_arguments(fp "${options}" "${one_value_args}" "${multi_value_args}" "${ARGN}")
 
-  message(STATUS 
-    "[${fp_NAMESPACE}] Populating declared content"
-  )
   # fill lists to populate
   # if cmake@3.24+, these are just the lists prepared in spiner_content_declare
   # otherwise, manually check `find_package` and remove content if found
@@ -155,6 +152,7 @@ function(spiner_content_populate)
           "${pkg_name} located with `find_package`"
           "${pkg_name}_DIR: ${${pkg_name}_DIR}"
         )
+        list(APPEND _foundList ${pkg_name})
       else()
         # if no fetching and not found, produce an error
         # conditionally include a custom error msg
@@ -188,15 +186,24 @@ function(spiner_content_populate)
     set(${ext_opt} ON CACHE INTERNAL "")
   endforeach()
 
-  message(VERBOSE "\n"
-      " :: Populating dependency targets ${_fetchTars}\n"
-      " :: Calling `FetchContent_MakeAvailable` with ${_fetchList}\n"
-  )
+  list(LENGTH ${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT _ntot)
+
+  message(STATUS 
+    "Content inventory for ${fp_NAMESPACE}")
   message(STATUS
-      "FetchContent_MakeAvailable prepared, "
-      "this may take a few moments if a download is required...\n"
+    " ${_ntot} total declared"
   )
-   # populate
+  
+  foreach(_itr ${${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT})
+    message(STATUS
+      "   ${_itr}")
+  endforeach()
+
+  message(STATUS 
+    " making available (this may take a few moments)..."
+  )
+
+  # populate
   FetchContent_MakeAvailable(${_fetchList})
 
   # check that declared targets exist

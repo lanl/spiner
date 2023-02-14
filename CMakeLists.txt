@@ -69,7 +69,7 @@ include(FetchContent)
 # to `find_package` before trying a download method
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
-  message(STATUS "FetchContent routines will try `find_package` first")
+  message(VERBOSE "FetchContent routines will try `find_package` first")
 else()
   message(DEPRECATION 
     "Detected cmake version (${CMAKE_VERSION}) older then 3.24. `spiner`"
