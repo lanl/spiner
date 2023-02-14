@@ -11,7 +11,7 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 #------------------------------------------------------------------------------#
-
+# into
 cmake_minimum_required(VERSION 3.23)
 
 set(SPINER_VERSION 1.6.0)
