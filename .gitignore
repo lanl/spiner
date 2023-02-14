@@ -2,6 +2,7 @@ build
 bin
 CMakeFiles
 CMakeCache.txt
+CMakeUserPresets.json
 *.a
 a.out
 *.o

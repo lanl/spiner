@@ -1,0 +1,41 @@
+{
+  // the schema version (not spiner/cmake version)
+  "version": 3,
+  "configurePresets":[
+    {
+      "name": "default",
+      "hidden": true,
+      "cacheVariables":{
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "common",
+      "cacheVariables":{
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "SPINER_USE_HDF": true
+      }
+    },
+    {
+      "name": "testing-core",
+      "inherits": ["default"],
+      "cacheVariables":{
+        "BUILD_TESTING": true
+      }
+    },
+    {
+      "name": "testing-kokkos",
+      "inherits": ["testing-core"],
+      "cacheVariables":{
+        "SPINER_TEST_USE_KOKKOS": true
+      }
+    },
+    {
+      "name": "testing-kokkos-gpu",
+      "inherits": ["testing-kokkos"],
+      "cacheVariables":{
+        "SPINER_TEST_USE_KOKKOS_CUDA": true
+      }
+    }
+  ]
+}
