@@ -79,8 +79,6 @@ else()
   )
 endif()
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
-
 # content is a wrapper to `FetchContent` calls
 include(content)
 spiner_content_declare(ports-of-call

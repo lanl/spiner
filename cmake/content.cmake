@@ -125,7 +125,10 @@ endfunction()
 #   single_value:
 #   - NAMESPACE - the namespace used in the corrisponding `spiner_content_declare` call
 #
-function(spiner_content_populate)
+# NOTE: we use a `macro` so that vars set in any populate steps
+# (add_subdirectory, find_package), will propogate to the caller;
+# this means we need to be careful about polluting the namespace
+macro(spiner_content_populate)
   set(options)
   set(one_value_args
     NAMESPACE
@@ -216,8 +219,15 @@ function(spiner_content_populate)
   endforeach()
 
   # return target list
-  set(${fp_NAMESPACE}_POPULATED_TARGETS ${_expectedTars} PARENT_SCOPE)
-endfunction()
+  set(${fp_NAMESPACE}_POPULATED_TARGETS ${_expectedTars})
+
+  unset(_foundList)
+  unset(_fetchList)
+  unset(_fetchTars)
+  unset(_fetchOpts)
+  unset(_expectedTars)
+
+endmacro()
 
 
 # © 2021. Triad National Security, LLC. All rights reserved.  This

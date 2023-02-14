@@ -10,12 +10,6 @@
 # prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
-spiner_content_declare(Catch2
-  GIT_REPO       https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.7
-  NAMESPACE spinerTest
-)
-
 add_library(spiner_test INTERFACE)
 # instructions for local content
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
@@ -41,16 +35,22 @@ if (SPINER_TEST_USE_KOKKOS)
     EXPECTED_TARGETS Kokkos::kokkos
     ENABLE_OPTS ${_spiner_content_opts}
     NAMESPACE spinerTest
-  )
- 
+  ) 
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 endif()
+
+spiner_content_declare(Catch2
+  GIT_REPO       https://github.com/catchorg/Catch2.git
+  GIT_TAG        v2.13.7
+  NAMESPACE      spinerTest
+)
 
 # populate test content
 # places targets in `spinerTest_POPULATED_TARGETS`
 spiner_content_populate(
   NAMESPACE spinerTest
 )
+
 target_link_libraries(spiner_test
   INTERFACE
     ${spinerTest_POPULATED_TARGETS}
@@ -63,7 +63,16 @@ target_link_libraries(test.bin
     spiner_test
 )
 
-list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+# workaround for different version/install
+# directory trees for Catch2; 
+# if installed, Catch2Config.cmake _should_ 
+# already set `CMAKE_MODULE_PATH` correctly, and
+# `Catch2_SOURCE_DIR` doesn't exist;
+# however, if not installed then it should exist, 
+# and so we manually append
+if(EXISTS ${Catch2_SOURCE_DIR}/contrib)
+  list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+endif()
 include(Catch)
 catch_discover_tests(test.bin)
 
