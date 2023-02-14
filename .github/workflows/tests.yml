@@ -20,9 +20,9 @@ jobs:
           run: export DEBIAN_FRONTEND=noninteractive
         - name: install hdf5 and valgrind
           run: |
-	    sudo apt update
-	    sudo apt remove firefox -y --force-yes -qq
-	    sudo apt install -y --force-yes -qq build-essential libhdf5-dev valgrind
+            sudo apt update
+            sudo apt remove firefox -y --force-yes -qq
+            sudo apt install -y --force-yes -qq build-essential libhdf5-dev valgrind
         - name: build and run tests
           run: |
             mkdir -p bin
