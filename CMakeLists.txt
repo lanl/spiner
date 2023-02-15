@@ -17,8 +17,6 @@ cmake_minimum_required(VERSION 3.22)
 set(SPINER_VERSION 1.6.0)
 project(spiner VERSION ${SPINER_VERSION})
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
 # bring in some helpful CMake scripts 
 # make cache variables for install destinations
 include(GNUInstallDirs)
@@ -80,7 +78,7 @@ else()
 endif()
 
 # content is a wrapper to `FetchContent` calls
-include(content)
+include(cmake/content)
 spiner_content_declare(ports-of-call
   NAMESPACE spinerDeps
   GIT_REPO    https://github.com/lanl/ports-of-call
