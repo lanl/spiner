@@ -28,7 +28,7 @@
 
 using Spiner::DataBox;
 using Spiner::IndexType;
-using Spiner::RegularGrid1D;
+using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 const Real EPSTEST = std::sqrt(Spiner::EPS);
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {

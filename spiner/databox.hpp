@@ -44,10 +44,11 @@ namespace Spiner {
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
 enum class DataStatus { Empty, Unmanaged, AllocatedHost, AllocatedDevice };
 enum class AllocationTarget { Host, Device };
-constexpr int MAXRANK = PortableMDArray<Real>::MAXDIM;
 
 class DataBox {
  public:
+  static constexpr int MAXRANK = PortableMDArray<Real>::MAXDIM;
+
   // Base constructor
   DataBox() = default;
 
@@ -208,12 +209,12 @@ class DataBox {
     assert(0 <= i && i < rank_);
     indices_[i] = t;
   }
-  inline void setRange(int i, RegularGrid1D g) {
+  inline void setRange(int i, RegularGrid1D<Real> g) {
     setIndexType(i, IndexType::Interpolated);
     grids_[i] = g;
   }
   inline void setRange(int i, Real xmin, Real xmax, int N) {
-    setRange(i, RegularGrid1D(xmin, xmax, N));
+    setRange(i, RegularGrid1D<Real>(xmin, xmax, N));
   }
 
   // Reshapes from other databox, but does not allocate memory.
@@ -236,7 +237,7 @@ class DataBox {
 
   // Reference accessors
   inline IndexType &indexType(const int i) { return indices_[i]; }
-  inline RegularGrid1D &range(const int i) { return grids_[i]; }
+  inline RegularGrid1D<Real> &range(const int i) { return grids_[i]; }
 
   // Assignment and move, both perform shallow copy
   PORTABLE_INLINE_FUNCTION DataBox &operator=(const DataBox &other);
@@ -276,7 +277,7 @@ class DataBox {
   PORTABLE_INLINE_FUNCTION int dim(int i) const { return dataView_.GetDim(i); }
   PORTABLE_INLINE_FUNCTION void range(int i, Real &min, Real &max, Real &dx,
                                       int &N) const;
-  PORTABLE_INLINE_FUNCTION RegularGrid1D range(int i) const;
+  PORTABLE_INLINE_FUNCTION RegularGrid1D<Real> range(int i) const;
   PORTABLE_INLINE_FUNCTION IndexType indexType(const int i) const {
     return indices_[i];
   }
@@ -331,7 +332,7 @@ class DataBox {
   Real *data_ = nullptr;           // points at data, managed or not
   PortableMDArray<Real> dataView_; // always used
   IndexType indices_[MAXRANK];
-  RegularGrid1D grids_[MAXRANK];
+  RegularGrid1D<Real> grids_[MAXRANK];
 
   PORTABLE_INLINE_FUNCTION void setAllIndexed_();
   PORTABLE_INLINE_FUNCTION bool canInterpToReal_(const int interpOrder) const;
@@ -387,7 +388,7 @@ PORTABLE_FORCEINLINE_FUNCTION Real
 DataBox::interpToReal(const Real x2, const Real x1) const noexcept {
   assert(canInterpToReal_(2));
   int ix1, ix2;
-  weights_t w1, w2;
+  weights_t<Real> w1, w2;
   grids_[0].weights(x1, ix1, w1);
   grids_[1].weights(x2, ix2, w2);
   // TODO: prefectch corners for speed?
@@ -402,7 +403,7 @@ PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
     const Real x3, const Real x2, const Real x1) const noexcept {
   assert(canInterpToReal_(3));
   int ix[3];
-  weights_t w[3];
+  weights_t<Real> w[3];
   grids_[0].weights(x1, ix[0], w[0]);
   grids_[1].weights(x2, ix[1], w[1]);
   grids_[2].weights(x3, ix[2], w[2]);
@@ -428,7 +429,7 @@ PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
     assert(grids_[r].isWellFormed());
   }
   int ix[3];
-  weights_t w[3];
+  weights_t<Real> w[3];
   grids_[1].weights(x1, ix[0], w[0]);
   grids_[2].weights(x2, ix[1], w[1]);
   grids_[3].weights(x3, ix[2], w[2]);
@@ -455,7 +456,7 @@ PORTABLE_FORCEINLINE_FUNCTION Real DataBox::interpToReal(
   assert(canInterpToReal_(4));
   Real x[] = {x1, x2, x3, x4};
   int ix[4];
-  weights_t w[4];
+  weights_t<Real> w[4];
   for (int i = 0; i < 4; ++i) {
     grids_[i].weights(x[i], ix[i], w[i]);
   }
@@ -512,7 +513,7 @@ DataBox::interpToReal(const Real x4, const Real x3, const Real x2,
   }
   Real x[] = {x1, x2, x3, x4};
   int ix[4];
-  weights_t w[4];
+  weights_t<Real> w[4];
   grids_[0].weights(x[0], ix[0], w[0]);
   for (int i = 1; i < 4; ++i) {
     grids_[i + 1].weights(x[i], ix[i], w[i]);
@@ -569,7 +570,7 @@ PORTABLE_INLINE_FUNCTION void DataBox::interpFromDB(const DataBox &db,
   assert(size() == (db.size() / db.dim(db.rank_)));
 
   int ix;
-  weights_t w;
+  weights_t<Real> w;
   copyShape(db, 1);
 
   db.grids_[db.rank_ - 1].weights(x, ix, w);
@@ -591,7 +592,7 @@ DataBox::interpFromDB(const DataBox &db, const Real x2, const Real x1) {
   assert(size() == (db.size() / (db.dim(db.rank_) * db.dim(db.rank_ - 1))));
 
   int ix2, ix1;
-  weights_t w2, w1;
+  weights_t<Real> w2, w1;
   copyShape(db, 2);
 
   db.grids_[db.rank_ - 2].weights(x1, ix1, w1);
@@ -836,7 +837,7 @@ PORTABLE_INLINE_FUNCTION void DataBox::range(int i, Real &min, Real &max,
   N = grids_[i].nPoints();
 }
 
-PORTABLE_INLINE_FUNCTION RegularGrid1D DataBox::range(int i) const {
+PORTABLE_INLINE_FUNCTION RegularGrid1D<Real> DataBox::range(int i) const {
   assert(0 <= i && i < rank_);
   assert(indices_[i] == IndexType::Interpolated);
   return grids_[i];
