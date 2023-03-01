@@ -14,10 +14,35 @@ To use databox, simply include the relevant header:
 
   #include <databox.hpp>
 
+``DatBox`` is templated on underyling data type, which defaults to the
+``Real`` type provided by ``ports-of-call``. (This is usually a
+``double``.)
+
+.. note::
+  The default type can be set to type ``float`` if the preprocessor
+  macro ``SINGLE_PRECISION_ENABLED`` is defined.
+
+ Any arithmetic type is supported, although the code has
+only been tested carefully with floating point numbers. To set
+``DataBox`` to a single type, you may wish to declare a type alias
+such as:
+
+.. code-block:: cpp
+
+   using DataBox = Spiner::DataBox<double>
+
+In C++17 and later, you can also get the default type specialization
+by simply omitting the template arguments.
+
 .. note::
   In the function signatures below, GPU/performance portability
   decorators have been excluded for brevity. However they are present
   in the actual code.
+
+.. note::
+   In the function signatures below, we will often refer to the type
+   ``Real`` and the type ``T``. These are both references to the
+   underlying templated arithmetic type.
 
 Creating a ``DataBox``
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +54,7 @@ You can create a ``DataBox`` of a given shape via the constructor:
   int nx1 = 2;
   int nx2 = 3;
   int nx3 = 4;
-  Spiner::DataBox db(nx3, nx2, nx1);
+  Spiner::DataBox<double> db(nx3, nx2, nx1);
 
 The constructor takes any number of shape values (e.g., ``nx*``) up to
 six (or ``Spiner::MAXRANK``) values. Zero shape values initializes an
@@ -39,12 +64,6 @@ empty, size-zero array.
   ``DataBox`` is row-major ordered. By convention, ``x3`` is the
   slowest moving index and ``x1`` is the fastest.
 
-.. note::
-  The data in ``DataBox`` is always real-valued. It is usually of type
-  ``double`` but can be set to type ``float`` if the preprocessor
-  macro ``SINGLE_PRECISION_ENABLED`` is defined. There is a ``Real``
-  typedef that has the same type as the ``DataBox`` data type.
-
 If GPU support is enabled, a ``DataBox`` can be allocated on either
 host or device, depending on the ``AllocationTarget``. For example, to
 explicitly allocate one array on the host and one on the device, you
@@ -53,9 +72,9 @@ might call:
 .. code-block:: cpp
 
   // Allocates on the host (CPU)
-  Spiner::DataBox db_host(Spiner::AllocationTarget::Host, nx2, nx1);
+  Spiner::DataBox<double> db_host(Spiner::AllocationTarget::Host, nx2, nx1);
   // Allocates on the device (GPU)
-  Spiner::DataBox db_dev(Spiner::AllocationTarget::Device, nx2, nx1);
+  Spiner::DataBox<double> db_dev(Spiner::AllocationTarget::Device, nx2, nx1);
 
 .. note::
   If GPU support is not enabled, these both allocate on host.
@@ -66,14 +85,14 @@ yourself. For example:
 .. code-block:: cpp
 
   std::vector<double> mydata(nx1*nx2);
-  Spiner::DataBox db(mydata.data(), nx2, nx1);
+  Spiner::DataBox<double> db(mydata.data(), nx2, nx1);
 
 You can also resize a ``DataBox``, which you can use to modify a
 ``DataBox`` in-place. For example:
 
 .. code-block::
 
-  Spiner::DataBox db; // empty
+  Spiner::DataBox<double> db; // empty
   // clears old memory, resizes the underlying array,
   // and resets strides
   db.resize(nx3, nx2, nx1);
@@ -91,7 +110,7 @@ array, without modifying the underlying memory. For example:
 .. code-block::
 
   // allocate a 1D databox
-  Spiner::DataBox db(nx3*nx2*nx1);
+  Spiner::DataBox<double> db(nx3*nx2*nx1);
   // interpret it as a 3D object
   db.reshape(nx3, nx2, nx1);
 
@@ -136,8 +155,8 @@ Semantics and Memory Management
 
 .. code-block::
 
-  Spiner::DataBox db1(size);
-  Spiner::DataBox db2 = db1;
+  Spiner::DataBox<double> db1(size);
+  Spiner::DataBox<double> db2 = db1;
 
 shallow-copies ``db1`` into ``db2``. Especially for `Kokkos`_ like
 workflows, this is very useful.
@@ -231,7 +250,7 @@ operator. For example:
 
 .. code-block:: cpp
 
-  Spiner::DataBox db(nx3, nx2, nx1);
+  Spiner::DataBox<double> db(nx3, nx2, nx1);
   db(2,1,0) = 5.0;
 
 The ``()`` operator accepts between one and six indexes. If you pass
@@ -290,19 +309,19 @@ the type can be either ``Interpolated`` or ``Indexed``. When a new
 ``IndexType::Indexed``. A dimension can be set to ``Interpolated`` via
 the ``setRange`` method:
 
-.. cpp:function:: void DataBox::setRange(int i, Real min, Real max, int N) const;
+.. cpp:function:: void DataBox::setRange(int i, T min, T max, int N) const;
    
 where here ``i`` is the dimension, ``min`` is the minimum value of the
 independent variable, ``max`` is the maximum value of the indpendent
 variable, and ``N`` is the number of points in the ``i``
-dimension. (Recall that ``Real`` is usually a typedef to ``double``.)
+dimension. (Here ``T`` is the underlying templated data type.)
 
 .. note::
   In these routines, the dimension is indexed from zero.
 
 This information can be recovered via the ``range`` getter method:
 
-.. cpp:function:: void DataBox::range(int i, Real &min, Real &max, Real &dx, int &N) const;
+.. cpp:function:: void DataBox::range(int i, T &min, T &max, T &dx, int &N) const;
 
 where here ``min``, ``max``, ``dx``, and ``N`` are filled with the values
 for a given dimension.
@@ -342,13 +361,13 @@ The family of ``DataBox::interpToReal`` methods interpolate the
 "entire" ``DataBox`` to a real number. Up to four-dimensional
 interpolation is supported:
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x) const;
+.. cpp:function:: T DataBox::interpToReal(const T x) const;
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x2, const Real x1) const;
+.. cpp:function:: T DataBox::interpToReal(const T x2, const T x1) const;
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x3, const Real x2, const Real x1) const;
+.. cpp:function:: T DataBox::interpToReal(const T x3, const T x2, const T x1) const;
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x4, const Real x3, const Real x2, const Real x1) const;
+.. cpp:function:: T DataBox::interpToReal(const T x4, const T x3, const T x2, const T x1) const;
 
 where ``x1`` is the fastest moving direction, ``x2`` is less fast, and
 so on. These interpolation routines are hand-tuned for performance.
@@ -369,12 +388,12 @@ integer instead of a floating point number. The location of the
 integer in the function signature indicates which dimension in the
 ``DataBox`` is indexed. For example:
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x3, const Real x2, const Real x1, const int idx) const;
+.. cpp:function:: T DataBox::interpToReal(const T x3, const T x2, const T x1, const int idx) const;
 
 interpolates the three slower-moving indices and indexes the fastest
 moving index. On the other hand,
 
-.. cpp:function:: Real DataBox::interpToReal(const Real x4, const Real x3, const Real x2, const int idx, const Real x1) const;
+.. cpp:function:: T DataBox::interpToReal(const T x4, const T x3, const T x2, const int idx, const T x1) const;
 
 interpolates the fastest moving index, then indexes the
 second-fastest, then interpolates the remaining three slower. The
@@ -386,21 +405,21 @@ Interpolating into another ``DataBox``
 There is limited functionality for filling a ``DataBox`` with the
 interpolated values of another ``DataBox``. For example, the method
 
-.. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const Real x);
+.. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x);
 
 allocates the ``DataBox`` to have a rank one lower than ``src`` and
 fill it with the faster moving elements of ``src`` interpolated to
 ``x`` in the slowest-moving direction. Similarly for
 
-.. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const Real x2, const Real x1);
+.. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x2, const T x1);
 
 The methods
 
-.. cpp:function:: DataBox Databox::InterpToDB(const Real x) const;
+.. cpp:function:: DataBox Databox::InterpToDB(const T x) const;
 
 and
 
-.. cpp:function:: DataBox Databox::InterpToDB(const Real x2, const Real x1);
+.. cpp:function:: DataBox Databox::InterpToDB(const T x2, const T x1);
 
 return a new ``DataBox`` object, rather than setting it from a source ``DataBox``.
 
@@ -411,7 +430,7 @@ If `hdf5`_ is enabled, ``Spiner`` can save an array to or load an
 array from disk. Each array so-saved is also saved with the
 ``IndexType`` and independent variable ranges bundled with it, so that
 knowledge of how to interpolate the data is automatically
-available. 
+available.
 
 .. _`hdf5`: https://www.hdfgroup.org/solutions/hdf5/
 
@@ -434,17 +453,20 @@ fills the ``DataBox`` from information in the root of a file with ``filename``.
 fills the ``DataBox`` from information in the group with ``groupname``
 based at location ``loc`` in the file.
 
+.. warning::
+  HDF5 I/O is only supported for single- and double-precision types at this time.
+
 Miscellany
 ^^^^^^^^^^^
 
 Here we list a few convenience functions available that were not
 covered elsewhere.
 
-.. cpp:function:: Real DataBox::min() const;
+.. cpp:function:: T DataBox::min() const;
 
 and
 
-.. cpp:function:: Real DataBox::max() const;
+.. cpp:function:: T DataBox::max() const;
 
 compute and return the minimum and maximum values (respectively) in the array.
 

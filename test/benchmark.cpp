@@ -27,8 +27,9 @@
 #include <spiner/interpolation.hpp>
 #include <spiner/spiner_types.hpp>
 
-using Spiner::DataBox;
+using DataBox = Spiner::DataBox<Real>;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
+using Spiner::DBDeleter;
 
 using duration = std::chrono::nanoseconds;
 
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "# ncoarse = " << ncoarse << std::endl;
-    std::unique_ptr<DataBox, Spiner::DBDeleter> pdb(new DataBox(
+    std::unique_ptr<DataBox, DBDeleter> pdb(new DataBox(
         Spiner::AllocationTarget::Device, ncoarse, ncoarse, ncoarse));
     for (int d = 0; d < pdb->rank(); d++) {
       pdb->setRange(d, xmin, xmax, ncoarse);
