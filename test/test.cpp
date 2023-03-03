@@ -30,7 +30,7 @@ using DataBox = Spiner::DataBox<Real>;
 using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 using Spiner::DBDeleter;
-const Real EPSTEST = std::sqrt(Spiner::EPS);
+const Real EPSTEST = std::sqrt(DataBox::EPS);
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;

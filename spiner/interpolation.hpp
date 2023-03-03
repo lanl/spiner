@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 #ifdef SPINER_USE_HDF
 #include "hdf5.h"
@@ -31,9 +32,6 @@
 #include "spiner_types.hpp"
 
 namespace Spiner {
-// TODO: be more careful about what this number should be
-// sqrt machine epsilon or something
-constexpr Real EPS = 10.0 * std::numeric_limits<Real>::epsilon();
 
 // a poor-man's std::double
 template<typename T=Real>
@@ -45,7 +43,7 @@ struct weights_t {
   }
 };
 
-template<typename T=Real>
+template<typename T=Real, typename std::enable_if<std::is_arithmetic<T>::value, bool>::type = true>
 class RegularGrid1D {
  public:
   using ValueType = T;
@@ -87,16 +85,16 @@ class RegularGrid1D {
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(T x, int &ix, weights_t<T> &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix, weights_t<T> &w) const {
     ix = index(x);
-    const T floor = ix * dx_ + min_;
+    const auto floor = static_cast<T>(ix) * dx_ + min_;
     w[1] = idx_ * (x - floor);
     w[0] = (1. - w[1]);
   }
 
   // 1D interpolation
   PORTABLE_INLINE_FUNCTION T
-  operator()(const T x, const PortableMDArray<T> &A) const {
+  operator()(const T &x, const PortableMDArray<T> &A) const {
     int ix;
     weights_t<T> w;
     weights(x, ix, w);
