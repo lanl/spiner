@@ -34,7 +34,7 @@
 namespace Spiner {
 
 // a poor-man's std::double
-template<typename T=Real>
+template <typename T = Real>
 struct weights_t {
   T first, second;
   PORTABLE_INLINE_FUNCTION Real &operator[](const int i) {
@@ -43,7 +43,9 @@ struct weights_t {
   }
 };
 
-template<typename T=Real, typename std::enable_if<std::is_arithmetic<T>::value, bool>::type = true>
+template <typename T = Real,
+          typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
+              true>
 class RegularGrid1D {
  public:
   using ValueType = T;
@@ -85,7 +87,8 @@ class RegularGrid1D {
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix, weights_t<T> &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
+                                        weights_t<T> &w) const {
     ix = index(x);
     const auto floor = static_cast<T>(ix) * dx_ + min_;
     w[1] = idx_ * (x - floor);
@@ -93,8 +96,8 @@ class RegularGrid1D {
   }
 
   // 1D interpolation
-  PORTABLE_INLINE_FUNCTION T
-  operator()(const T &x, const PortableMDArray<T> &A) const {
+  PORTABLE_INLINE_FUNCTION T operator()(const T &x,
+                                        const PortableMDArray<T> &A) const {
     int ix;
     weights_t<T> w;
     weights(x, ix, w);
