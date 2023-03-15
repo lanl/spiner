@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 #ifdef SPINER_USE_HDF
 #include "hdf5.h"
@@ -31,28 +32,31 @@
 #include "spiner_types.hpp"
 
 namespace Spiner {
-// TODO: be more careful about what this number should be
-// sqrt machine epsilon or something
-constexpr Real EPS = 10.0 * std::numeric_limits<Real>::epsilon();
-constexpr Real rNaN = std::numeric_limits<Real>::signaling_NaN();
-constexpr int iNaN = std::numeric_limits<int>::signaling_NaN();
 
 // a poor-man's std::double
+template <typename T = Real>
 struct weights_t {
-  Real first, second;
+  T first, second;
   PORTABLE_INLINE_FUNCTION Real &operator[](const int i) {
     assert(0 <= i && i <= 1);
     return i == 0 ? first : second;
   }
 };
 
+template <typename T = Real,
+          typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
+              true>
 class RegularGrid1D {
  public:
+  using ValueType = T;
+  static constexpr T rNaN = std::numeric_limits<T>::signaling_NaN();
+  static constexpr int iNaN = std::numeric_limits<int>::signaling_NaN();
+
   // Constructors
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
       : min_(rNaN), max_(rNaN), dx_(rNaN), idx_(rNaN), N_(iNaN) {}
-  PORTABLE_INLINE_FUNCTION RegularGrid1D(Real min, Real max, size_t N)
-      : min_(min), max_(max), dx_((max - min) / ((Real)(N - 1))), idx_(1 / dx_),
+  PORTABLE_INLINE_FUNCTION RegularGrid1D(T min, T max, size_t N)
+      : min_(min), max_(max), dx_((max - min) / ((T)(N - 1))), idx_(1 / dx_),
         N_(N) {}
 
   // Assignment operator
@@ -77,24 +81,25 @@ class RegularGrid1D {
   }
 
   // Gets real value at index
-  PORTABLE_INLINE_FUNCTION Real x(const int i) const { return i * dx_ + min_; }
-  PORTABLE_INLINE_FUNCTION int index(const Real x) const {
+  PORTABLE_INLINE_FUNCTION T x(const int i) const { return i * dx_ + min_; }
+  PORTABLE_INLINE_FUNCTION int index(const T x) const {
     return bound(idx_ * (x - min_));
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(Real x, int &ix, weights_t &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
+                                        weights_t<T> &w) const {
     ix = index(x);
-    const Real floor = ix * dx_ + min_;
+    const auto floor = static_cast<T>(ix) * dx_ + min_;
     w[1] = idx_ * (x - floor);
     w[0] = (1. - w[1]);
   }
 
   // 1D interpolation
-  PORTABLE_INLINE_FUNCTION Real
-  operator()(const Real x, const PortableMDArray<Real> &A) const {
+  PORTABLE_INLINE_FUNCTION T operator()(const T &x,
+                                        const PortableMDArray<T> &A) const {
     int ix;
-    weights_t w;
+    weights_t<T> w;
     weights(x, ix, w);
     return w[0] * A(ix) + w[1] * A(ix + 1);
   }
@@ -107,20 +112,20 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION bool operator!=(const RegularGrid1D &other) const {
     return !(*this == other);
   }
-  PORTABLE_INLINE_FUNCTION Real min() const { return min_; }
-  PORTABLE_INLINE_FUNCTION Real max() const { return max_; }
-  PORTABLE_INLINE_FUNCTION Real dx() const { return dx_; }
+  PORTABLE_INLINE_FUNCTION T min() const { return min_; }
+  PORTABLE_INLINE_FUNCTION T max() const { return max_; }
+  PORTABLE_INLINE_FUNCTION T dx() const { return dx_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
     return (std::isnan(min_) || std::isnan(max_) || std::isnan(dx_) ||
-            std::isnan(idx_) || std::isnan((Real)N_));
+            std::isnan(idx_) || std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
     herr_t status;
-    Real range[] = {min_, max_, dx_};
+    T range[] = {min_, max_, dx_};
     hsize_t range_dims[] = {3};
     int n = static_cast<int>(N_);
     status = H5LTmake_dataset(loc, name.c_str(), SP5::RG1D::RANGE_RANK,
@@ -133,7 +138,7 @@ class RegularGrid1D {
 
   inline herr_t loadHDF(hid_t loc, const std::string &name) {
     herr_t status;
-    Real range[3];
+    T range[3];
     int n;
     status = H5LTread_dataset(loc, name.c_str(), H5T_REAL, range);
     min_ = range[0];
@@ -147,8 +152,8 @@ class RegularGrid1D {
 #endif
 
  private:
-  Real min_, max_;
-  Real dx_, idx_;
+  T min_, max_;
+  T dx_, idx_;
   size_t N_;
 };
 

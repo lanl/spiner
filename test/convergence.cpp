@@ -21,8 +21,8 @@
 #include <spiner/interpolation.hpp>
 #include <spiner/spiner_types.hpp>
 
-using Spiner::DataBox;
-using Spiner::RegularGrid1D;
+using DataBox = Spiner::DataBox<Real>;
+using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 
 const std::string outname = "convergence.dat";
 

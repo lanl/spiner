@@ -9,7 +9,7 @@ The following provides a simple example of utilizing a ``DataBox``.
 
   #include <iostream>
   #include <databox.hpp>
-  using namespace Spiner;
+  using DataBox = Spiner::DataBox<double>;
 
   int main() {
     // create a databox

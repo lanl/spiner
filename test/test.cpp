@@ -26,10 +26,11 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch2/catch.hpp"
 
-using Spiner::DataBox;
+using DataBox = Spiner::DataBox<Real>;
 using Spiner::IndexType;
-using Spiner::RegularGrid1D;
-const Real EPSTEST = std::sqrt(Spiner::EPS);
+using RegularGrid1D = Spiner::RegularGrid1D<Real>;
+using Spiner::DBDeleter;
+const Real EPSTEST = std::sqrt(DataBox::EPS);
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -563,7 +564,7 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
          "[DataBox][GarbageCollection]") {
   constexpr int N = 1000;
   GIVEN("A databox allocated on device with a unique pointer") {
-    std::unique_ptr<DataBox, Spiner::DBDeleter> pdb(
+    std::unique_ptr<DataBox, DBDeleter> pdb(
         new DataBox(Spiner::AllocationTarget::Device, N));
     THEN("We can access it") {
       auto db = *pdb; // shallow copy
