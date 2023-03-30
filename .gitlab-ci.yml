@@ -8,6 +8,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_GCC_VERSION: "9.3.0"
+  SPINER_CUDA_VERSION: "11.6.0"
   SPINER_SPACK_SPEC: "spiner@main+python%gcc@${SPINER_GCC_VERSION}"
   COLOR_CYAN: '\033[1;36m'
   COLOR_PLAIN: '\033[0m'
@@ -79,7 +80,7 @@ before_script:
     - .job
   script:
     - module load gcc/${SPINER_GCC_VERSION}
-    - module load cuda/11.4.2
+    - module load cuda/${SPINER_CUDA_VERSION}
     - |
       if [[ ${CI_JOB_NAME} =~ "power9" ]];
       then
