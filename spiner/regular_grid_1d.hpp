@@ -28,6 +28,7 @@
 
 #include "ports-of-call/portability.hpp"
 #include "ports-of-call/portable_arrays.hpp"
+#include "ports-of-call/portable_errors.hpp"
 #include "sp5.hpp"
 #include "spiner_types.hpp"
 
@@ -110,11 +111,11 @@ class RegularGrid1D {
   }
 
   // utitilies
-  PORTABLE_INLINE_FUNCTION bool operator==(const RegularGrid1D &other) const {
+  PORTABLE_INLINE_FUNCTION bool operator==(const RegularGrid1D<T> &other) const {
     return (min_ == other.min_ && max_ == other.max_ && dx_ == other.dx_ &&
             idx_ == other.idx_ && N_ == other.N_);
   }
-  PORTABLE_INLINE_FUNCTION bool operator!=(const RegularGrid1D &other) const {
+  PORTABLE_INLINE_FUNCTION bool operator!=(const RegularGrid1D<T> &other) const {
     return !(*this == other);
   }
   PORTABLE_INLINE_FUNCTION T min() const { return min_; }
@@ -129,12 +130,16 @@ class RegularGrid1D {
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
+    static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
+                  "Spiner HDF5 only defined for these data types: float, double");
+    auto H5T_T =
+      std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     herr_t status;
     T range[] = {min_, max_, dx_};
     hsize_t range_dims[] = {3};
     int n = static_cast<int>(N_);
     status = H5LTmake_dataset(loc, name.c_str(), SP5::RG1D::RANGE_RANK,
-                              range_dims, H5T_REAL, range);
+                              range_dims, H5T_T, range);
     status += H5LTset_attribute_int(loc, name.c_str(), SP5::RG1D::N, &n, 1);
     status += H5LTset_attribute_string(
         loc, name.c_str(), SP5::RG1D::RANGE_INFONAME, SP5::RG1D::RANGE_INFO);
@@ -142,10 +147,14 @@ class RegularGrid1D {
   }
 
   inline herr_t loadHDF(hid_t loc, const std::string &name) {
+    static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
+                  "Spiner HDF5 only defined for these data types: float, double");
+    auto H5T_T =
+      std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     herr_t status;
     T range[3];
     int n;
-    status = H5LTread_dataset(loc, name.c_str(), H5T_REAL, range);
+    status = H5LTread_dataset(loc, name.c_str(), H5T_T, range);
     min_ = range[0];
     max_ = range[1];
     dx_ = range[2];

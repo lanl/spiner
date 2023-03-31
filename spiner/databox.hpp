@@ -386,7 +386,10 @@ template <typename T, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Concept>::interpToReal(const T x) const noexcept {
   assert(canInterpToReal_(1));
-  return grids_[0](x, dataView_);
+  int ix;
+  weights_t<T> w;
+  grids_[0].weights(x, ix, w);
+  return w[0] * dataView_(ix) + w[1]*dataView_(ix + 1);
 }
 
 template <typename T, typename Concept>

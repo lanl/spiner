@@ -31,6 +31,8 @@ using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 using Spiner::DBDeleter;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
+template<int N>
+using HierarchicalGrid1D = Spiner::HierarchicalGrid1D<Real, N>;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -89,6 +91,46 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.max() == max);
     REQUIRE(g.nPoints() == N);
     REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
+  }
+}
+
+TEST_CASE("HierarchicalGrid1D", "[HierarchicalGrid1D]") {
+  GIVEN("Some regular grid 1Ds") {
+    RegularGrid1D g1(0, 0.25, 3);
+    RegularGrid1D g2(0.25, 0.75, 11);
+    RegularGrid1D g3(0.75, 1, 7);
+    THEN("We can construct a hierarchical grid object") {
+      HierarchicalGrid1D<3> h = {{g1, g2, g3}};
+      AND_THEN("We can find each grid based on physical position") {
+        REQUIRE(h.findGridFromPosition(0.1) == 0);
+        REQUIRE(h.findGridFromPosition(0.3) == 1);
+        REQUIRE(h.findGridFromPosition(0.8) == 2);
+        // extrapolation
+        REQUIRE(h.findGridFromPosition(-5) == 0);
+        REQUIRE(h.findGridFromPosition(5) == 2);
+      }
+      AND_THEN("We can find each grid based on global index") {
+        REQUIRE(h.findGridFromGlobalIdx(-1) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(0) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(2) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(3) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(4) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(13) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(14) == 2);
+        REQUIRE(h.findGridFromGlobalIdx(20) == 2);
+        REQUIRE(h.findGridFromGlobalIdx(21) == 2);
+      }
+      AND_THEN("We can get x from global index") {
+        REQUIRE(std::abs(h.x(2) - 0.25) < EPSTEST);
+        REQUIRE(std::abs(h.x(3) - 0.25) < EPSTEST);
+      }
+      AND_THEN("We can global index from x") {
+        REQUIRE(h.index(-1) == 0);
+        REQUIRE(h.index(0.25 - 1e-3) == 1);
+        REQUIRE(h.index(0.2501) == 3);
+        REQUIRE(h.index(100) == 19);
+      }
+    }
   }
 }
 
