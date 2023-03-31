@@ -130,6 +130,14 @@ TEST_CASE("HierarchicalGrid1D", "[HierarchicalGrid1D]") {
         REQUIRE(h.index(0.2501) == 3);
         REQUIRE(h.index(100) == 19);
       }
+      AND_THEN("We can compute weights") {
+        Spiner::weights_t<Real> w;
+        int ix;
+        h.weights(0.8751, ix, w);
+        REQUIRE(ix == 17);
+        REQUIRE(std::abs(w[1] - 0.0024) < EPSTEST);
+        REQUIRE(std::abs(w[0] - (1 - 0.0024)) < EPSTEST);
+      }
     }
   }
 }
