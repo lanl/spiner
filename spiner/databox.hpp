@@ -296,35 +296,24 @@ class DataBox {
 
   // TODO(JMM): Add more code for more portability strategies
   DataBox<T> getOnDevice() const { // getOnDevice is always a deep copy
-#ifdef PORTABILITY_STRATEGY_KOKKOS
-    using HS = Kokkos::HostSpace;
-    using DMS = Kokkos::DefaultExecutionSpace::memory_space;
-    constexpr const bool execution_is_host{
-        Kokkos::SpaceAccessibility<DMS, HS>::accessible};
-    if (execution_is_host) {
-      DataBox<T> a;
-      a.copy(*this); // a.copy handles setting allocation status
-      return a;
-    } else {
-      using memUnmanaged = Kokkos::MemoryUnmanaged;
-      using HostView_t = Kokkos::View<T *, HS, memUnmanaged>;
-      using DeviceView_t = Kokkos::View<T *, memUnmanaged>;
-      using Kokkos::deep_copy;
-      T *device_data = (T *)PORTABLE_MALLOC(sizeBytes());
-      DeviceView_t devView(device_data, dataView_.GetSize());
-      HostView_t hostView(data_, dataView_.GetSize());
-      deep_copy(devView, hostView);
-      DataBox<T> a{devView.data(), dim(6), dim(5), dim(4),
-                   dim(3),         dim(2), dim(1)};
-      a.copyShape(*this);
+#ifdef __CUDACC__
+    constexpr const bool execution_is_host = false;
+#else
+    constexpr const bool execution_is_host = true;
+#endif // __CUDACC__
+    // create device memory (host memory if no device)
+    T *device_data = (T *)PORTABLE_MALLOC(sizeBytes());
+    // copy to device
+    portableCopyToDevice(device_data, data_, sizeBytes());
+    // create new databox of size size
+    DataBox<T> a{device_data, dim(6), dim(5), dim(4),
+                 dim(3),         dim(2), dim(1)};
+    a.copyShape(*this);
+    // this may need logic for if host? JMM thoughts?
+    if (!execution_is_host) {
       a.status_ = DataStatus::AllocatedDevice;
-      return a;
     }
-#else  // no kokkos
-    DataBox<T> a;
-    a.copy(*this); // a.copy handles allocation status.
     return a;
-#endif // kokkos
   }
 
   // TODO(JMM): Potentially use this for device-free
