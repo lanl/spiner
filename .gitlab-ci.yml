@@ -52,7 +52,7 @@ before_script:
     SCHEDULER_PARAMETERS: "--nodes=1 --partition=skylake-gold,skylake-platinum"
 
 .power9: &power9
-    SCHEDULER_PARAMETERS: "--nodes=1 --partition=power9"
+    SCHEDULER_PARAMETERS: "--nodes=1 --partition=power9-rhel7"
 
 #################
 # General Setup #
