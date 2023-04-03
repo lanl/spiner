@@ -296,21 +296,17 @@ class DataBox {
 
   // TODO(JMM): Add more code for more portability strategies
   DataBox<T> getOnDevice() const { // getOnDevice is always a deep copy
-#ifdef __CUDACC__
-    constexpr const bool execution_is_host = false;
-#else
-    constexpr const bool execution_is_host = true;
-#endif // __CUDACC__
     // create device memory (host memory if no device)
     T *device_data = (T *)PORTABLE_MALLOC(sizeBytes());
     // copy to device
     portableCopyToDevice(device_data, data_, sizeBytes());
     // create new databox of size size
-    DataBox<T> a{device_data, dim(6), dim(5), dim(4),
-                 dim(3),         dim(2), dim(1)};
+    DataBox<T> a{device_data, dim(6), dim(5), dim(4), dim(3), dim(2), dim(1)};
     a.copyShape(*this);
     // this may need logic for if host? JMM thoughts?
-    if (!execution_is_host) {
+    if (PortsOfCall::EXECUTION_IS_HOST) {
+      a.status_ = DataStatus::AllocatedHost;
+    } else {
       a.status_ = DataStatus::AllocatedDevice;
     }
     return a;
