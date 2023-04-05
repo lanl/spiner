@@ -294,7 +294,6 @@ class DataBox {
     return indices_[i];
   }
 
-  // TODO(JMM): Add more code for more portability strategies
   DataBox<T> getOnDevice() const { // getOnDevice is always a deep copy
     // create device memory (host memory if no device)
     T *device_data = (T *)PORTABLE_MALLOC(sizeBytes());
@@ -303,7 +302,7 @@ class DataBox {
     // create new databox of size size
     DataBox<T> a{device_data, dim(6), dim(5), dim(4), dim(3), dim(2), dim(1)};
     a.copyShape(*this);
-    // this may need logic for if host? JMM thoughts?
+    // set correct allocation status of the new databox
     if (PortsOfCall::EXECUTION_IS_HOST) {
       a.status_ = DataStatus::AllocatedHost;
     } else {
