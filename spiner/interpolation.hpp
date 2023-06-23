@@ -15,7 +15,7 @@
 // permit others to do so.
 //======================================================================
 
-#include "regular_grid_1d.hpp"
 #include "hierarchical_grid_1d.hpp"
+#include "regular_grid_1d.hpp"
 
 #endif // SPINER_INTERPOLATION_

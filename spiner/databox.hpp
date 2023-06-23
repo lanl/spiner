@@ -45,8 +45,7 @@ enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
 enum class DataStatus { Empty, Unmanaged, AllocatedHost, AllocatedDevice };
 enum class AllocationTarget { Host, Device };
 
-template <typename T = Real,
-          typename Grid_t = RegularGrid1D<T>,
+template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
 class DataBox {
@@ -96,7 +95,8 @@ class DataBox {
         dataView_(A) {
     setAllIndexed_();
   }
-  PORTABLE_INLINE_FUNCTION DataBox(const DataBox<T, Grid_t, Concept> &src) noexcept
+  PORTABLE_INLINE_FUNCTION
+  DataBox(const DataBox<T, Grid_t, Concept> &src) noexcept
       : rank_(src.rank_), status_(src.status_), data_(src.data_) {
     setAllIndexed_();
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
@@ -160,14 +160,15 @@ class DataBox {
   // Slice operation
   PORTABLE_INLINE_FUNCTION
   DataBox<T, Grid_t, Concept> slice(const int dim, const int indx,
-                            const int nvar) const {
+                                    const int nvar) const {
     return DataBox(*this, dim, indx, nvar);
   }
-  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> slice(const int indx) const {
+  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept>
+  slice(const int indx) const {
     return slice(rank_, indx, 1);
   }
-  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> slice(const int ix2,
-                                                     const int ix1) const {
+  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept>
+  slice(const int ix2, const int ix1) const {
     // DataBox a(*this, rank_, ix2, 1);
     // return DataBox(a, a.rank_, ix1, 1);
     return slice(ix2).slice(ix1);
@@ -206,12 +207,13 @@ class DataBox {
   // DataBox, interpolated at that slowest index.
   // WARNING: requires memory to be pre-allocated.
   // TODO: add 3d and higher interpFromDB if necessary
-  PORTABLE_INLINE_FUNCTION void interpFromDB(const DataBox<T, Grid_t, Concept> &db,
-                                             const T x);
-  PORTABLE_INLINE_FUNCTION void interpFromDB(const DataBox<T, Grid_t, Concept> &db,
-                                             const T x2, const T x1);
+  PORTABLE_INLINE_FUNCTION void
+  interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x);
+  PORTABLE_INLINE_FUNCTION void
+  interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x2, const T x1);
   template <typename... Args>
-  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> interpToDB(Args... args) {
+  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept>
+  interpToDB(Args... args) {
     DataBox<T, Grid_t, Concept> db;
     db.interpFromDB(*this, std::forward<Args>(args)...);
     return db;
@@ -229,8 +231,8 @@ class DataBox {
     setIndexType(i, IndexType::Interpolated);
     grids_[i] = g;
   }
-  template<typename... Args>
-  inline void setRange(int i, Args&&... args) {
+  template <typename... Args>
+  inline void setRange(int i, Args &&...args) {
     setRange(i, Grid_t(std::forward<Args>(args)...));
   }
 
@@ -300,14 +302,15 @@ class DataBox {
     return indices_[i];
   }
 
-  DataBox<T, Grid_t, Concept> getOnDevice() const { // getOnDevice is always a deep copy
+  DataBox<T, Grid_t, Concept>
+  getOnDevice() const { // getOnDevice is always a deep copy
     // create device memory (host memory if no device)
     T *device_data = (T *)PORTABLE_MALLOC(sizeBytes());
     // copy to device
     portableCopyToDevice(device_data, data_, sizeBytes());
     // create new databox of size size
     DataBox<T, Grid_t, Concept> a{device_data, dim(6), dim(5), dim(4),
-                          dim(3),      dim(2), dim(1)};
+                                  dim(3),      dim(2), dim(1)};
     a.copyShape(*this);
     // set correct allocation status of the new databox
     if (PortsOfCall::EXECUTION_IS_HOST) {
@@ -380,12 +383,12 @@ DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
   int ix;
   weights_t<T> w;
   grids_[0].weights(x, ix, w);
-  return w[0] * dataView_(ix) + w[1]*dataView_(ix + 1);
+  return w[0] * dataView_(ix) + w[1] * dataView_(ix + 1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
-PORTABLE_FORCEINLINE_FUNCTION T
-DataBox<T, Grid_t, Concept>::interpToReal(const T x2, const T x1) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
+    const T x2, const T x1) const noexcept {
   assert(canInterpToReal_(2));
   int ix1, ix2;
   weights_t<T> w1, w2;
@@ -505,9 +508,9 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 }
 
 template <typename T, typename Grid_t, typename Concept>
-PORTABLE_FORCEINLINE_FUNCTION T
-DataBox<T, Grid_t, Concept>::interpToReal(const T x4, const T x3, const T x2,
-                                  const int idx, const T x1) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
+    const T x4, const T x3, const T x2, const int idx,
+    const T x1) const noexcept {
   assert(rank_ == 5);
   assert(indices_[0] == IndexType::Interpolated);
   assert(grids_[0].isWellFormed());
@@ -569,7 +572,8 @@ DataBox<T, Grid_t, Concept>::interpToReal(const T x4, const T x3, const T x2,
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
-DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x) {
+DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
+                                          const T x) {
   assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
   assert(db.grids_[db.rank_ - 1].isWellFormed());
   assert(size() == (db.size() / db.dim(db.rank_)));
@@ -589,8 +593,8 @@ DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
-DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x2,
-                                  const T x1) {
+DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
+                                          const T x2, const T x1) {
   assert(db.rank_ >= 2);
   assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
   assert(db.grids_[db.rank_ - 1].isWellFormed());
@@ -635,7 +639,8 @@ DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
 // Optionally copies shape of source with ndims fewer slowest-moving dimensions
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
-DataBox<T, Grid_t, Concept>::copyShape(const DataBox<T, Grid_t, Concept> &db, const int ndims) {
+DataBox<T, Grid_t, Concept>::copyShape(const DataBox<T, Grid_t, Concept> &db,
+                                       const int ndims) {
   rank_ = db.rank_ - ndims;
   int dims[MAXRANK];
   for (int i = 0; i < MAXRANK; i++)
@@ -653,7 +658,8 @@ DataBox<T, Grid_t, Concept>::copyShape(const DataBox<T, Grid_t, Concept> &db, co
 // reallocates and then copies shape from other databox
 // everything but the actual copy in a deep copy
 template <typename T, typename Grid_t, typename Concept>
-inline void DataBox<T, Grid_t, Concept>::copyMetadata(const DataBox<T, Grid_t, Concept> &src) {
+inline void DataBox<T, Grid_t, Concept>::copyMetadata(
+    const DataBox<T, Grid_t, Concept> &src) {
   AllocationTarget t =
       (src.status_ == DataStatus::AllocatedDevice ? AllocationTarget::Device
                                                   : AllocationTarget::Host);
@@ -668,7 +674,8 @@ inline void DataBox<T, Grid_t, Concept>::copyMetadata(const DataBox<T, Grid_t, C
 
 #ifdef SPINER_USE_HDF
 template <typename T, typename Grid_t, typename Concept>
-inline herr_t DataBox<T, Grid_t, Concept>::saveHDF(const std::string &filename) const {
+inline herr_t
+DataBox<T, Grid_t, Concept>::saveHDF(const std::string &filename) const {
   herr_t status;
   hid_t file;
 
@@ -679,8 +686,9 @@ inline herr_t DataBox<T, Grid_t, Concept>::saveHDF(const std::string &filename) 
 }
 
 template <typename T, typename Grid_t, typename Concept>
-inline herr_t DataBox<T, Grid_t, Concept>::saveHDF(hid_t loc,
-                                           const std::string &groupname) const {
+inline herr_t
+DataBox<T, Grid_t, Concept>::saveHDF(hid_t loc,
+                                     const std::string &groupname) const {
   hid_t group, grids;
   herr_t status = 0;
   static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
@@ -740,7 +748,8 @@ inline herr_t DataBox<T, Grid_t, Concept>::saveHDF(hid_t loc,
 }
 
 template <typename T, typename Grid_t, typename Concept>
-inline herr_t DataBox<T, Grid_t, Concept>::loadHDF(const std::string &filename) {
+inline herr_t
+DataBox<T, Grid_t, Concept>::loadHDF(const std::string &filename) {
   herr_t status;
   hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
   status = loadHDF(file, SP5::DB::GRPNAME);
@@ -748,8 +757,8 @@ inline herr_t DataBox<T, Grid_t, Concept>::loadHDF(const std::string &filename) 
 }
 
 template <typename T, typename Grid_t, typename Concept>
-inline herr_t DataBox<T, Grid_t, Concept>::loadHDF(hid_t loc,
-                                           const std::string &groupname) {
+inline herr_t
+DataBox<T, Grid_t, Concept>::loadHDF(hid_t loc, const std::string &groupname) {
   hid_t group, grids;
   herr_t status = 0;
   std::vector<int> index_types;
@@ -822,15 +831,16 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
 
 // Performs a deep copy
 template <typename T, typename Grid_t, typename Concept>
-inline void DataBox<T, Grid_t, Concept>::copy(const DataBox<T, Grid_t, Concept> &src) {
+inline void
+DataBox<T, Grid_t, Concept>::copy(const DataBox<T, Grid_t, Concept> &src) {
   copyMetadata(src);
   for (int i = 0; i < src.size(); i++)
     dataView_(i) = src(i);
 }
 
 template <typename T, typename Grid_t, typename Concept>
-inline bool
-DataBox<T, Grid_t, Concept>::operator==(const DataBox<T, Grid_t, Concept> &other) const {
+inline bool DataBox<T, Grid_t, Concept>::operator==(
+    const DataBox<T, Grid_t, Concept> &other) const {
   if (rank_ != other.rank_) return false;
   for (int i = 0; i < rank_; i++) {
     if (indices_[i] != other.indices_[i]) return false;
@@ -862,8 +872,8 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::max() const {
 }
 
 template <typename T, typename Grid_t, typename Concept>
-PORTABLE_INLINE_FUNCTION void DataBox<T, Grid_t, Concept>::range(int i, T &min, T &max,
-                                                         T &dx, int &N) const {
+PORTABLE_INLINE_FUNCTION void
+DataBox<T, Grid_t, Concept>::range(int i, T &min, T &max, T &dx, int &N) const {
   assert(0 <= i && i < rank_);
   assert(indices_[i] == IndexType::Interpolated);
   min = grids_[i].min();

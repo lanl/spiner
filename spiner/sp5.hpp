@@ -36,7 +36,7 @@ const std::string GRID_FORMAT[] = {"grid_[", "]"};
 namespace H1D {
 constexpr char NGRIDS[] = "ngrids";
 const std::string GRID_FORMAT[] = {"patch_[", "]"};
-}
+} // namespace H1D
 
 namespace RG1D {
 constexpr char RANGE_NAME[] = "range";

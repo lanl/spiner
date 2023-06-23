@@ -111,11 +111,13 @@ class RegularGrid1D {
   }
 
   // utitilies
-  PORTABLE_INLINE_FUNCTION bool operator==(const RegularGrid1D<T> &other) const {
+  PORTABLE_INLINE_FUNCTION bool
+  operator==(const RegularGrid1D<T> &other) const {
     return (min_ == other.min_ && max_ == other.max_ && dx_ == other.dx_ &&
             idx_ == other.idx_ && N_ == other.N_);
   }
-  PORTABLE_INLINE_FUNCTION bool operator!=(const RegularGrid1D<T> &other) const {
+  PORTABLE_INLINE_FUNCTION bool
+  operator!=(const RegularGrid1D<T> &other) const {
     return !(*this == other);
   }
   PORTABLE_INLINE_FUNCTION T min() const { return min_; }
@@ -130,10 +132,11 @@ class RegularGrid1D {
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
-    static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
-                  "Spiner HDF5 only defined for these data types: float, double");
+    static_assert(
+        std::is_same<T, double>::value || std::is_same<T, float>::value,
+        "Spiner HDF5 only defined for these data types: float, double");
     auto H5T_T =
-      std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
+        std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     herr_t status;
     T range[] = {min_, max_, dx_};
     hsize_t range_dims[] = {3};
@@ -147,10 +150,11 @@ class RegularGrid1D {
   }
 
   inline herr_t loadHDF(hid_t loc, const std::string &name) {
-    static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
-                  "Spiner HDF5 only defined for these data types: float, double");
+    static_assert(
+        std::is_same<T, double>::value || std::is_same<T, float>::value,
+        "Spiner HDF5 only defined for these data types: float, double");
     auto H5T_T =
-      std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
+        std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     herr_t status;
     T range[3];
     int n;
