@@ -159,7 +159,7 @@ class HierarchicalGrid1D {
     return status;
   }
 
-  inline herr_t loadHDF(hid_t, const std::string &name) const {
+  inline herr_t loadHDF(hid_t loc, const std::string &name) {
     static_assert(
         std::is_same<T, double>::value || std::is_same<T, float>::value,
         "Spiner HDF5 only defined for these data types: float, double");

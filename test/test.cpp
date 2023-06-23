@@ -15,6 +15,7 @@
 #include <array>
 #include <cmath> // sqrt
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <ports-of-call/portability.hpp>
@@ -22,6 +23,11 @@
 #include <spiner/databox.hpp>
 #include <spiner/interpolation.hpp>
 #include <spiner/spiner_types.hpp>
+
+#ifdef SPINER_USE_HDF
+#include "hdf5.h"
+#include "hdf5_hl.h"
+#endif
 
 #define CATCH_CONFIG_RUNNER
 #include "catch2/catch.hpp"
@@ -686,7 +692,38 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
 }
 
 #if SPINER_USE_HDF
-SCENARIO("DataBox HDF5", "[DataBox],[HDF5]") {
+TEST_CASE("HierarchicalGrid HDF5", "[HierarchicalGrid1D][HDF5]") {
+  GIVEN("A hierarchical grid") {
+    RegularGrid1D g1(0, 0.25, 3);
+    RegularGrid1D g2(0.25, 0.75, 11);
+    RegularGrid1D g3(0.75, 1, 7);
+    HierarchicalGrid1D<3> hierarchical_grid = {{g1, g2, g3}};
+    THEN("We can save it to file") {
+      const std::string filename = "hierarchical_test.h5";
+      const std::string grid_name = "grid";
+      herr_t status;
+      hid_t file;
+      file =
+          H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      status = hierarchical_grid.saveHDF(file, grid_name.c_str());
+      status += H5Fclose(file);
+      REQUIRE(status == H5_SUCCESS);
+
+      AND_THEN("We can read it from file and get the same information out") {
+        HierarchicalGrid1D<3> loaded_grid;
+        herr_t status;
+        hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        status = loaded_grid.loadHDF(file, grid_name.c_str());
+        status += H5Fclose(file);
+        REQUIRE(status == H5_SUCCESS);
+
+        REQUIRE(loaded_grid == hierarchical_grid);
+      }
+    }
+  }
+}
+
+SCENARIO("DataBox HDF5", "[DataBox][HDF5]") {
   constexpr int N = 2;
   herr_t status;
 
