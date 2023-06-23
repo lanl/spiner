@@ -86,9 +86,8 @@ include(content)
 spiner_content_declare(ports-of-call
   NAMESPACE spinerDeps
   GIT_REPO    https://github.com/lanl/ports-of-call
-  # NOTE: main as of March. 3 2023 
-  GIT_TAG     1b64df818933bbe2f755e32e59a57735886fa123
-  
+  # most recent relase as of April 05, 2023
+  GIT_TAG v1.5.1
 )
 
 if(SPINER_USE_HDF)
