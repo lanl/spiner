@@ -31,8 +31,10 @@ using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 using Spiner::DBDeleter;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
-template<int N>
+template <int N>
 using HierarchicalGrid1D = Spiner::HierarchicalGrid1D<Real, N>;
+template <int N>
+using HierarchicalDB = Spiner::DataBox<Real, HierarchicalGrid1D<N>>;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -499,6 +501,64 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     free(db1d);
   }
   free(db); // free databox
+}
+
+TEST_CASE("DataBox Interpolation with hierarchical grids",
+          "[DataBox][HierarchicalGrid1D]") {
+  GIVEN("A hierarchical grid") {
+    constexpr int NGRIDS = 2;
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+
+    RegularGrid1D g1(xmin, 0.35 * (xmax - xmin), 3);
+    RegularGrid1D g2(0.35 * (xmax - xmin), xmax, 4);
+    HierarchicalGrid1D<NGRIDS> g = {{g1, g2}};
+
+    const int NCOARSE = g.nPoints();
+
+    THEN("The hierarchical grid contains a number of points equal the sum of "
+         "the points of the individual grids") {
+      REQUIRE(g.nPoints() == g1.nPoints() + g2.nPoints());
+    }
+
+    WHEN("We construct and fill a 3D DataBox based on this grid") {
+      constexpr int RANK = 3;
+      HierarchicalDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE,
+                                NCOARSE, NCOARSE);
+      for (int i = 0; i < RANK; ++i) {
+        db.setRange(i, g);
+      }
+      portableFor(
+          "Fill 3D Databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
+          PORTABLE_LAMBDA(const int iz, const int iy, const int ix) {
+            Real x = g.x(ix);
+            Real y = g.x(iy);
+            Real z = g.x(iz);
+            db(iz, iy, ix) = linearFunction(z, y, x);
+          });
+
+      THEN("We can interpolate it to a finer grid and get the right answer") {
+        Real error = 0;
+        constexpr int NFINE = 21;
+        portableReduce(
+            "Interpolate 3D databox", 0, NFINE, 0, NFINE, 0, NFINE,
+            PORTABLE_LAMBDA(const int iz, const int iy, const int ix,
+                            Real &accumulate) {
+              RegularGrid1D gfine(xmin, xmax, NFINE);
+              Real x = gfine.x(ix);
+              Real y = gfine.x(iy);
+              Real z = gfine.x(iz);
+              Real f_true = linearFunction(z, y, x);
+              Real difference = db.interpToReal(z, y, x) - f_true;
+              accumulate += (difference * difference);
+            },
+            error);
+        REQUIRE(error <= EPSTEST);
+      }
+      // cleanup
+      free(db);
+    }
+  }
 }
 
 DataBox MakeFilledDB(int N, int &tot) {
