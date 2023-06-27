@@ -143,7 +143,7 @@ target_include_directories(
   spiner INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 # Option imported from `CTest`
-if(SPINER_BUILD_TESTING)
+if(SPINER_BUILD_TESTS)
   message(STATUS "\nConfiguring tests")
   add_subdirectory(test)
 endif()
