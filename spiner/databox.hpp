@@ -295,8 +295,6 @@ class DataBox {
     return dataView_.GetSizeInBytes();
   }
   PORTABLE_INLINE_FUNCTION int dim(int i) const { return dataView_.GetDim(i); }
-  PORTABLE_INLINE_FUNCTION void range(int i, T &min, T &max, T &dx,
-                                      int &N) const;
   PORTABLE_INLINE_FUNCTION Grid_t range(int i) const;
   PORTABLE_INLINE_FUNCTION IndexType indexType(const int i) const {
     return indices_[i];
@@ -866,17 +864,6 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::max() const {
     max = std::max(max, dataView_(i));
   }
   return max;
-}
-
-template <typename T, typename Grid_t, typename Concept>
-PORTABLE_INLINE_FUNCTION void
-DataBox<T, Grid_t, Concept>::range(int i, T &min, T &max, T &dx, int &N) const {
-  assert(0 <= i && i < rank_);
-  assert(indices_[i] == IndexType::Interpolated);
-  min = grids_[i].min();
-  max = grids_[i].max();
-  dx = grids_[i].dx();
-  N = grids_[i].nPoints();
 }
 
 template <typename T, typename Grid_t, typename Concept>
