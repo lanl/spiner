@@ -313,11 +313,8 @@ class DataBox {
                                   dim(3),      dim(2), dim(1)};
     a.copyShape(*this);
     // set correct allocation status of the new databox
-    if (PortsOfCall::EXECUTION_IS_HOST) {
-      a.status_ = DataStatus::AllocatedHost;
-    } else {
-      a.status_ = DataStatus::AllocatedDevice;
-    }
+    // note this is ALWAYS device, even if host==device.
+    a.status_ = DataStatus::AllocatedDevice;
     return a;
   }
 
