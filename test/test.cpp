@@ -38,9 +38,9 @@ using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 using Spiner::DBDeleter;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
 template <int N>
-using HierarchicalGrid1D = Spiner::HierarchicalGrid1D<Real, N>;
+using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<Real, N>;
 template <int N>
-using HierarchicalDB = Spiner::DataBox<Real, HierarchicalGrid1D<N>>;
+using PiecewiseDB = Spiner::DataBox<Real, PiecewiseGrid1D<N>>;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -102,13 +102,13 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   }
 }
 
-TEST_CASE("HierarchicalGrid1D", "[HierarchicalGrid1D]") {
+TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
   GIVEN("Some regular grid 1Ds") {
     RegularGrid1D g1(0, 0.25, 3);
     RegularGrid1D g2(0.25, 0.75, 11);
     RegularGrid1D g3(0.75, 1, 7);
-    THEN("We can construct a hierarchical grid object") {
-      HierarchicalGrid1D<3> h = {{g1, g2, g3}};
+    THEN("We can construct a piecewise grid object") {
+      PiecewiseGrid1D<3> h = {{g1, g2, g3}};
       AND_THEN("We can find each grid based on physical position") {
         REQUIRE(h.findGridFromPosition(0.1) == 0);
         REQUIRE(h.findGridFromPosition(0.3) == 1);
@@ -509,27 +509,27 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
   free(db); // free databox
 }
 
-TEST_CASE("DataBox Interpolation with hierarchical grids",
-          "[DataBox][HierarchicalGrid1D]") {
-  GIVEN("A hierarchical grid") {
+TEST_CASE("DataBox Interpolation with piecewise grids",
+          "[DataBox][PiecewiseGrid1D]") {
+  GIVEN("A piecewise grid") {
     constexpr int NGRIDS = 2;
     constexpr Real xmin = 0;
     constexpr Real xmax = 1;
 
     RegularGrid1D g1(xmin, 0.35 * (xmax - xmin), 3);
     RegularGrid1D g2(0.35 * (xmax - xmin), xmax, 4);
-    HierarchicalGrid1D<NGRIDS> g = {{g1, g2}};
+    PiecewiseGrid1D<NGRIDS> g = {{g1, g2}};
 
     const int NCOARSE = g.nPoints();
 
-    THEN("The hierarchical grid contains a number of points equal the sum of "
+    THEN("The piecewise grid contains a number of points equal the sum of "
          "the points of the individual grids") {
       REQUIRE(g.nPoints() == g1.nPoints() + g2.nPoints());
     }
 
     WHEN("We construct and fill a 3D DataBox based on this grid") {
       constexpr int RANK = 3;
-      HierarchicalDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE,
+      PiecewiseDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE,
                                 NCOARSE, NCOARSE);
       for (int i = 0; i < RANK; ++i) {
         db.setRange(i, g);
@@ -670,8 +670,10 @@ SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
             sum);
         REQUIRE(std::abs(sum - factor * N * N * N) <= EPSTEST);
       }
+      printf("free db_dev\n");
       free(db_dev);
     }
+    printf("free db_host\n");
     free(db_host);
   }
 }
@@ -692,32 +694,32 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
 }
 
 #if SPINER_USE_HDF
-TEST_CASE("HierarchicalGrid HDF5", "[HierarchicalGrid1D][HDF5]") {
-  GIVEN("A hierarchical grid") {
+TEST_CASE("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
+  GIVEN("A piecewise grid") {
     RegularGrid1D g1(0, 0.25, 3);
     RegularGrid1D g2(0.25, 0.75, 11);
     RegularGrid1D g3(0.75, 1, 7);
-    HierarchicalGrid1D<3> hierarchical_grid = {{g1, g2, g3}};
+    PiecewiseGrid1D<3> piecewise_grid = {{g1, g2, g3}};
     THEN("We can save it to file") {
-      const std::string filename = "hierarchical_test.h5";
+      const std::string filename = "piecewise_test.h5";
       const std::string grid_name = "grid";
       herr_t status;
       hid_t file;
       file =
           H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-      status = hierarchical_grid.saveHDF(file, grid_name.c_str());
+      status = piecewise_grid.saveHDF(file, grid_name.c_str());
       status += H5Fclose(file);
       REQUIRE(status == H5_SUCCESS);
 
       AND_THEN("We can read it from file and get the same information out") {
-        HierarchicalGrid1D<3> loaded_grid;
+        PiecewiseGrid1D<3> loaded_grid;
         herr_t status;
         hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
         status = loaded_grid.loadHDF(file, grid_name.c_str());
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
-        REQUIRE(loaded_grid == hierarchical_grid);
+        REQUIRE(loaded_grid == piecewise_grid);
       }
     }
   }

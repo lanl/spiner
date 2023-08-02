@@ -31,7 +31,7 @@ namespace Spiner {
 template <typename T = Real, int NGRIDS = 3,
           typename =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
-class HierarchicalGrid1D {
+class PiecewiseGrid1D {
  public:
   using ValueType = T;
   static constexpr int BAD_VALUE = -1;
@@ -39,9 +39,9 @@ class HierarchicalGrid1D {
   // __host__ __device__ default constructors cause warning.
   // This is functionally equivalent because grids_ will
   // be initialized to default values
-  PORTABLE_INLINE_FUNCTION HierarchicalGrid1D() {}
+  PORTABLE_INLINE_FUNCTION PiecewiseGrid1D() {}
   PORTABLE_INLINE_FUNCTION
-  HierarchicalGrid1D(const RegularGrid1D<T> grids[NGRIDS]) {
+  PiecewiseGrid1D(const RegularGrid1D<T> grids[NGRIDS]) {
     int point_tot = 0;
     for (int i = 0; i < NGRIDS; ++i) {
       grids_[i] = grids[i];
@@ -55,8 +55,8 @@ class HierarchicalGrid1D {
       }
     }
   }
-  HierarchicalGrid1D(std::initializer_list<RegularGrid1D<T>> grids)
-      : HierarchicalGrid1D(std::vector<RegularGrid1D<T>>(grids).data()) {}
+  PiecewiseGrid1D(std::initializer_list<RegularGrid1D<T>> grids)
+      : PiecewiseGrid1D(std::vector<RegularGrid1D<T>>(grids).data()) {}
 
   template <typename F>
   PORTABLE_INLINE_FUNCTION int findGrid(const F &direction) const {
@@ -114,14 +114,14 @@ class HierarchicalGrid1D {
   }
 
   PORTABLE_INLINE_FUNCTION
-  bool operator==(const HierarchicalGrid1D<T, NGRIDS> &other) const {
+  bool operator==(const PiecewiseGrid1D<T, NGRIDS> &other) const {
     for (int ig = 0; ig < NGRIDS; ++ig) {
       if (grids_[ig] != other.grids_[ig]) return false;
     }
     return true;
   }
   PORTABLE_INLINE_FUNCTION
-  bool operator!=(const HierarchicalGrid1D<T, NGRIDS> &other) const {
+  bool operator!=(const PiecewiseGrid1D<T, NGRIDS> &other) const {
     return !(*this == other);
   }
   PORTABLE_INLINE_FUNCTION T min() const { return grids_[0].min(); }
