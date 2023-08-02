@@ -529,8 +529,8 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
 
     WHEN("We construct and fill a 3D DataBox based on this grid") {
       constexpr int RANK = 3;
-      PiecewiseDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE,
-                                NCOARSE, NCOARSE);
+      PiecewiseDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE,
+                             NCOARSE);
       for (int i = 0; i < RANK; ++i) {
         db.setRange(i, g);
       }
