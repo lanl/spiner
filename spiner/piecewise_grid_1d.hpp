@@ -28,7 +28,7 @@
 
 namespace Spiner {
 
-template <typename T = Real, int NGRIDS = 3,
+template <typename T = Real, int NGRIDSMAX = 5,
           typename =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
 class PiecewiseGrid1D {
@@ -40,36 +40,39 @@ class PiecewiseGrid1D {
   // This is functionally equivalent because grids_ will
   // be initialized to default values
   PORTABLE_INLINE_FUNCTION PiecewiseGrid1D() {}
-  PORTABLE_INLINE_FUNCTION
-  PiecewiseGrid1D(const RegularGrid1D<T> grids[NGRIDS]) {
+  PiecewiseGrid1D(const std::vector<RegularGrid1D<T>> grids) {
+    NGRIDS_ = grids.size();
+    PORTABLE_ALWAYS_REQUIRE(
+        NGRIDS_ <= NGRIDSMAX,
+        "Total number of grids must be within maximum allowed");
     int point_tot = 0;
-    for (int i = 0; i < NGRIDS; ++i) {
+    for (int i = 0; i < NGRIDS_; ++i) {
       grids_[i] = grids[i];
       pointTotals_[i] = point_tot;
       point_tot += grids[i].nPoints();
       if ((i > 0) &&
           ratio_(2 * std::abs(grids_[i].min() - grids_[i - 1].max()),
                  std::abs(grids_[i].min() + grids_[i - 1].max()) >= EPS_())) {
-        PORTABLE_ALWAYS_THROW_OR_ABORT("Grids in the hierarchy must be ordered "
-                                       "and intersect at exactly one point.");
+        PORTABLE_ALWAYS_THROW_OR_ABORT(
+            "Grids must be ordered and intersect at exactly one point.");
       }
     }
   }
   PiecewiseGrid1D(std::initializer_list<RegularGrid1D<T>> grids)
-      : PiecewiseGrid1D(std::vector<RegularGrid1D<T>>(grids).data()) {}
+      : PiecewiseGrid1D(std::vector<RegularGrid1D<T>>(grids)) {}
 
   template <typename F>
   PORTABLE_INLINE_FUNCTION int findGrid(const F &direction) const {
     int l = 0;
-    int r = NGRIDS - 1;
-    for (int iter = 0; iter < NGRIDS; iter++) {
+    int r = NGRIDS_ - 1;
+    for (int iter = 0; iter < NGRIDS_; iter++) {
       int m = (l + r) / 2;
       int d = direction(m);
       if (d < 0) {
         if (m == 0) return 0;
         r = m - 1;
       } else if (d > 0) {
-        if (m >= (NGRIDS - 1)) return NGRIDS - 1;
+        if (m >= (NGRIDS_ - 1)) return NGRIDS_ - 1;
         l = m + 1;
       } else {
         return m;
@@ -81,7 +84,7 @@ class PiecewiseGrid1D {
   PORTABLE_INLINE_FUNCTION int findGridFromGlobalIdx(const int i) const {
     int ig = findGrid([&](const int m) {
       if (i < pointTotals_[m]) return -1;
-      if ((m < NGRIDS - 1) && (i >= pointTotals_[m + 1])) return 1;
+      if ((m < NGRIDS_ - 1) && (i >= pointTotals_[m + 1])) return 1;
       return 0;
     });
     return ig;
@@ -114,32 +117,33 @@ class PiecewiseGrid1D {
   }
 
   PORTABLE_INLINE_FUNCTION
-  bool operator==(const PiecewiseGrid1D<T, NGRIDS> &other) const {
-    for (int ig = 0; ig < NGRIDS; ++ig) {
+  bool operator==(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
+    for (int ig = 0; ig < NGRIDS_; ++ig) {
       if (grids_[ig] != other.grids_[ig]) return false;
     }
     return true;
   }
   PORTABLE_INLINE_FUNCTION
-  bool operator!=(const PiecewiseGrid1D<T, NGRIDS> &other) const {
+  bool operator!=(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
     return !(*this == other);
   }
   PORTABLE_INLINE_FUNCTION T min() const { return grids_[0].min(); }
-  PORTABLE_INLINE_FUNCTION T max() const { return grids_[NGRIDS - 1].max(); }
+  PORTABLE_INLINE_FUNCTION T max() const { return grids_[NGRIDS_ - 1].max(); }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const {
-    return pointTotals_[NGRIDS - 1] + grids_[NGRIDS - 1].nPoints();
+    return pointTotals_[NGRIDS_ - 1] + grids_[NGRIDS_ - 1].nPoints();
   }
   PORTABLE_INLINE_FUNCTION T dx(const int ig) const {
-    assert(ig < NGRIDS);
+    assert(ig < NGRIDS_);
     return grids_[ig].dx();
   }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
-    for (int ig = 0; ig < NGRIDS; ++ig) {
+    for (int ig = 0; ig < NGRIDS_; ++ig) {
       if (grids_[ig].isnan()) return true;
     }
     return false;
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
+  PORTABLE_INLINE_FUNCTION int nGrids() const { return NGRIDS_; }
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
@@ -149,10 +153,10 @@ class PiecewiseGrid1D {
     herr_t status = 0;
     hid_t group =
         H5Gcreate(loc, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    int ngrids = static_cast<int>(NGRIDS);
+    int ngrids = static_cast<int>(NGRIDS_);
     status =
         H5LTset_attribute_int(loc, name.c_str(), SP5::H1D::NGRIDS, &ngrids, 1);
-    for (int i = 0; i < NGRIDS; ++i) {
+    for (int i = 0; i < NGRIDS_; ++i) {
       status += grids_[i].saveHDF(group, gridname_(i).c_str());
     }
     status += H5Gclose(group);
@@ -167,17 +171,20 @@ class PiecewiseGrid1D {
     hid_t group = H5Gopen(loc, name.c_str(), H5P_DEFAULT);
     int ngrids;
     H5LTget_attribute_int(loc, name.c_str(), SP5::H1D::NGRIDS, &ngrids);
-    assert(ngrids == NGRIDS);
+    NGRIDS_ = ngrids;
+    PORTABLE_ALWAYS_REQUIRE(
+        NGRIDS_ <= NGRIDSMAX,
+        "Total number of grids must be within maximum allowed");
     int point_tot = 0;
-    for (int i = 0; i < NGRIDS; ++i) {
+    for (int i = 0; i < NGRIDS_; ++i) {
       status += grids_[i].loadHDF(group, gridname_(i).c_str());
       pointTotals_[i] = point_tot;
       point_tot += grids_[i].nPoints();
       if ((i > 0) &&
           ratio_(2 * std::abs(grids_[i].min() - grids_[i - 1].max()),
                  std::abs(grids_[i].min() + grids_[i - 1].max()) >= EPS_())) {
-        PORTABLE_ALWAYS_THROW_OR_ABORT("Grids in the hierarchy must be ordered "
-                                       "and intersect at exactly one point.");
+        PORTABLE_ALWAYS_THROW_OR_ABORT(
+            "Grids must be ordered and intersect at exactly one point.");
       }
     }
     status += H5Gclose(group);
@@ -203,8 +210,9 @@ class PiecewiseGrid1D {
            SP5::H1D::GRID_FORMAT[1];
   }
 
-  RegularGrid1D<T> grids_[NGRIDS];
-  int pointTotals_[NGRIDS];
+  RegularGrid1D<T> grids_[NGRIDSMAX];
+  int pointTotals_[NGRIDSMAX];
+  int NGRIDS_;
 };
 
 } // namespace Spiner
