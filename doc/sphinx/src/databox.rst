@@ -22,17 +22,34 @@ To use databox, simply include the relevant header:
   The default type can be set to type ``float`` if the preprocessor
   macro ``SINGLE_PRECISION_ENABLED`` is defined.
 
- Any arithmetic type is supported, although the code has
-only been tested carefully with floating point numbers. To set
-``DataBox`` to a single type, you may wish to declare a type alias
-such as:
+Any arithmetic type is supported, although the code has only been
+tested carefully with floating point numbers. To set ``DataBox`` to a
+single type, you may wish to declare a type alias such as:
 
 .. code-block:: cpp
 
    using DataBox = Spiner::DataBox<double>
 
-In C++17 and later, you can also get the default type specialization
-by simply omitting the template arguments.
+Spiner is also templated on how the interpolation gridding works. This
+template parameter is called ``Grid_t``. The available options at this time are:
+
+* ``Spiner::RegularGrid1D<T>``
+* ``Spiner::PiecewiseGrid1D<T>``
+
+where here ``T`` is the arithmetic type as discussed above. The
+default type is ``RegularGrid1D``. You can further alias ``DataBox``
+as, for example:
+
+.. code-block:: cpp
+
+   using DataBox = Spiner::DataBox<double, Spiner::RegularGrid1D<double>>;
+
+More detail on the interpolation gridding is available below and in
+the interpolation section.
+
+.. note::
+   In C++17 and later, you can also get the default type specialization
+   by simply omitting the template arguments.
 
 .. note::
   In the function signatures below, GPU/performance portability
@@ -43,7 +60,7 @@ by simply omitting the template arguments.
    In the function signatures below, we will often refer to the type
    ``Real`` and the type ``T``. These are both references to the
    underlying templated arithmetic type.
-
+   
 Creating a ``DataBox``
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -307,9 +324,15 @@ a "type," represented as an ``enum class``, ``IndexType``. Currently
 the type can be either ``Interpolated`` or ``Indexed``. When a new
 ``DataBox`` is created, all dimensions are set to
 ``IndexType::Indexed``. A dimension can be set to ``Interpolated`` via
-the ``setRange`` method:
+the ``setRange`` method.
 
-.. cpp:function:: void DataBox::setRange(int i, T min, T max, int N) const;
+.. cpp:function:: void DataBox::setRange(int i, Grid_t g);
+
+where here ``i`` is the dimension and ``g`` is the gridding object for
+this index. In the default setup, where grids are uniformly spaced
+(i.e., you use a ``RegularGrid1D``), this is:
+
+.. cpp:function:: void DataBox::setRange(int i, T min, T max, int N);
    
 where here ``i`` is the dimension, ``min`` is the minimum value of the
 independent variable, ``max`` is the maximum value of the indpendent
@@ -319,19 +342,12 @@ dimension. (Here ``T`` is the underlying templated data type.)
 .. note::
   In these routines, the dimension is indexed from zero.
 
-This information can be recovered via the ``range`` getter method:
-
-.. cpp:function:: void DataBox::range(int i, T &min, T &max, T &dx, int &N) const;
-
-where here ``min``, ``max``, ``dx``, and ``N`` are filled with the values
-for a given dimension.
-
 .. note::
-  There is a lower-level object, ``RegularGrid1D``, which represents
-  these interpolation ranges internally. There are setter and getter
-  methods ``setRange`` and ``range`` that work with the
-  ``RegularGrid1D`` class directly. For more details, see the
-  relevant documentation.
+  There is a set of lower-level objects, ``RegularGrid1D``, and
+  ``PiecewiseGrid1D``, which represent these interpolation ranges
+  internally. There is a getter method ``range`` that works
+  with the underlying ``Grid_t`` class directly. For
+  more details, see the relevant documentation.
 
 It's often desirable to have multiple databoxes with the exact same
 shape and interpolation structure (i.e., independent variable

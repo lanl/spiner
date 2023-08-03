@@ -15,6 +15,7 @@
 #include <array>
 #include <cmath> // sqrt
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <ports-of-call/portability.hpp>
@@ -22,6 +23,11 @@
 #include <spiner/databox.hpp>
 #include <spiner/interpolation.hpp>
 #include <spiner/spiner_types.hpp>
+
+#ifdef SPINER_USE_HDF
+#include "hdf5.h"
+#include "hdf5_hl.h"
+#endif
 
 #define CATCH_CONFIG_RUNNER
 #include "catch2/catch.hpp"
@@ -31,6 +37,10 @@ using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
 using Spiner::DBDeleter;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
+template <int N>
+using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<Real, N>;
+template <int N>
+using PiecewiseDB = Spiner::DataBox<Real, PiecewiseGrid1D<N>>;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -89,6 +99,54 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.max() == max);
     REQUIRE(g.nPoints() == N);
     REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
+  }
+}
+
+TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
+  GIVEN("Some regular grid 1Ds") {
+    RegularGrid1D g1(0, 0.25, 3);
+    RegularGrid1D g2(0.25, 0.75, 11);
+    RegularGrid1D g3(0.75, 1, 7);
+    THEN("We can construct a piecewise grid object") {
+      PiecewiseGrid1D<3> h = {{g1, g2, g3}};
+      AND_THEN("We can find each grid based on physical position") {
+        REQUIRE(h.findGridFromPosition(0.1) == 0);
+        REQUIRE(h.findGridFromPosition(0.3) == 1);
+        REQUIRE(h.findGridFromPosition(0.8) == 2);
+        // extrapolation
+        REQUIRE(h.findGridFromPosition(-5) == 0);
+        REQUIRE(h.findGridFromPosition(5) == 2);
+      }
+      AND_THEN("We can find each grid based on global index") {
+        REQUIRE(h.findGridFromGlobalIdx(-1) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(0) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(2) == 0);
+        REQUIRE(h.findGridFromGlobalIdx(3) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(4) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(13) == 1);
+        REQUIRE(h.findGridFromGlobalIdx(14) == 2);
+        REQUIRE(h.findGridFromGlobalIdx(20) == 2);
+        REQUIRE(h.findGridFromGlobalIdx(21) == 2);
+      }
+      AND_THEN("We can get x from global index") {
+        REQUIRE(std::abs(h.x(2) - 0.25) < EPSTEST);
+        REQUIRE(std::abs(h.x(3) - 0.25) < EPSTEST);
+      }
+      AND_THEN("We can global index from x") {
+        REQUIRE(h.index(-1) == 0);
+        REQUIRE(h.index(0.25 - 1e-3) == 1);
+        REQUIRE(h.index(0.2501) == 3);
+        REQUIRE(h.index(100) == 19);
+      }
+      AND_THEN("We can compute weights") {
+        Spiner::weights_t<Real> w;
+        int ix;
+        h.weights(0.8751, ix, w);
+        REQUIRE(ix == 17);
+        REQUIRE(std::abs(w[1] - 0.0024) < EPSTEST);
+        REQUIRE(std::abs(w[0] - (1 - 0.0024)) < EPSTEST);
+      }
+    }
   }
 }
 
@@ -451,6 +509,64 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
   free(db); // free databox
 }
 
+TEST_CASE("DataBox Interpolation with piecewise grids",
+          "[DataBox][PiecewiseGrid1D]") {
+  GIVEN("A piecewise grid") {
+    constexpr int NGRIDS = 2;
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+
+    RegularGrid1D g1(xmin, 0.35 * (xmax - xmin), 3);
+    RegularGrid1D g2(0.35 * (xmax - xmin), xmax, 4);
+    PiecewiseGrid1D<NGRIDS> g = {{g1, g2}};
+
+    const int NCOARSE = g.nPoints();
+
+    THEN("The piecewise grid contains a number of points equal the sum of "
+         "the points of the individual grids") {
+      REQUIRE(g.nPoints() == g1.nPoints() + g2.nPoints());
+    }
+
+    WHEN("We construct and fill a 3D DataBox based on this grid") {
+      constexpr int RANK = 3;
+      PiecewiseDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE,
+                             NCOARSE);
+      for (int i = 0; i < RANK; ++i) {
+        db.setRange(i, g);
+      }
+      portableFor(
+          "Fill 3D Databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
+          PORTABLE_LAMBDA(const int iz, const int iy, const int ix) {
+            Real x = g.x(ix);
+            Real y = g.x(iy);
+            Real z = g.x(iz);
+            db(iz, iy, ix) = linearFunction(z, y, x);
+          });
+
+      THEN("We can interpolate it to a finer grid and get the right answer") {
+        Real error = 0;
+        constexpr int NFINE = 21;
+        portableReduce(
+            "Interpolate 3D databox", 0, NFINE, 0, NFINE, 0, NFINE,
+            PORTABLE_LAMBDA(const int iz, const int iy, const int ix,
+                            Real &accumulate) {
+              RegularGrid1D gfine(xmin, xmax, NFINE);
+              Real x = gfine.x(ix);
+              Real y = gfine.x(iy);
+              Real z = gfine.x(iz);
+              Real f_true = linearFunction(z, y, x);
+              Real difference = db.interpToReal(z, y, x) - f_true;
+              accumulate += (difference * difference);
+            },
+            error);
+        REQUIRE(error <= EPSTEST);
+      }
+      // cleanup
+      free(db);
+    }
+  }
+}
+
 DataBox MakeFilledDB(int N, int &tot) {
   DataBox db(N, N, N);
   tot = 0;
@@ -554,8 +670,10 @@ SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
             sum);
         REQUIRE(std::abs(sum - factor * N * N * N) <= EPSTEST);
       }
+      printf("free db_dev\n");
       free(db_dev);
     }
+    printf("free db_host\n");
     free(db_host);
   }
 }
@@ -576,7 +694,38 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
 }
 
 #if SPINER_USE_HDF
-SCENARIO("DataBox HDF5", "[DataBox],[HDF5]") {
+TEST_CASE("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
+  GIVEN("A piecewise grid") {
+    RegularGrid1D g1(0, 0.25, 3);
+    RegularGrid1D g2(0.25, 0.75, 11);
+    RegularGrid1D g3(0.75, 1, 7);
+    PiecewiseGrid1D<3> piecewise_grid = {{g1, g2, g3}};
+    THEN("We can save it to file") {
+      const std::string filename = "piecewise_test.h5";
+      const std::string grid_name = "grid";
+      herr_t status;
+      hid_t file;
+      file =
+          H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      status = piecewise_grid.saveHDF(file, grid_name.c_str());
+      status += H5Fclose(file);
+      REQUIRE(status == H5_SUCCESS);
+
+      AND_THEN("We can read it from file and get the same information out") {
+        PiecewiseGrid1D<3> loaded_grid;
+        herr_t status;
+        hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        status = loaded_grid.loadHDF(file, grid_name.c_str());
+        status += H5Fclose(file);
+        REQUIRE(status == H5_SUCCESS);
+
+        REQUIRE(loaded_grid == piecewise_grid);
+      }
+    }
+  }
+}
+
+SCENARIO("DataBox HDF5", "[DataBox][HDF5]") {
   constexpr int N = 2;
   herr_t status;
 
