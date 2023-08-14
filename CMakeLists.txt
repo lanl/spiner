@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 3.19)
 
-set(SPINER_VERSION 1.6.1)
+set(SPINER_VERSION 1.6.2)
 project(spiner VERSION ${SPINER_VERSION})
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
