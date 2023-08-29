@@ -10,8 +10,8 @@ variables:
   SPINER_GCC_VERSION: "9.3.0"
   SPINER_CUDA_VERSION: "11.6.0"
   SPINER_SPACK_SPEC: "spiner@main+python%gcc@${SPINER_GCC_VERSION}"
-  COLOR_CYAN: '\033[1;36m'
-  COLOR_PLAIN: '\033[0m'
+  COLOR_CYAN: "\e[1;36m"
+  COLOR_PLAIN: "\e[0m"
   # set to different spack upstream for testing
   SPINER_TEMP_SPACK_DIR: ""
   # uncomment for debugging the CI and persist the Spack installation
@@ -19,11 +19,13 @@ variables:
   # DEVEL_SPACK_CHECKOUT: "${CI_PROJECT_DIR}/spack"
 
 before_script:
+  - echo "Running on $(hostname)"
+  - section() { echo $'\e[0K'"section_$1:$(date +%s):$2"$'\r\e[0K'"${3+${COLOR_CYAN}$3${COLOR_PLAIN}}"; }
   - export SPACK_DISABLE_LOCAL_CONFIG=true
   - export SPACK_USER_CACHE_PATH=${SPACK_USER_CACHE_PATH:-/tmp/spack-local}
   - export DEVEL_SPACK_CHECKOUT=${DEVEL_SPACK_CHECKOUT:-/tmp/spack}
   - export SPINER_SPACK_DIR=${SPINER_TEMP_SPACK_DIR:=$XCAP_OSS_SPACK_DIR}
-  - echo -e "\e[0Ksection_start:`date +%s`:spack_init[collapsed=true]\r\e[0K${COLOR_CYAN}Creating Spack instance at ${DEVEL_SPACK_CHECKOUT}${COLOR_PLAIN}"
+  - section start "spack_init[collapsed=true]" "Creating Spack instance at ${DEVEL_SPACK_CHECKOUT}"
   - |
     rsync -rpl \
         --exclude=".git" \
@@ -36,7 +38,7 @@ before_script:
   - source ${DEVEL_SPACK_CHECKOUT}/share/spack/setup-env.sh
   - spack --version
   - spack compiler list
-  - echo -e "\e[0Ksection_end:`date +%s`:spack_init\r\e[0K"
+  - section end spack_init
 
 ##########################
 # Build Matrix Variables #
@@ -92,7 +94,7 @@ before_script:
     - |
       if [[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]];
       then
-        echo -e "\e[0Ksection_start:`date +%s`:spack_build[collapsed=true]\r\e[0K${COLOR_CYAN}Building via Spack${COLOR_PLAIN}"
+        section start "spack_build[collapsed=true]" "Building via Spack"
         mkdir -p spack_build_env
         spack env create -d spack_build_env
         spack env activate -d spack_build_env
@@ -101,9 +103,9 @@ before_script:
         spack config add upstreams:default:install_tree:${SPINER_SPACK_DIR}/opt/spack/
         spack dev-build -j $(nproc) ${SPINER_SPACK_SPEC}
         spack env deactivate
-        echo -e "\e[0Ksection_end:`date +%s`:spack_build\r\e[0K"
+        section end spack_build
       fi
-    - echo -e "\e[0Ksection_start:`date +%s`:spack_env[collapsed=true]\r\e[0K${COLOR_CYAN}Creating Spack environment${COLOR_PLAIN}"
+    - section start "spack_env[collapsed=true]" "Creating Spack environment"
     - mkdir -p spack_env
     - spack env create -d spack_env
     - spack env activate -d spack_env
@@ -113,7 +115,7 @@ before_script:
     - spack spec -I ${SPINER_SPACK_SPEC}
     - spack add ${SPINER_SPACK_SPEC}
     - spack install -j $(nproc) --show-log-on-error --no-checksum --yes-to-all -u cmake
-    - echo -e "\e[0Ksection_end:`date +%s`:spack_env\r\e[0K"
+    - section end spack_env
     - mkdir -p build
     - cd build
     - |
