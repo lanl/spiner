@@ -302,7 +302,7 @@ class DataBox {
 
   DataBox<T, Grid_t, Concept>
   getOnDevice() const { // getOnDevice is always a deep copy
-    if (size == 0 || status_ == DataStatus::Empty) { // edge case for unallocated
+    if (size() == 0 || status_ == DataStatus::Empty) { // edge case for unallocated
       DataBox<T, Grid_t, Concept> a;
       return a;
     }
