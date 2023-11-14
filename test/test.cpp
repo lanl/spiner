@@ -676,6 +676,14 @@ SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
     printf("free db_host\n");
     free(db_host);
   }
+  GIVEN("An empty databox");
+  DataBox db;
+  WHEN("We copy it to device") {
+    DataBox db2 = db.getOnDevice();
+    THEN("The new object is still empty") {
+      REQUIRE(db.dataStatus() == Spiner::DataStatus::Empty);
+    }
+  }
 }
 
 SCENARIO("Using unique pointers to garbage collect DataBox",

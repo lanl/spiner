@@ -42,7 +42,12 @@
 namespace Spiner {
 
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
-enum class DataStatus { Empty = 0, Unmanaged = 1, AllocatedHost = 2, AllocatedDevice = 3 };
+enum class DataStatus {
+  Empty = 0,
+  Unmanaged = 1,
+  AllocatedHost = 2,
+  AllocatedDevice = 3
+};
 enum class AllocationTarget { Host, Device };
 
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
@@ -302,7 +307,8 @@ class DataBox {
 
   DataBox<T, Grid_t, Concept>
   getOnDevice() const { // getOnDevice is always a deep copy
-    if (size() == 0 || status_ == DataStatus::Empty) { // edge case for unallocated
+    if (size() == 0 ||
+        status_ == DataStatus::Empty) { // edge case for unallocated
       DataBox<T, Grid_t, Concept> a;
       return a;
     }
