@@ -9,7 +9,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   SPINER_GCC_VERSION: "9.3.0"
   SPINER_CUDA_VERSION: "11.6.0"
-  SPINER_SPACK_SPEC: "spiner@main+python%gcc@${SPINER_GCC_VERSION}"
+  SPINER_SPACK_SPEC: "spiner@main+python+test%gcc@${SPINER_GCC_VERSION}"
   COLOR_CYAN: "\e[1;36m"
   COLOR_PLAIN: "\e[0m"
   # set to different spack upstream for testing
