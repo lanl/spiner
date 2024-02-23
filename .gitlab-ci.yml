@@ -99,7 +99,7 @@ before_script:
       spack repo add spack-repo
       spack repo list
       spack config add upstreams:default:install_tree:${SPINER_SPACK_DIR}/opt/spack/
-      spack dev-build -j $(nproc) ${SPINER_SPACK_SPEC}
+      spack dev-build -q -j $(nproc) ${SPINER_SPACK_SPEC}
       spack env deactivate
       section end spack_build
     - section start "spack_env[collapsed=true]" "Creating Spack environment"
