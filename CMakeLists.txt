@@ -56,7 +56,7 @@ option(SPINER_BUILD_TESTS "Compile Tests" OFF)
 cmake_dependent_option(SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests"
                        ON "SPINER_BUILD_TESTS" OFF)
 cmake_dependent_option(
-  SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests" ON
+  SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests (affects submodule-build only)" ON
   "SPINER_TEST_USE_KOKKOS" ON)
 
 # CTest
