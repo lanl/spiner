@@ -80,20 +80,15 @@ class Spiner(CMakePackage):
     def cmake_args(self):
         if self.spec.satisfies("@1.6.0:"):
             use_kokkos_option = "SPINER_TEST_USE_KOKKOS"
-            use_cuda_option = "SPINER_TEST_USE_CUDA"
         else:
             use_kokkos_option = "SPINER_USE_KOKKOS"
-            use_cuda_option = "SPINER_USE_CUDA"
-
-        use_cuda = self.spec.satisfies("^kokkos+cuda")
 
         args = [
             self.define("BUILD_TESTING", self.run_tests),
             self.define_from_variant(use_kokkos_option, "kokkos"),
-            self.define(use_cuda_option, use_cuda),
             self.define_from_variant("SPINER_USE_HDF", "hdf5"),
         ]
-        if use_cuda:
+        if self.spec.satisfies("^kokkos+cuda"):
             args.append(
                 self.define("CMAKE_CUDA_ARCHITECTURES", self.spec["kokkos"].variants["cuda_arch"].value)
             )
