@@ -112,7 +112,7 @@ default:
       spack repo add ${DEVEL_SPACK_ROOT}/var/spack/repos/xcap_deployment
       spack repo add spack-repo
       spack repo list
-      spack config add upstreams:default:install_tree:${SPINER_SPACK_DIR}/opt/spack/
+      spack config add upstreams:default:install_tree:${PROJECT_SPACK_ROOT}/opt/spack/
       spack dev-build -q -j $(nproc) ${SPINER_SPACK_SPEC}
       spack env deactivate
       section end spack_build
