@@ -11,7 +11,8 @@ variables:
   SPINER_GCC_VERSION: "10.3.0"
   SPINER_CUDA_VERSION: "11.6.0"
   SPINER_OPENMPI_VERSION: "4.1.1"
-  SPINER_SPACK_SPEC: "spiner@main+python+test%gcc@=${SPINER_GCC_VERSION} ^openblas"
+  SPINER_SPACK_SPEC: "spiner@main%gcc@=${SPINER_GCC_VERSION}+python+test"
+  SPINER_SPACK_FULL_SPEC: "${SPINER_SPACK_SPEC} ^openblas"
   COLOR_CYAN: "\e[1;36m"
   COLOR_PLAIN: "\e[0m"
   # uncomment to have the CI Spack installation for debugging
@@ -103,7 +104,7 @@ default:
       if [[ ${CI_JOB_NAME} =~ "a100" ]];
       then
         module load openmpi/${SPINER_OPENMPI_VERSION}-gcc_${SPINER_GCC_VERSION}
-        export SPINER_SPACK_SPEC="${SPINER_SPACK_SPEC}+hdf5+mpi+kokkos ^kokkos+wrapper+cuda cuda_arch=80 ^openmpi@${SPINER_OPENMPI_VERSION} ^openblas";
+        export SPINER_SPACK_FULL_SPEC="${SPINER_SPACK_SPEC}+hdf5+mpi+kokkos ^kokkos+wrapper+cuda cuda_arch=80 ^openmpi@${SPINER_OPENMPI_VERSION} ^openblas";
       fi
     - |
       section start "spack_build[collapsed=true]" "Building via Spack"
@@ -113,7 +114,7 @@ default:
       spack repo add spack-repo
       spack repo list
       spack config add upstreams:default:install_tree:${PROJECT_SPACK_ROOT}/opt/spack/
-      spack dev-build -q -j $(nproc) ${SPINER_SPACK_SPEC}
+      spack dev-build -q -j $(nproc) ${SPINER_SPACK_FULL_SPEC}
       spack env deactivate
       section end spack_build
     - section start "spack_env[collapsed=true]" "Creating Spack environment"
@@ -123,8 +124,8 @@ default:
     - spack repo add spack-repo
     - spack repo list
     - spack config add upstreams:default:install_tree:${PROJECT_SPACK_ROOT}/opt/spack/
-    - spack spec -I ${SPINER_SPACK_SPEC}
-    - spack add ${SPINER_SPACK_SPEC}
+    - spack spec -I ${SPINER_SPACK_FULL_SPEC}
+    - spack add ${SPINER_SPACK_FULL_SPEC}
     - spack install -j $(nproc) --show-log-on-error --no-checksum --yes-to-all -u cmake
     - section end spack_env
     - mkdir -p build
