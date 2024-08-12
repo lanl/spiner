@@ -730,6 +730,34 @@ TEST_CASE("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         REQUIRE(loaded_grid == piecewise_grid);
       }
     }
+    GIVEN("A single regular grid") {
+      RegularGrid1D g1(0, 0.25, 3);
+      WHEN("We save it to file") {
+        const std::string filename = "backwards_compatibility_test.h5";
+        const std::string grid_name = "grid";
+        herr_t status;
+        hid_t file;
+        file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
+                         H5P_DEFAULT);
+        status = g1.saveHDF(file, grid_name.c_str());
+        status += H5Fclose(file);
+        REQUIRE(status == H5_SUCCESS);
+
+        THEN("We can read the file back out with a piecewise grid") {
+          PiecewiseGrid1D<3> loaded_grid;
+          herr_t status;
+          hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+          status = loaded_grid.loadHDF(file, grid_name.c_str());
+          status += H5Fclose(file);
+          REQUIRE(status == H5_SUCCESS);
+
+          REQUIRE(loaded_grid.min() == g1.min());
+          REQUIRE(loaded_grid.max() == g1.max());
+          REQUIRE(loaded_grid.nPoints() == g1.nPoints());
+          REQUIRE(loaded_grid.nGrids() == 1);
+        }
+      }
+    }
   }
 }
 

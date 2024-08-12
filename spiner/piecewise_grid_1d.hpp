@@ -21,6 +21,12 @@
 #include <utility>
 #include <vector>
 
+#ifdef SPINER_USE_HDF
+#include "hdf5.h"
+#include "hdf5_hl.h"
+#include <string>
+#endif
+
 #include <ports-of-call/portability.hpp>
 #include <ports-of-call/portable_errors.hpp>
 
@@ -169,26 +175,34 @@ class PiecewiseGrid1D {
         std::is_same<T, double>::value || std::is_same<T, float>::value,
         "Spiner HDF5 only defined for these data types: float, double");
     herr_t status = 0;
-    hid_t group = H5Gopen(loc, name.c_str(), H5P_DEFAULT);
     int ngrids;
-    H5LTget_attribute_int(loc, name.c_str(), SP5::H1D::NGRIDS, &ngrids);
-    NGRIDS_ = ngrids;
-    PORTABLE_ALWAYS_REQUIRE(
-        NGRIDS_ <= NGRIDSMAX,
-        "Total number of grids must be within maximum allowed");
-    int point_tot = 0;
-    for (int i = 0; i < NGRIDS_; ++i) {
-      status += grids_[i].loadHDF(group, gridname_(i).c_str());
-      pointTotals_[i] = point_tot;
-      point_tot += grids_[i].nPoints();
-      if ((i > 0) &&
-          ratio_(2 * std::abs(grids_[i].min() - grids_[i - 1].max()),
-                 std::abs(grids_[i].min() + grids_[i - 1].max()) >= EPS_())) {
-        PORTABLE_ALWAYS_THROW_OR_ABORT(
-            "Grids must be ordered and intersect at exactly one point.");
+    int is_piecewise_grid =
+        H5Aexists_by_name(loc, name.c_str(), SP5::H1D::NGRIDS, H5P_DEFAULT);
+    if (is_piecewise_grid) {
+      hid_t group = H5Gopen(loc, name.c_str(), H5P_DEFAULT);
+      H5LTget_attribute_int(loc, name.c_str(), SP5::H1D::NGRIDS, &ngrids);
+      NGRIDS_ = ngrids;
+      PORTABLE_ALWAYS_REQUIRE(
+          NGRIDS_ <= NGRIDSMAX,
+          "Total number of grids must be within maximum allowed");
+      int point_tot = 0;
+      for (int i = 0; i < NGRIDS_; ++i) {
+        status += grids_[i].loadHDF(group, gridname_(i).c_str());
+        pointTotals_[i] = point_tot;
+        point_tot += grids_[i].nPoints();
+        if ((i > 0) &&
+            ratio_(2 * std::abs(grids_[i].min() - grids_[i - 1].max()),
+                   std::abs(grids_[i].min() + grids_[i - 1].max()) >= EPS_())) {
+          PORTABLE_ALWAYS_THROW_OR_ABORT(
+              "Grids must be ordered and intersect at exactly one point.");
+        }
       }
+      status += H5Gclose(group);
+    } else {
+      NGRIDS_ = 1;
+      pointTotals_[0] = 0;
+      status += grids_[0].loadHDF(loc, name);
     }
-    status += H5Gclose(group);
     return status;
   }
 #endif
