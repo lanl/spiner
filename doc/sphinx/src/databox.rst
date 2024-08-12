@@ -107,7 +107,7 @@ yourself. For example:
 You can also resize a ``DataBox``, which you can use to modify a
 ``DataBox`` in-place. For example:
 
-.. code-block::
+.. code-block:: cpp
 
   Spiner::DataBox<double> db; // empty
   // clears old memory, resizes the underlying array,
@@ -124,7 +124,7 @@ If you want to change the stride without changing the underlying data,
 you can use ``reshape``, which modifies the dimensions of the
 array, without modifying the underlying memory. For example:
 
-.. code-block::
+.. code-block:: cpp
 
   // allocate a 1D databox
   Spiner::DataBox<double> db(nx3*nx2*nx1);
@@ -170,7 +170,7 @@ Semantics and Memory Management
 ``DataBox`` has reference semantics---meaning that copying a
 ``DataBox`` does not copy the underlying data. In other words,
 
-.. code-block::
+.. code-block:: cpp
 
   Spiner::DataBox<double> db1(size);
   Spiner::DataBox<double> db2 = db1;
@@ -230,7 +230,7 @@ call ``free`` for you, so long as you use them with a custom
 deleter. Spiner provides the following deleter for use in this
 scenario:
 
-.. code-block::
+.. code-block:: cpp
 
   struct DBDeleter {
     template <typename T>
@@ -242,7 +242,7 @@ scenario:
 
 It can be used, for example, with a ``std::unique_ptr`` via:
 
-.. code-block::
+.. code-block:: cpp
 
   // needed for smart pointers
   #include <memory>
@@ -258,6 +258,70 @@ It can be used, for example, with a ``std::unique_ptr`` via:
   // some kokkos code...
   
   // when you leave scope, the data box will be freed.
+
+Serialization and de-serialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Shared memory models, such as `MPI Windows`_, require allocation of
+memory through an external API call (e.g.,
+``MPI_Win_allocate_shared``), which tabulated data must be written
+to. ``Spiner`` supports this model through **serialization** and
+**de-serialization**. The relevant methods are as follows. The
+function
+
+.. cpp:function:: std::size_t DataBox::serializedSizeInBytes() const;
+
+reports how much memory a ``DataBox`` object requires to be externally
+allocated. The function
+
+.. cpp:function:: std::size_t serialize(char *dst) const;
+
+takes a ``char*`` pointer, assumed to contain enough space for a
+``DataBox``, and stores all information needed for the ``DataBox`` to
+reconstruct itself. The return value is the amount of memory in bytes
+used in the array by the serialized ``DataBox`` object. This method is
+non-destructive; the original ``DataBox`` is unchanged. The function
+
+.. cpp:function:: std::size_t DataBox::deSerialize(char *src);
+
+initializes a ``DataBox`` to match the serialized ``DataBox``
+contained in the ``src`` pointer.
+
+.. note::
+
+  Note that the de-serialized ``DataBox`` has **unmanaged** memory, as
+  it is assumed that the ``src`` pointer manages its memory for
+  it. Therefore, one **cannot** ``free`` the ``src`` pointer until
+  everything you want to do with the de-serialized ``DataBox`` is
+  over.
+
+Putting this all together, an application of
+serialization/de-serialization probably looks like this:
+
+.. code-block:: cpp
+
+  // load a databox from, e.g., file
+  Spiner::DataBox<double> db;
+  db.loadHDF(filename);
+  
+  // get size of databox
+  std::size_t allocate_size = db.serialSizeInBytes();
+  
+  // Allocate the memory for the new databox.
+  // In practice this would be an API call for, e.g., shared memory
+  char *memory = (char*)malloc(allocate_size);
+  
+  // serialize the old databox
+  std::size_t write_size = db.serialize(memory);
+  
+  // make a new databox and de-serialize it
+  Spiner::DataBox<double> db2;
+  std::size_t read_size = db2.deSerialize(memory);
+
+  // read_size, write_size, and allocate_size should all be the same.
+  assert((read_size == write_size) && (write_size == allocate_size));
+
+.. _`MPI Windows`: https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node311.htm
 
 Accessing Elements of a ``DataBox``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
