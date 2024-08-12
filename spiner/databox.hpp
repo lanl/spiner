@@ -337,7 +337,7 @@ class DataBox {
     std::size_t offst = sizeof(*this);
     // now sizeBytes is well defined after copying the "header" of the source.
     if (sizeBytes() > 0) { // could also do data_ != nullptr
-      data_ = (double *)(src + offst);
+      data_ = (T *)(src + offst);
       status_ = DataStatus::Unmanaged;
       offst += sizeBytes();
     }
