@@ -282,6 +282,18 @@ reconstruct itself. The return value is the amount of memory in bytes
 used in the array by the serialized ``DataBox`` object. This method is
 non-destructive; the original ``DataBox`` is unchanged. The function
 
+.. cpp:function:: std::size_t DataBox::setPointer(T *src);
+
+with the overload
+
+.. cpp:function:: std::size_t DataBox::setPointer(char *src);
+
+sets the underlying tabulated data from the src pointer, which is
+assumed to be the right size and shape. This is useful for the
+deSerialize function (described below) and for building your own
+serialization/de-serialization routines in composite objects. The
+function
+
 .. cpp:function:: std::size_t DataBox::deSerialize(char *src);
 
 initializes a ``DataBox`` to match the serialized ``DataBox``

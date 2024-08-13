@@ -620,6 +620,13 @@ SCENARIO("Serializing and deserializing a DataBox",
           std::size_t read_offst = dbh2.deSerialize(db_serial);
           REQUIRE(read_offst == write_offst);
 
+          AND_THEN("They do not point ot the same memory") {
+            // checks DataBox pointer
+            REQUIRE(dbh2.data() != dbh.data());
+            // checks accessor agrees
+            REQUIRE(&dbh2(0) != &dbh(0));
+          }
+
           AND_THEN("The shape is correct") {
             REQUIRE(dbh2.rank() == dbh.rank());
             REQUIRE(dbh2.size() == dbh.size());

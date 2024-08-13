@@ -325,6 +325,24 @@ class DataBox {
     }
     return offst;
   }
+
+  // This sets the internal pointer based on a passed in src pointer,
+  // which is assumed to be the right size. Used below in deSerialize
+  // and may be used for serialization routines. Returns amount of src
+  // pointer used.
+  std::size_t setPointer(T *src) {
+    if (sizeBytes() > 0) { // could also do data_ != nullptr
+      data_ = src;
+      // TODO(JMM): If portable arrays ever change maximum rank, this
+      // line needs to change.
+      dataView_.NewPortableMDArray(data_, dim(6), dim(5), dim(4), dim(3),
+                                   dim(2), dim(1));
+      makeShallow();
+    }
+    return sizeBytes();
+  }
+  std::size_t setPointer(char *src) { return setPointer((T *)src); }
+
   // This one takes a src pointer, which is assumed to contain a
   // databox and initializes the current databox. Note that the
   // databox becomes unmananged, as the contents of the box are still
@@ -336,11 +354,7 @@ class DataBox {
     memcpy(this, src, sizeof(*this));
     std::size_t offst = sizeof(*this);
     // now sizeBytes is well defined after copying the "header" of the source.
-    if (sizeBytes() > 0) { // could also do data_ != nullptr
-      data_ = (T *)(src + offst);
-      status_ = DataStatus::Unmanaged;
-      offst += sizeBytes();
-    }
+    offst += setPointer(src + offst);
     return offst;
   }
   // ------------------------------------
