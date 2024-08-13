@@ -333,6 +333,16 @@ serialization/de-serialization probably looks like this:
   // read_size, write_size, and allocate_size should all be the same.
   assert((read_size == write_size) && (write_size == allocate_size));
 
+.. warning::
+
+  The serialization routines described here are **not** architecture
+  aware. Serializing and de-serializing on a single architecture
+  inside a single executable will work fine. However, do not use
+  serialization as a file I/O strategy, as there is no guarantee that
+  the serialized format for a ``DataBox`` on one architecture will be
+  the same as on another. This is due to, for example,
+  architecture-specific differences in endianness and padding.
+
 .. _`MPI Windows`: https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node311.htm
 
 Accessing Elements of a ``DataBox``
