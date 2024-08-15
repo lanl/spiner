@@ -627,6 +627,16 @@ SCENARIO("Serializing and deserializing a DataBox",
             REQUIRE(&dbh2(0) != &dbh(0));
           }
 
+          WHEN("We initialize a THIRD databox on the serialized one") {
+            PiecewiseDB<NGRIDS> dbh3;
+            std::size_t read_offst3 = dbh3.deSerialize(db_serial);
+            REQUIRE(read_offst3 == write_offst);
+            THEN("The second and third databoxes DO point at the same memory") {
+              REQUIRE(dbh2.data() == dbh3.data());
+              REQUIRE(&dbh3(0) == &dbh2(0));
+            }
+          }
+
           AND_THEN("The shape is correct") {
             REQUIRE(dbh2.rank() == dbh.rank());
             REQUIRE(dbh2.size() == dbh.size());

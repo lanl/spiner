@@ -352,6 +352,17 @@ class DataBox {
         (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
         "Must not de-serialize into an active databox.");
     memcpy(this, src, sizeof(*this));
+
+    // sanity check that de-serialization of trivially-copyable memory
+    // was reasonable
+    PORTABLE_REQUIRE(size() > 0, "All dimensions must be positive.");
+    PORTABLE_REQUIRE((size() > 0) || (rank_ == 0),
+                     "Size > 0 for all non-empty databoxes");
+    PORTABLE_REQUIRE((size() > 0) || status_ == DataStatus::Empty,
+                     "Size > 0 for all non-empty databoxes");
+    PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
+                     "Serialization cannot be performed on device memory");
+
     std::size_t offst = sizeof(*this);
     // now sizeBytes is well defined after copying the "header" of the source.
     offst += setPointer(src + offst);
