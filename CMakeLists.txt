@@ -68,6 +68,7 @@ include(cmake/Format.cmake)
 # Add a library
 add_library(spiner INTERFACE)
 add_library(spiner::spiner ALIAS spiner)
+target_compile_features(spiner INTERFACE cxx_std_17)
 
 # ##############################################################################
 # Dependencies           #
