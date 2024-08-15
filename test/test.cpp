@@ -53,8 +53,8 @@ PORTABLE_INLINE_FUNCTION Real linearFunction(Real b, Real a, Real z, Real y,
   return x + y + z + a + b;
 }
 
-TEST_CASE("PortableMDArrays can be allocated from a pointer",
-          "[PortableMDArray]") {
+SCENARIO("PortableMDArrays can be allocated from a pointer",
+         "[PortableMDArray]") {
   constexpr int N = 2;
   constexpr int M = 3;
   std::vector<int> data(N * M);
@@ -529,19 +529,22 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
 
     WHEN("We construct and fill a 3D DataBox based on this grid") {
       constexpr int RANK = 3;
-      PiecewiseDB<NGRIDS> db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE,
-                             NCOARSE);
+      PiecewiseDB<NGRIDS> dbh(Spiner::AllocationTarget::Host, NCOARSE, NCOARSE,
+                              NCOARSE);
       for (int i = 0; i < RANK; ++i) {
-        db.setRange(i, g);
+        dbh.setRange(i, g);
       }
-      portableFor(
-          "Fill 3D Databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
-          PORTABLE_LAMBDA(const int iz, const int iy, const int ix) {
+      for (int iz = 0; iz < NCOARSE; ++iz) {
+        for (int iy = 0; iy < NCOARSE; ++iy) {
+          for (int ix = 0; ix < NCOARSE; ++ix) {
             Real x = g.x(ix);
             Real y = g.x(iy);
             Real z = g.x(iz);
-            db(iz, iy, ix) = linearFunction(z, y, x);
-          });
+            dbh(iz, iy, ix) = linearFunction(z, y, x);
+          }
+        }
+      }
+      auto db = dbh.getOnDevice();
 
       THEN("We can interpolate it to a finer grid and get the right answer") {
         Real error = 0;
@@ -561,8 +564,103 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
             error);
         REQUIRE(error <= EPSTEST);
       }
+
       // cleanup
       free(db);
+      free(dbh);
+    }
+  }
+}
+
+SCENARIO("Serializing and deserializing a DataBox",
+         "[DataBox][PiecewiseGrid1D][Serialize]") {
+  GIVEN("A piecewise grid") {
+    constexpr int NGRIDS = 2;
+    constexpr Real xmin = 0;
+    constexpr Real xmax = 1;
+
+    RegularGrid1D g1(xmin, 0.35 * (xmax - xmin), 3);
+    RegularGrid1D g2(0.35 * (xmax - xmin), xmax, 4);
+    PiecewiseGrid1D<NGRIDS> g = {{g1, g2}};
+
+    const int NCOARSE = g.nPoints();
+
+    THEN("The piecewise grid contains a number of points equal the sum of "
+         "the points of the individual grids") {
+      REQUIRE(g.nPoints() == g1.nPoints() + g2.nPoints());
+    }
+
+    WHEN("We construct and fill a 3D DataBox based on this grid") {
+      constexpr int RANK = 3;
+      PiecewiseDB<NGRIDS> dbh(Spiner::AllocationTarget::Host, NCOARSE, NCOARSE,
+                              NCOARSE);
+      for (int i = 0; i < RANK; ++i) {
+        dbh.setRange(i, g);
+      }
+      for (int iz = 0; iz < NCOARSE; ++iz) {
+        for (int iy = 0; iy < NCOARSE; ++iy) {
+          for (int ix = 0; ix < NCOARSE; ++ix) {
+            Real x = g.x(ix);
+            Real y = g.x(iy);
+            Real z = g.x(iz);
+            dbh(iz, iy, ix) = linearFunction(z, y, x);
+          }
+        }
+      }
+      WHEN("We serialize the DataBox") {
+        std::size_t serial_size = dbh.serializedSizeInBytes();
+        REQUIRE(serial_size == (sizeof(dbh) + dbh.sizeBytes()));
+
+        char *db_serial = (char *)malloc(serial_size * sizeof(char));
+        std::size_t write_offst = dbh.serialize(db_serial);
+        REQUIRE(write_offst == serial_size);
+
+        THEN("We can initialize a new databox based on the serialized one") {
+          PiecewiseDB<NGRIDS> dbh2;
+          std::size_t read_offst = dbh2.deSerialize(db_serial);
+          REQUIRE(read_offst == write_offst);
+
+          AND_THEN("They do not point to the same memory") {
+            // checks DataBox pointer
+            REQUIRE(dbh2.data() != dbh.data());
+            // checks accessor agrees
+            REQUIRE(&dbh2(0) != &dbh(0));
+          }
+
+          WHEN("We initialize a THIRD databox on the serialized one") {
+            PiecewiseDB<NGRIDS> dbh3;
+            std::size_t read_offst3 = dbh3.deSerialize(db_serial);
+            REQUIRE(read_offst3 == write_offst);
+            THEN("The second and third databoxes DO point at the same memory") {
+              REQUIRE(dbh2.data() == dbh3.data());
+              REQUIRE(&dbh3(0) == &dbh2(0));
+              AND_THEN("But they are separate objects") {
+                REQUIRE(&dbh2 != &dbh3);
+              }
+            }
+          }
+
+          AND_THEN("The shape is correct") {
+            REQUIRE(dbh2.rank() == dbh.rank());
+            REQUIRE(dbh2.size() == dbh.size());
+            for (int d = 1; d <= 3; ++d) {
+              REQUIRE(dbh2.dim(d) == dbh.dim(d));
+            }
+          }
+
+          AND_THEN("The contents are correct") {
+            for (int i = 0; i < dbh.size(); ++i) {
+              REQUIRE(dbh(i) == dbh2(i));
+            }
+          }
+        }
+
+        // cleanup
+        free(db_serial);
+      }
+
+      // cleanup
+      free(dbh);
     }
   }
 }
@@ -702,7 +800,7 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
 }
 
 #if SPINER_USE_HDF
-TEST_CASE("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
+SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
   GIVEN("A piecewise grid") {
     RegularGrid1D g1(0, 0.25, 3);
     RegularGrid1D g2(0.25, 0.75, 11);

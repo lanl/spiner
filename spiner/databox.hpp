@@ -305,6 +305,71 @@ class DataBox {
     return indices_[i];
   }
 
+  // serialization routines
+  // ------------------------------------
+  // this one reports size for serialize/deserialize
+  std::size_t serializedSizeInBytes() const {
+    return sizeBytes() + sizeof(*this);
+  }
+  // this one takes the pointer `dst`, which is assumed to have
+  // sufficient memory allocated, and fills it with the
+  // databox. Return value is the amount of bytes written to.
+  std::size_t serialize(char *dst) const {
+    PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
+                     "Serialization cannot be performed on device memory");
+    memcpy(dst, this, sizeof(*this));
+    std::size_t offst = sizeof(*this);
+    if (sizeBytes() > 0) { // could also do data_ != nullptr
+      memcpy(dst + offst, data_, sizeBytes());
+      offst += sizeBytes();
+    }
+    return offst;
+  }
+
+  // This sets the internal pointer based on a passed in src pointer,
+  // which is assumed to be the right size. Used below in deSerialize
+  // and may be used for serialization routines. Returns amount of src
+  // pointer used.
+  std::size_t setPointer(T *src) {
+    if (sizeBytes() > 0) { // could also do data_ != nullptr
+      data_ = src;
+      // TODO(JMM): If portable arrays ever change maximum rank, this
+      // line needs to change.
+      dataView_.NewPortableMDArray(data_, dim(6), dim(5), dim(4), dim(3),
+                                   dim(2), dim(1));
+      makeShallow();
+    }
+    return sizeBytes();
+  }
+  std::size_t setPointer(char *src) { return setPointer((T *)src); }
+
+  // This one takes a src pointer, which is assumed to contain a
+  // databox and initializes the current databox. Note that the
+  // databox becomes unmananged, as the contents of the box are still
+  // the externally managed pointer.
+  std::size_t deSerialize(char *src) {
+    PORTABLE_REQUIRE(
+        (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
+        "Must not de-serialize into an active databox.");
+    memcpy(this, src, sizeof(*this));
+
+    // sanity check that de-serialization of trivially-copyable memory
+    // was reasonable
+    PORTABLE_REQUIRE(size() > 0, "All dimensions must be positive.");
+    PORTABLE_REQUIRE((size() > 0) || (rank_ == 0),
+                     "Size > 0 for all non-empty databoxes");
+    PORTABLE_REQUIRE((size() > 0) || status_ == DataStatus::Empty,
+                     "Size > 0 for all non-empty databoxes");
+    PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
+                     "Serialization cannot be performed on device memory");
+
+    std::size_t offst = sizeof(*this);
+    // now sizeBytes is well defined after copying the "header" of the source.
+    offst += setPointer(src + offst);
+    return offst;
+  }
+  // ------------------------------------
+
   DataBox<T, Grid_t, Concept>
   getOnDevice() const { // getOnDevice is always a deep copy
     if (size() == 0 ||

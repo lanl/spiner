@@ -62,21 +62,6 @@ class RegularGrid1D {
     PORTABLE_ALWAYS_REQUIRE(min_ < max_ && N_ > 0, "Valid grid");
   }
 
-  // Assignment operator
-  /*
-  Default copy constructable
-  PORTABLE_INLINE_FUNCTION RegularGrid1D &operator=(const RegularGrid1D &src) {
-    if (this != &src) {
-      min_ = src.min_;
-      max_ = src.max_;
-      dx_ = src.dx_;
-      idx_ = src.idx_;
-      N_ = src.N_;
-    }
-    return *this;
-  }
-  */
-
   // Forces x in the interval
   PORTABLE_INLINE_FUNCTION int bound(int ix) const {
 #ifndef SPINER_DISABLE_BOUNDS_CHECKS
