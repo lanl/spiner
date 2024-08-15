@@ -634,6 +634,9 @@ SCENARIO("Serializing and deserializing a DataBox",
             THEN("The second and third databoxes DO point at the same memory") {
               REQUIRE(dbh2.data() == dbh3.data());
               REQUIRE(&dbh3(0) == &dbh2(0));
+              AND_THEN("But they are separate objects") {
+                REQUIRE(&dbh2 != &dbh3);
+              }
             }
           }
 
