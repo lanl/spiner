@@ -85,6 +85,8 @@ class Spiner(CMakePackage):
 
         args = [
             self.define("BUILD_TESTING", self.run_tests),
+            self.define("SPINER_BUILD_TESTS", self.run_tests),
+            self.define("SPINER_TEST_USE_KOKKOS", self.run_tests and self.spec.satisfies("+kokkos")),
             self.define_from_variant(use_kokkos_option, "kokkos"),
             self.define_from_variant("SPINER_USE_HDF", "hdf5"),
         ]

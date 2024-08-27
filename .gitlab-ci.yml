@@ -1,166 +1,49 @@
-###################
-# Global Settings #
-###################
-
 stages:
   - build_n_test
 
-variables:
-  XCAP_PROJECT_DIR: "/usr/projects/xcap/oss"
-  TESTING_CLUSTER: darwin
-  SPINER_GCC_VERSION: "10.3.0"
-  SPINER_CUDA_VERSION: "11.6.0"
-  SPINER_OPENMPI_VERSION: "4.1.1"
-  SPINER_SPACK_SPEC: "spiner@main%gcc@=${SPINER_GCC_VERSION}+python+test"
-  SPINER_SPACK_FULL_SPEC: "${SPINER_SPACK_SPEC} ^openblas"
-  COLOR_CYAN: "\e[1;36m"
-  COLOR_PLAIN: "\e[0m"
-  # uncomment to have the CI Spack installation for debugging
-  # PROJECT_TMP_CI_DIR: "${CI_PROJECT_DIR}"
-  # uncomment & set to different spack upstream for testing
-  # PROJECT_TMP_SPACK_DIR: "deployment/CI/spack-v0.20.1-8"
-  # uncomment for spack debug output
-  # PROJECT_SPACK_DEBUG_FLAG: "-d"
-
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "pipeline"
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-
 default:
-  tags:
-    - darwin-slurm-shared
+  interruptible: true
+
+variables:
+  ENABLED_CLUSTERS: "darwin"
+  GIT_SUBMODULE_STRATEGY: normal
+
+.ascgit_job:
   id_tokens:
     SITE_ID_TOKEN:
       aud: https://asc-git.lanl.gov
 
-##########################
-# Build Matrix Variables #
-##########################
+.darwin_job:
+  rules:
+    - if: $ENABLED_CLUSTERS =~ /darwin/
+  variables:
+    CLUSTER: darwin
+    SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p general,skylake-gold,skylake-platinum --constraint=\"(cpu_family:skylake)&ib:edr\""
+  tags:
+    - darwin-slurm-shared
 
-.buildtype_debug: &buildtype_debug
-  BUILD_TYPE: "Debug"
-
-.buildtype_release: &buildtype_release
-  BUILD_TYPE: "Release"
-
-######################
-# Platform Variables #
-######################
-
-.skylake: &skylake
-    SCHEDULER_PARAMETERS: "--nodes=1 --partition=skylake-gold,skylake-platinum"
-
-.a100: &a100
-    SCHEDULER_PARAMETERS: "--nodes=1 --partition=shared-gpu-ampere"
-
-#######################
-# Job Script Template #
-#######################
-
-.test:
+.build_and_test:
   stage: build_n_test
-  before_script:
-    - echo "Running on $(hostname)"
-    - section() { echo $'\e[0K'"section_$1:$(date +%s):$2"$'\r\e[0K'"${3+${COLOR_CYAN}$3${COLOR_PLAIN}}"; }
-    - export PYTHONNOUSERSITE=1
-    - export SPACK_DISABLE_LOCAL_CONFIG=true
-    - export SPACK_SKIP_MODULES=true
-    - export TMP_USER_PROJECT_DIR="/tmp/${USER}/${CI_PROJECT_NAME}/${CI_JOB_NAME}"
-    - export PROJECT_TMP_CI_DIR=${PROJECT_TMP_CI_DIR:-${TMP_USER_PROJECT_DIR}}
-    - export SPACK_USER_CACHE_PATH="${PROJECT_TMP_CI_DIR}/spack-local"
-    - export DEVEL_SPACK_ROOT="${PROJECT_TMP_CI_DIR}/spack"
-    - export DEVEL_SPACK_MIRROR="${CI_PROJECT_DIR}/spack-mirror"
-    - rm -rf ${SPACK_USER_CACHE_PATH} ${DEVEL_SPACK_ROOT}
-    - |
-      if [[ -z "${PROJECT_TMP_SPACK_DIR}" ]]; then
-        export PROJECT_SPACK_ROOT="${XCAP_PROJECT_DIR}/spack-${TESTING_CLUSTER}"
-      else
-        export PROJECT_SPACK_ROOT="${XCAP_PROJECT_DIR}/${PROJECT_TMP_SPACK_DIR}-${TESTING_CLUSTER}"
-      fi
-    - section start "spack_init[collapsed=true]" "Creating Spack instance at ${DEVEL_SPACK_ROOT}"
-    - echo "Upstream ${PROJECT_SPACK_ROOT}"
-    - mkdir -m 2770 -p ${PROJECT_TMP_CI_DIR}
-    - |
-      rsync -rpl \
-          --exclude=".git" \
-          --exclude={"*__pycache__*","*.pyc"} \
-          --include="etc/spack/**" \
-          --include="lib/spack/**" \
-          --exclude-from=${PROJECT_SPACK_ROOT}/.gitignore \
-          ${PROJECT_SPACK_ROOT}/ ${DEVEL_SPACK_ROOT}/
-    - sed -i "s;xcap-admin;xcap;g" "${DEVEL_SPACK_ROOT}/etc/spack/packages.yaml"
-    - source ${DEVEL_SPACK_ROOT}/share/spack/setup-env.sh
-    - spack --version
-    - spack compiler list
-    - section end spack_init
   script:
-    - module load gcc/${SPINER_GCC_VERSION}
-    - module load cuda/${SPINER_CUDA_VERSION}
-    - |
-      if [[ ${CI_JOB_NAME} =~ "a100" ]];
-      then
-        module load openmpi/${SPINER_OPENMPI_VERSION}-gcc_${SPINER_GCC_VERSION}
-        export SPINER_SPACK_FULL_SPEC="${SPINER_SPACK_SPEC}+hdf5+mpi+kokkos ^kokkos+wrapper+cuda cuda_arch=80 ^openmpi@${SPINER_OPENMPI_VERSION} ^openblas";
-      fi
-    - |
-      section start "spack_build[collapsed=true]" "Building via Spack"
-      spack env create spack_build_env
-      spack env activate spack_build_env
-      spack repo add ${DEVEL_SPACK_ROOT}/var/spack/repos/xcap_deployment
-      spack repo add spack-repo
-      spack repo list
-      spack config add upstreams:default:install_tree:${PROJECT_SPACK_ROOT}/opt/spack/
-      spack dev-build -q -j $(nproc) ${SPINER_SPACK_FULL_SPEC}
-      spack env deactivate
-      section end spack_build
-    - section start "spack_env[collapsed=true]" "Creating Spack environment"
-    - spack env create spack_env
-    - spack env activate spack_env
-    - spack repo add ${DEVEL_SPACK_ROOT}/var/spack/repos/xcap_deployment
-    - spack repo add spack-repo
-    - spack repo list
-    - spack config add upstreams:default:install_tree:${PROJECT_SPACK_ROOT}/opt/spack/
-    - spack spec -I ${SPINER_SPACK_FULL_SPEC}
-    - spack add ${SPINER_SPACK_FULL_SPEC}
-    - spack install -j $(nproc) --show-log-on-error --no-checksum --yes-to-all -u cmake
-    - section end spack_env
-    - mkdir -p build
-    - cd build
-    - |
-      cmake \
-            -DSPINER_BUILD_TESTS=ON \
-            -DCMAKE_INSTALL_PREFIX=${CI_PROJECT_DIR}/install \
-            -DSPINER_USE_HDF=ON \
-            -DSPINER_TEST_USE_KOKKOS=$([[ ${CI_JOB_NAME} =~ "a100" ]] && echo ON || echo OFF) \
-            -DCMAKE_CXX_COMPILER=$([[ ${CI_JOB_NAME} =~ "a100" ]] && echo nvcc_wrapper || g++) \
-            ..
-    - make -j $(nproc)
-    - make install
-    - make test
-    - export CTEST_OUTPUT_ON_FAILURE=1
-    - ctest --output-junit tests.xml
-    - make convergence
+    - source .gitlab/build_and_test.sh ${CLUSTER} ${SPACK_ENV_NAME}
   artifacts:
+    expire_in: 2 weeks
     paths:
-      - build/tests.xml
+      - ${CI_PROJECT_DIR}/build/tests.xml
     reports:
-      junit: build/tests.xml
+      junit: ${CI_PROJECT_DIR}/build/tests.xml
 
 ########
 # Jobs #
 ########
 
-gnu_skylake:
-  extends: .test
+openmpi_gcc:
+  extends: [.ascgit_job, .darwin_job, .build_and_test]
   variables:
-    <<: *skylake
+    SPACK_ENV_NAME: openmpi-gcc
 
-gnu_a100:
-  extends: .test
+openmpi_cuda_gcc_ampere:
+  extends: [.ascgit_job, .darwin_job, .build_and_test]
   variables:
-    <<: *a100
-
+    SPACK_ENV_NAME: openmpi-cuda-gcc-ampere
+    SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p shared-gpu-ampere"
