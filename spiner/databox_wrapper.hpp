@@ -84,17 +84,55 @@ namespace Spiner {
 //   * DataBox getOnDevice() const;
 //   * void finalize();
 
+// TODO:
+// * In theory the extra features could be split:
+//   * One wrapper that adds transformations
+//   * One wrapper that adds extrapolation
+// * If you want both, you can have Extrapolation<Transformation<DataBox<T>>>
+// * But would it also work if you did Transformation<Extrapolation<DataBox<T>>>?
+// * This idea seems overly complicated for little benefit.
 
-// a wrapper to (a) adapt the interface and (b) handle extrapolation off the table
-// -- note that we assume this is a 1D databox
-template <typename DataType_t, typename LowerExtrapolation, typename UpperExtrapolation>
+// TODO: Name?
+// DataBoxPlusPlus
+// ExtendedDataBox
+// DataBoxButCooler
+// FancyPantsDataBox
+// DataBoxNowWithMoreFeatures
+// DataBoxBetterStrongerFaster
+
+// TODO: Template defaults?
+// * The obvious/naive defaults would be to match an unwrapped DataBox
+//   * All extrapolations default to "generate an error"
+//   * All transformations are the identity transformation
+// * But given that the entire purpose of this wrapper is to add features beyond that of the basic
+//   DataBox, does it make sense for it to have defaults that make this a DataBox but with extra
+//   layers of complexity?
+// * It's also not clear what order the template arguments should be in to manage defaults.
+template <
+    typename DataType_t,
+    // TODO: Right now all axes will use the same lower and upper extrapolations, which may or may
+    //       not be the desired behavior.
+    typename LowerExtrapolation, typename UpperExtrapolation,
+    typename TransformX, typename TransformY>
 class DataBoxWrapper
 {
 private:
-    DataBox<DataType_t> databox_;
-    // Avoid re-calculating temperature bounds on every call
-    DataType_t Tlo_;
-    DataType_t Thi_;
+    // TODO: Deal with the other templates.
+    using DB_t = DataBox<DataType_t>;
+    DB_t databox_;
+    // Avoid re-calculating independent variable bounds on every call
+    // TODO: My original implementation in Singe did this, but after thinking about it I think we
+    //       should throw this out.
+    //       * When interpolating, we already have to transform the independent variable(s), so no
+    //         extra work.
+    //       * When extrapolating, we don't use the transformed independent variable(s), so we do
+    //         an extra transformation.
+    //       * Finding the _exact_ bounds, that's going to be defined by the underlying DataBox,
+    //         which is in transformed space.  If we do bounds checking in the untransformed space,
+    //         we have the possibility of numerical error creating a small space between the
+    //         untransformed bound and the transformed bound, which could create errors.
+    DataType_t [DB_t::MAXRANK] lower_bounds_;
+    DataType_t [DB_t::MAXRANK] upper_bounds_;
 
 public:
     PORTABLE_FUNCTION DataBoxWrapper(DataBox<DataType_t> databox)
