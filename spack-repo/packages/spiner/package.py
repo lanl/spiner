@@ -63,8 +63,9 @@ class Spiner(CMakePackage):
     # Currently the raw cuda backend of ports-of-call is not supported.
     depends_on("ports-of-call portability_strategy=Kokkos", when="@:1.5.1 +kokkos")
     depends_on("ports-of-call portability_strategy=None", when="@:1.5.1 ~kokkos")
+    depends_on("kokkos@3.3.00:", when="+kokkos")
     depends_on(
-        "kokkos@3.3.00: ~shared+cuda_lambda+cuda_constexpr",
+        "kokkos ~shared+cuda_lambda+cuda_constexpr",
         when="+kokkos ^kokkos+cuda",
     )
 
