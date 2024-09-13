@@ -31,6 +31,7 @@
 #include "ports-of-call/portable_errors.hpp"
 #include "sp5.hpp"
 #include "spiner_types.hpp"
+#include "transformations.hpp"
 
 namespace Spiner {
 
