@@ -19,9 +19,6 @@
 
 #include <limits>
 
-// TODO: Write tests, an ensure that transformations are symmetric (within some tolerance, possibly
-// exact for critical values depending on the transformation).
-
 namespace Spiner {
 
   // Note on notation:

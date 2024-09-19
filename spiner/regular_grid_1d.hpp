@@ -45,6 +45,8 @@ struct weights_t {
   }
 };
 
+// TODO: Need to expand testing
+
 // TODO: Do transformations need state?
 //    -- My thinking is that transformations generally won't need state, because it's things like
 //       y = x or y = log(x).
