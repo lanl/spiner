@@ -454,7 +454,8 @@ DataBox<T, Grid_t, Transform, Concept>::interpToReal(const T x) const noexcept {
   int ix;
   weights_t<T> w;
   grids_[0].weights(x, ix, w);
-  return w[0] * dataView_(ix) + w[1] * dataView_(ix + 1);
+  const auto v = w[0] * dataView_(ix) + w[1] * dataView_(ix + 1);
+  return Transform::reverse(v);
 }
 
 template <typename T, typename Grid_t, typename Transform, typename Concept>
@@ -467,10 +468,11 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
   grids_[1].weights(x2, ix2, w2);
   // TODO: prefectch corners for speed?
   // TODO: re-order access pattern?
-  return (w2[0] *
+  const auto v = (w2[0] *
               (w1[0] * dataView_(ix2, ix1) + w1[1] * dataView_(ix2, ix1 + 1)) +
           w2[1] * (w1[0] * dataView_(ix2 + 1, ix1) +
                    w1[1] * dataView_(ix2 + 1, ix1 + 1)));
+  return Transform::reverse(v);
 }
 
 template <typename T, typename Grid_t, typename Transform, typename Concept>
@@ -484,7 +486,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
   grids_[2].weights(x3, ix[2], w[2]);
   // TODO: prefect corners for speed?
   // TODO: re-order access pattern?
-  return (
+  const auto v = (
       w[2][0] * (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0]) +
                             w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1)) +
                  w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0]) +
@@ -494,6 +496,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
                       w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1)) +
            w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0]) +
                       w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
+  return Transform::reverse(v);
 }
 
 template <typename T, typename Grid_t, typename Transform, typename Concept>
@@ -511,7 +514,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
   grids_[3].weights(x3, ix[2], w[2]);
   // TODO: prefect corners for speed?
   // TODO: re-order access pattern?
-  return (
+  const auto v = (
       w[2][0] *
           (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0], idx) +
                       w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1, idx)) +
@@ -523,6 +526,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
            w[1][1] *
                (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0], idx) +
                 w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
+  return Transform::reverse(v);
 }
 
 // DH: this is a large function to force an inline, perhaps just make it a
@@ -540,7 +544,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
   // TODO(JMM): This is getty pretty gross. Should we automate?
   // Hand-written is probably faster, though.
   // Breaking line-limit to make this easier to read
-  return (
+  const auto v = (
       w[3][0] *
           (w[2][0] *
                (w[1][0] *
@@ -576,6 +580,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
                                                      ix[1] + 1, ix[0] + 1))))
 
   );
+  return Transform::reverse(v);
 }
 
 template <typename T, typename Grid_t, typename Transform, typename Concept>
@@ -599,7 +604,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
   // TODO(JMM): This is getty pretty gross. Should we automate?
   // Hand-written is probably faster, though.
   // Breaking line-limit to make this easier to read
-  return (
+  const auto v = (
       w[3][0] *
           (w[2][0] *
                (w[1][0] *
@@ -639,6 +644,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::interpTo
                                                idx, ix[0] + 1))))
 
   );
+  return Transform::reverse(v);
 }
 
 template <typename T, typename Grid_t, typename Transform, typename Concept>
@@ -928,7 +934,7 @@ template <typename T, typename Grid_t, typename Transform, typename Concept>
 PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::min() const {
   T min = std::numeric_limits<T>::infinity();
   for (int i = 0; i < size(); i++) {
-    min = std::min(min, dataView_(i));
+    min = std::min(min, Transform::reverse(dataView_(i)));
   }
   return min;
 }
@@ -937,7 +943,7 @@ template <typename T, typename Grid_t, typename Transform, typename Concept>
 PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Transform, Concept>::max() const {
   T max = -std::numeric_limits<T>::infinity();
   for (int i = 0; i < size(); i++) {
-    max = std::max(max, dataView_(i));
+    max = std::max(max, Transform::reverse(dataView_(i)));
   }
   return max;
 }
