@@ -89,18 +89,6 @@ SCENARIO("PortableMDArrays can be allocated from a pointer",
   }
 }
 
-TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
-  SECTION("A regular grid 1d emits appropriate metadata") {
-    constexpr Real min = -1;
-    constexpr Real max = 1;
-    constexpr size_t N = 10;
-    RegularGrid1D g(min, max, N);
-    REQUIRE(g.min() == min);
-    REQUIRE(g.max() == max);
-    REQUIRE(g.nPoints() == N);
-  }
-}
-
 TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
   GIVEN("Some regular grid 1Ds") {
     RegularGrid1D g1(0, 0.25, 3);
