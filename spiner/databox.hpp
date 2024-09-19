@@ -41,6 +41,8 @@
 
 // TODO: Need to expand testing to cover transformations (both independent and dependent).
 
+// TODO: Should extrapolations be this MR or a separate MR?
+
 namespace Spiner {
 
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
