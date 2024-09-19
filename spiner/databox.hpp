@@ -39,8 +39,6 @@
 // TODO: get named indices working
 // TODO: If asserts are too slow, remove them.
 
-// TODO: Need to expand testing to cover transformations (both independent and dependent).
-
 // TODO: Should extrapolations be this MR or a separate MR?
 
 namespace Spiner {

@@ -52,6 +52,16 @@ PORTABLE_INLINE_FUNCTION Real linearFunction(Real b, Real a, Real z, Real y,
                                              Real x) {
   return x + y + z + a + b;
 }
+PORTABLE_INLINE_FUNCTION double log_lin_func(const double x, const double y) {
+  // log-log: f is linear function in log(x) and log(y)
+  // --> f = a + b * log(x) + c * log(y)
+  return 0.7 * std::log(x) + 0.3 * std::log(y) - 0.5;
+}
+PORTABLE_INLINE_FUNCTION double log_log_func(const double x, const double y) {
+  // log-log: log(f) is linear function in log(x) and log(y)
+  // --> log(f) = a + b * log(x) + c * log(y)
+  return std::exp(0.7 * std::log(x) + 0.3 * std::log(y) - 0.5);
+}
 
 SCENARIO("PortableMDArrays can be allocated from a pointer",
          "[PortableMDArray]") {
@@ -494,6 +504,88 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     free(db1d);
   }
   free(db); // free databox
+}
+
+TEST_CASE("DataBox Interpolation with log-lin transformations", "[DataBox]") {
+    using Transform = Spiner::TransformLogarithmic;
+    using RG1D = Spiner::RegularGrid1D<double, Transform>;
+    using DB = Spiner::DataBox<double, RG1D, Spiner::TransformLinear>;
+
+    constexpr int RANK = 2;
+    const int Npt = 32;
+    const int Nsample = Npt * 16;
+
+    const double xmin = 1;
+    const double xmax = 10;
+
+    DB db(Spiner::AllocationTarget::Device, Npt, Npt);
+    for (int i = 0; i < RANK; i++) {
+      db.setRange(i, xmin, xmax, Npt);
+    }
+
+    portableFor(
+        "fill databox", 0, Npt, 0, Npt,
+        PORTABLE_LAMBDA(const int ix, const int iy) {
+          RG1D grid(xmin, xmax, Npt);
+          const double x = grid.x(ix);
+          const double y = grid.x(iy);
+          db(ix, iy) = log_lin_func(x, y);
+        });
+
+    double error = 0;
+    portableReduce(
+          "interpolate databox", 0, Nsample, 0, Nsample,
+          PORTABLE_LAMBDA(const int ix, const int iy, Real &accumulate) {
+            RG1D grid(xmin, xmax, Nsample);
+            const double x = grid.x(ix);
+            const double y = grid.x(iy);
+            const double f_true = log_lin_func(x, y);
+            const double difference = db.interpToReal(x, y) - f_true;
+            accumulate += (difference * difference);
+          },
+          error);
+    REQUIRE(error <= EPSTEST);
+}
+
+TEST_CASE("DataBox Interpolation with log-log transformations", "[DataBox]") {
+    using Transform = Spiner::TransformLogarithmic;
+    using RG1D = Spiner::RegularGrid1D<double, Transform>;
+    using DB = Spiner::DataBox<double, RG1D, Spiner::TransformLinear>;
+
+    constexpr int RANK = 2;
+    const int Npt = 32;
+    const int Nsample = Npt * 16;
+
+    const double xmin = 1;
+    const double xmax = 10;
+
+    DB db(Spiner::AllocationTarget::Device, Npt, Npt);
+    for (int i = 0; i < RANK; i++) {
+      db.setRange(i, xmin, xmax, Npt);
+    }
+
+    portableFor(
+        "fill databox", 0, Npt, 0, Npt,
+        PORTABLE_LAMBDA(const int ix, const int iy) {
+          RG1D grid(xmin, xmax, Npt);
+          const double x = grid.x(ix);
+          const double y = grid.x(iy);
+          db(ix, iy) = log_log_func(x, y);
+        });
+
+    double error = 0;
+    portableReduce(
+          "interpolate databox", 0, Nsample, 0, Nsample,
+          PORTABLE_LAMBDA(const int ix, const int iy, Real &accumulate) {
+            RG1D grid(xmin, xmax, Nsample);
+            const double x = grid.x(ix);
+            const double y = grid.x(iy);
+            const double f_true = log_log_func(x, y);
+            const double difference = db.interpToReal(x, y) - f_true;
+            accumulate += (difference * difference);
+          },
+          error);
+    REQUIRE(error <= EPSTEST);
 }
 
 TEST_CASE("DataBox Interpolation with piecewise grids",
