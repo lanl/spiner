@@ -32,6 +32,8 @@
 
 #include "regular_grid_1d.hpp"
 
+// TODO: This is based on RegularGrid1D, so thread through options for transformations
+
 namespace Spiner {
 
 template <typename T = Real, int NGRIDSMAX = 5,
