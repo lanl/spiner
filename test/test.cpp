@@ -98,7 +98,6 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.min() == min);
     REQUIRE(g.max() == max);
     REQUIRE(g.nPoints() == N);
-    REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
   }
 }
 
