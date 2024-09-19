@@ -33,7 +33,7 @@ namespace {
     }
 };
 
-TEST_CASE("transformation: linear", "") {
+TEST_CASE("transformation: linear", "[transformations]") {
     // This one is almost too simple to meaningfully test, but we can at least
     // ensure that it compiles and does the trivially-obvious things.
     using Transform = Spiner::TransformLinear;
@@ -63,7 +63,7 @@ TEST_CASE("transformation: linear", "") {
     CHECK(accum / num_threads == 0);
 }
 
-TEST_CASE("transformation: logarithmic", "") {
+TEST_CASE("transformation: logarithmic", "[transformations]") {
     using Transform = Spiner::TransformLogarithmic;
 
     // Test on CPU

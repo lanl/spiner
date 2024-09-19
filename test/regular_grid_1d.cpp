@@ -34,7 +34,7 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   }
 }
 
-TEST_CASE("RegularGrid1D with transformations", "[RegularGrid1D]") {
+TEST_CASE("RegularGrid1D with transformations", "[RegularGrid1D][transformations]") {
     constexpr double min = 1;
     constexpr double max = 1024;
     constexpr size_t N = 11;
