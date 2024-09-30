@@ -1,49 +1,62 @@
 stages:
   - build_n_test
 
-default:
-  interruptible: true
-
 variables:
-  ENABLED_CLUSTERS: "darwin"
-  GIT_SUBMODULE_STRATEGY: normal
+  PROJECT_NAME: spiner
+  ENABLE_CDASH: false
 
-.ascgit_job:
-  id_tokens:
-    SITE_ID_TOKEN:
-      aud: https://asc-git.lanl.gov
+include:
+ - .gitlab/common.yml
 
-.darwin_job:
-  rules:
-    - if: $ENABLED_CLUSTERS =~ /darwin/
-  variables:
-    CLUSTER: darwin
-    SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p general,skylake-gold,skylake-platinum --constraint=\"(cpu_family:skylake)&ib:edr\""
-  tags:
-    - darwin-slurm-shared
-
-.build_and_test:
-  stage: build_n_test
-  script:
-    - source .gitlab/build_and_test.sh ${CLUSTER} ${SPACK_ENV_NAME}
-  artifacts:
-    expire_in: 2 weeks
-    paths:
-      - ${CI_PROJECT_DIR}/build/tests.xml
-    reports:
-      junit: ${CI_PROJECT_DIR}/build/tests.xml
 
 ########
 # Jobs #
 ########
 
+prereq_offline_deps:
+  stage: build_n_test
+  extends: [.ascgit_job]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "push"
+  needs: []
+  script:
+    - mkdir extern
+    - git clone --bare https://gitlab-ci-token:${CI_JOB_TOKEN}@re-git.lanl.gov/xcap/oss/ports-of-call.git extern/ports-of-call.git
+  artifacts:
+    expire_in: 2 days
+    paths:
+      - extern
+
 openmpi_gcc:
-  extends: [.ascgit_job, .darwin_job, .build_and_test]
+  extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
   variables:
     SPACK_ENV_NAME: openmpi-gcc
 
+openmpi_cuda_gcc_volta:
+  extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  variables:
+    SPACK_ENV_NAME: openmpi-cuda-gcc-volta
+    SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p volta-x86 -C cpu_family:haswell --time=02:00:00"
+
 openmpi_cuda_gcc_ampere:
-  extends: [.ascgit_job, .darwin_job, .build_and_test]
+  extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
   variables:
     SPACK_ENV_NAME: openmpi-cuda-gcc-ampere
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p shared-gpu-ampere"
+
+rzvernal_craympich_rocm_mi250_gcc:
+  extends: [.ascgit_job, .rzadams_job, .rzvernal_regular_job, .build_and_test]
+  needs:
+   - prereq_offline_deps
+  variables:
+    SPACK_ENV_NAME: craympich-rocm-gfx90a-gcc
+
+rzadams_craympich_rocm_mi300_gcc:
+  extends: [.ascgit_job, .rzadams_job, .rzadams_regular_job, .build_and_test]
+  needs:
+   - prereq_offline_deps
+  variables:
+    SPACK_ENV_NAME: craympich-rocm-gfx942-gcc
