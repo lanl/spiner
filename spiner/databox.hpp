@@ -230,24 +230,31 @@ class DataBox {
 
   // Data array accessors
   template <typename... Args>
-  PORTABLE_INLINE_FUNCTION T get(Args... args) {
+  PORTABLE_INLINE_FUNCTION T get_data_value(Args... args) const {
       return Transform::reverse(dataView_(std::forward<Args>(args)...));
   }
+  // TODO: Should this method be const?  Having this be const is in line with the second operator()
+  //       below (the one with const), which allows the user to modify the dependent variable
+  //       values of a const DataBox.
   template<typename... Args>
-  PORTABLE_INLINE_FUNCTION void set(const T new_value, Args... args) {
+  PORTABLE_INLINE_FUNCTION void set_data_value(const T new_value, Args... args) const {
     dataView_(std::forward<Args>(args)...) = Transform::forward(new_value);
   }
 
   // Index operators
   // examle calls:
   // T x = db(n4, n3, n2, n1);
-  template <typename... Args,
-    typename std::enable_if<std::is_same<Transform,TransformLinear>::value>::type* = nullptr>
+  template <
+    typename... Args,
+    typename transform_t=Transform, // only for SFINAE
+    typename std::enable_if<std::is_same<transform_t,TransformLinear>::value>::type* = nullptr>
   PORTABLE_INLINE_FUNCTION T &operator()(Args... args) {
     return dataView_(std::forward<Args>(args)...);
   }
-  template <typename... Args,
-    typename std::enable_if<std::is_same<Transform,TransformLinear>::value>::type* = nullptr>
+  template <
+    typename... Args,
+    typename transform_t=Transform, // only for SFINAE
+    typename std::enable_if<std::is_same<transform_t,TransformLinear>::value>::type* = nullptr>
   PORTABLE_INLINE_FUNCTION T &operator()(Args... args) const {
     return dataView_(std::forward<Args>(args)...);
   }

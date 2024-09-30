@@ -550,7 +550,7 @@ TEST_CASE("DataBox Interpolation with log-lin transformations", "[DataBox]") {
 TEST_CASE("DataBox Interpolation with log-log transformations", "[DataBox]") {
     using Transform = Spiner::TransformLogarithmic;
     using RG1D = Spiner::RegularGrid1D<double, Transform>;
-    using DB = Spiner::DataBox<double, RG1D, Spiner::TransformLinear>;
+    using DB = Spiner::DataBox<double, RG1D, Transform>;
 
     constexpr int RANK = 2;
     const int Npt = 32;
@@ -570,7 +570,7 @@ TEST_CASE("DataBox Interpolation with log-log transformations", "[DataBox]") {
           RG1D grid(xmin, xmax, Npt);
           const double x = grid.x(ix);
           const double y = grid.x(iy);
-          db(ix, iy) = log_log_func(x, y);
+          db.set_data_value(log_log_func(x,y), ix, iy);
         });
 
     double error = 0;
