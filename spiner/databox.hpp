@@ -153,45 +153,6 @@ class DataBox {
     resize(AllocationTarget::Host, std::forward<Args>(args)...);
   }
 
-  // TODO: The existence and implementation of operator() is a problem.
-  //    -- If you use operator() to assign to the dependent variable, you _think_ you're assigning
-  //       to the y (untransformed) value, because that was the previous behavior.  But in reality,
-  //       you're assigning to the v (transformed) value, which means that you're not storing the
-  //       right value unless you know this quirk.  But that means that we're no longer hiding the
-  //       transformations, but exposing things that users won't necessarily know about.  It's also
-  //       surprising (I wrote the code and made this mistake already myself).
-  //       -- We could try to be clever by writing a value_reference_t class that's returned by
-  //          operator() and has customized operators to hide the transformations.  This would be a
-  //          non-trivial amount of work, and I can imagine a number of ways that this would break.
-  //       -- Instead, I've opted for a "safer" option: write new methods get_data_value and
-  //          set_data_value (I'm not attached to these names), which are classic accessors to the
-  //          dependent variable values, which allow the DataBox to handle the transformations
-  //          correctly.
-  //    -- The next question is how to handle existing code, which already uses operator().
-  //       -- If we add the accessors but leave operator(), we still have the surprising behavior.
-  //          Users will naturally tend to use the feature they're used to (operator()) and will
-  //          run into trouble without understanding why.
-  //       -- If we remove operator() to avoid causing problems, we break existing code.  As much
-  //          as possible, I'd like to hide changes so that existing code continues to work.  It's
-  //          not always possible, but it's preferable when possible.
-  //       -- I've opted for a compromise solution:
-  //          -- Leave operator() in place, but add some SFINAE so that it only works if you use
-  //             the default transformation (TransformLinear) where y = v (that is, the transform
-  //             is a no-op).  This will preserve existing code.
-  //          -- Existing code also has the option to use the new accessors.
-  //          -- If you add a transformation, operator() is removed and you _must_ use the new
-  //             accessors.  In this situation, you're writing new code using new features, so the
-  //             "keep existing code working as-is" argument doesn't apply.
-  //          -- The trickiest situation is a user adapting existing code by adding a
-  //             transformation.  We'll have to clearly communicate the behavior here so that they
-  //             understand what's going on (documentation, release notes, etc.).
-  //          -- In the future, operator() _could_ be removed from a later release of Spiner,
-  //             although this is not required.  Personal opinion: it should (eventually) be
-  //             removed.  In the case of an interpolator, operator() would most naturally be
-  //             assumed to be the method that does the interpolation (I ran into this problem when
-  //             I first used Spiner), so I think operator() being a way to access the data points
-  //             isn't the most intuitive way to name things.
-
   // Data array accessors
   template <typename... Args>
   PORTABLE_INLINE_FUNCTION T get_data_value(Args... args) const {
