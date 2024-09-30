@@ -38,7 +38,11 @@ namespace Spiner {
 template <typename T = Real>
 struct weights_t {
   T first, second;
-  PORTABLE_INLINE_FUNCTION Real &operator[](const int i) {
+  PORTABLE_INLINE_FUNCTION T &operator[](const int i) {
+    assert(0 <= i && i <= 1);
+    return i == 0 ? first : second;
+  }
+  PORTABLE_INLINE_FUNCTION const T &operator[](const int i) const {
     assert(0 <= i && i <= 1);
     return i == 0 ? first : second;
   }
