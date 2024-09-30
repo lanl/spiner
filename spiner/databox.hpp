@@ -39,8 +39,6 @@
 // TODO: get named indices working
 // TODO: If asserts are too slow, remove them.
 
-// TODO: Should extrapolations be this MR or a separate MR?
-
 namespace Spiner {
 
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
