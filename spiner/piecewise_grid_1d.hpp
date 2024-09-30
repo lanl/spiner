@@ -32,11 +32,10 @@
 
 #include "regular_grid_1d.hpp"
 
-// TODO: This is based on RegularGrid1D, so thread through options for transformations
-
 namespace Spiner {
 
 template <typename T = Real, int NGRIDSMAX = 5,
+          typename Transform = TransformLinear,
           typename =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
 class PiecewiseGrid1D {
@@ -48,7 +47,7 @@ class PiecewiseGrid1D {
   // This is functionally equivalent because grids_ will
   // be initialized to default values
   PORTABLE_INLINE_FUNCTION PiecewiseGrid1D() {}
-  PiecewiseGrid1D(const std::vector<RegularGrid1D<T>> grids) {
+  PiecewiseGrid1D(const std::vector<RegularGrid1D<T, Transform>> grids) {
     NGRIDS_ = grids.size();
     PORTABLE_ALWAYS_REQUIRE(
         NGRIDS_ <= NGRIDSMAX,
@@ -67,8 +66,8 @@ class PiecewiseGrid1D {
       }
     }
   }
-  PiecewiseGrid1D(std::initializer_list<RegularGrid1D<T>> grids)
-      : PiecewiseGrid1D(std::vector<RegularGrid1D<T>>(grids)) {}
+  PiecewiseGrid1D(std::initializer_list<RegularGrid1D<T, Transform>> grids)
+      : PiecewiseGrid1D(std::vector<RegularGrid1D<T, Transform>>(grids)) {}
 
   template <typename F>
   PORTABLE_INLINE_FUNCTION int findGrid(const F &direction) const {
@@ -126,14 +125,14 @@ class PiecewiseGrid1D {
   }
 
   PORTABLE_INLINE_FUNCTION
-  bool operator==(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
+  bool operator==(const PiecewiseGrid1D<T, NGRIDSMAX, Transform> &other) const {
     for (int ig = 0; ig < NGRIDS_; ++ig) {
       if (grids_[ig] != other.grids_[ig]) return false;
     }
     return true;
   }
   PORTABLE_INLINE_FUNCTION
-  bool operator!=(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
+  bool operator!=(const PiecewiseGrid1D<T, NGRIDSMAX, Transform> &other) const {
     return !(*this == other);
   }
   PORTABLE_INLINE_FUNCTION T min() const { return grids_[0].min(); }
@@ -227,7 +226,7 @@ class PiecewiseGrid1D {
            SP5::H1D::GRID_FORMAT[1];
   }
 
-  RegularGrid1D<T> grids_[NGRIDSMAX];
+  RegularGrid1D<T, Transform> grids_[NGRIDSMAX];
   int pointTotals_[NGRIDSMAX];
   int NGRIDS_;
 };
