@@ -156,9 +156,6 @@ class DataBox {
   PORTABLE_INLINE_FUNCTION T get_data_value(Args... args) const {
       return Transform::reverse(dataView_(std::forward<Args>(args)...));
   }
-  // TODO: Should this method be const?  Having this be const is in line with the second operator()
-  //       below (the one with const), which allows the user to modify the dependent variable
-  //       values of a const DataBox.
   template<typename... Args>
   PORTABLE_INLINE_FUNCTION void set_data_value(const T new_value, Args... args) const {
     dataView_(std::forward<Args>(args)...) = Transform::forward(new_value);
