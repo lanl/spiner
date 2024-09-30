@@ -50,6 +50,21 @@ enum class DataStatus {
 };
 enum class AllocationTarget { Host, Device };
 
+// Note: This only works if all values have the same type
+// (or are all convertible to the type of the first value)
+template <typename Value0, typename ...OtherValues>
+PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0, OtherValues... other) {
+    if constexpr (sizeof...(OtherValues) == 0) {
+        return v0;
+    } else {
+        if (n == 0) {
+            return v0;
+        } else {
+            return get_value(n - 1, other...);
+        }
+    }
+}
+
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
@@ -201,10 +216,22 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2,
                                                const T x1) const noexcept;
+  template <typename ...Coords>
+  PORTABLE_FORCEINLINE_FUNCTION T interpToReal_alt(const Coords... coords) const noexcept;
+  template <std::size_t N, typename Callable>
+  PORTABLE_FORCEINLINE_FUNCTION T interpToReal_core(Callable && callable,
+                                                    const weights_t<T> * weightlist,
+                                                    const int * indices) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
   // JMM: Trust me---this is a common pattern
+  // TODO: We could get rid of the interpToReal wrappers and rename
+  //       interpToReal_alt to just be interpToReal but there's an ambiguity
+  //       here.  We would have to SFINAE things to make the variadic parameter
+  //       pack only match if all types are the same type.  Note: if T = int,
+  //       this is guaranteed to be ambiguous no matter what we do.  Should the
+  //       below method be renamed?
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
@@ -447,52 +474,61 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
 }
 
 template <typename T, typename Grid_t, typename Concept>
+template <typename ...Coords>
+PORTABLE_INLINE_FUNCTION T
+DataBox<T, Grid_t, Concept>::interpToReal_alt(const Coords... coords) const noexcept {
+  constexpr std::size_t N = sizeof...(Coords);
+  assert(canInterpToReal_(N));
+  int indices[N];
+  weights_t<T> weights[N];
+  for (std::size_t n = 0; n < N; ++n) {
+      grids_[n].weights(get_value(n, coords...), indices[n], weights[n]);
+  }
+  return interpToReal_core<N>(
+          [this](auto ...ii) { return this->dataView_(ii...); },
+          weights,
+          indices);
+}
+
+template <typename T, typename Grid_t, typename Concept>
+template <std::size_t N, typename Callable>
+PORTABLE_FORCEINLINE_FUNCTION T
+DataBox<T, Grid_t, Concept>::interpToReal_core(Callable && callable,
+                                               const weights_t<T> * weightlist,
+                                               const int * indices) const noexcept {
+    const weights_t<T> & w = weightlist[0];
+    if constexpr (N == 0) {
+        // base case
+        return callable();
+    } else {
+        // recursive case
+        return w[0] * interpToReal_core<N-1>(
+                      [&c=callable, i=indices[0]](auto ...ii) { return c(i, ii...); },
+                      weightlist + 1,
+                      indices + 1) +
+               w[1] * interpToReal_core<N-1>(
+                      [&c=callable, i=indices[0]+1](auto ...ii) { return c(i, ii...); },
+                      weightlist + 1,
+                      indices + 1);
+    }
+}
+
+template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
-  assert(canInterpToReal_(1));
-  int ix;
-  weights_t<T> w;
-  grids_[0].weights(x, ix, w);
-  return w[0] * dataView_(ix) + w[1] * dataView_(ix + 1);
+  return interpToReal_alt(x);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(2));
-  int ix1, ix2;
-  weights_t<T> w1, w2;
-  grids_[0].weights(x1, ix1, w1);
-  grids_[1].weights(x2, ix2, w2);
-  // TODO: prefectch corners for speed?
-  // TODO: re-order access pattern?
-  return (w2[0] *
-              (w1[0] * dataView_(ix2, ix1) + w1[1] * dataView_(ix2, ix1 + 1)) +
-          w2[1] * (w1[0] * dataView_(ix2 + 1, ix1) +
-                   w1[1] * dataView_(ix2 + 1, ix1 + 1)));
+  return interpToReal_alt(x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(3));
-  int ix[3];
-  weights_t<T> w[3];
-  grids_[0].weights(x1, ix[0], w[0]);
-  grids_[1].weights(x2, ix[1], w[1]);
-  grids_[2].weights(x3, ix[2], w[2]);
-  // TODO: prefect corners for speed?
-  // TODO: re-order access pattern?
-  return (
-      w[2][0] * (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0]) +
-                            w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1)) +
-                 w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0]) +
-                            w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1))) +
-      w[2][1] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0]) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1)) +
-           w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0]) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
+  return interpToReal_alt(x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
@@ -529,52 +565,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(4));
-  T x[] = {x1, x2, x3, x4};
-  int ix[4];
-  weights_t<T> w[4];
-  for (int i = 0; i < 4; ++i) {
-    grids_[i].weights(x[i], ix[i], w[i]);
-  }
-  // TODO(JMM): This is getty pretty gross. Should we automate?
-  // Hand-written is probably faster, though.
-  // Breaking line-limit to make this easier to read
-  return (
-      w[3][0] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0] + 1)))) +
-      w[3][1] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0] + 1))) +
-           w[2][1] * (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1], ix[0]) +
-                                 w[0][1] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1], ix[0] + 1)) +
-                      w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1] + 1, ix[0]) +
-                                 w[0][1] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1] + 1, ix[0] + 1))))
-
-  );
+  return interpToReal_alt(x4, x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
