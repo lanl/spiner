@@ -45,8 +45,7 @@ struct weights_t {
   }
 };
 
-template <typename T = Real,
-          typename Transform = TransformLinear,
+template <typename T = Real, typename Transform = TransformLinear,
           typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
               true>
 class RegularGrid1D {
@@ -59,11 +58,8 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
       : umin_(rNaN), umax_(rNaN), du_(rNaN), inv_du_(rNaN), N_(iNaN) {}
   PORTABLE_INLINE_FUNCTION RegularGrid1D(T xmin, T xmax, size_t N)
-      : umin_(Transform::forward(xmin))
-      , umax_(Transform::forward(xmax))
-      , du_((umax_ - umin_) / ((T)(N - 1)))
-      , inv_du_(1 / du_)
-      , N_(N) {
+      : umin_(Transform::forward(xmin)), umax_(Transform::forward(xmax)),
+        du_((umax_ - umin_) / ((T)(N - 1))), inv_du_(1 / du_), N_(N) {
     PORTABLE_ALWAYS_REQUIRE(umin_ < umax_ && N_ > 0, "Valid grid");
   }
 
@@ -83,7 +79,9 @@ class RegularGrid1D {
   }
 
   // Translate between x coordinate and index
-  PORTABLE_INLINE_FUNCTION T x(const int i) const { return Transform::reverse(u(i)); }
+  PORTABLE_INLINE_FUNCTION T x(const int i) const {
+    return Transform::reverse(u(i));
+  }
   PORTABLE_INLINE_FUNCTION int index(const T x) const {
     return index_u(Transform::forward(x));
   }

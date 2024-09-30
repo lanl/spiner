@@ -21,38 +21,39 @@
 
 namespace Spiner {
 
-  // Note on notation:
-  // -- "real" space is called x
-  // -- "transformed" space is called u
-  // -- u = forward(x)
-  // -- x = reverse(u)
+// Note on notation:
+// -- "real" space is called x
+// -- "transformed" space is called u
+// -- u = forward(x)
+// -- x = reverse(u)
 
-  // linear transformation (aka no-op): y = x
-  struct TransformLinear{
-    template<typename T>
-    PORTABLE_INLINE_FUNCTION static T forward(const T x) {
-      return x;
-    }
-    template<typename T>
-    PORTABLE_INLINE_FUNCTION static T reverse(const T u) {
-      return u;
-    }
-  };
+// linear transformation (aka no-op): y = x
+struct TransformLinear {
+  template <typename T>
+  PORTABLE_INLINE_FUNCTION static T forward(const T x) {
+    return x;
+  }
+  template <typename T>
+  PORTABLE_INLINE_FUNCTION static T reverse(const T u) {
+    return u;
+  }
+};
 
-  // logarithmic transformation: y = log(x + small)
-  struct TransformLogarithmic{
-    template<typename T>
-    PORTABLE_INLINE_FUNCTION static T forward(const T x) {
-      return std::log(x + std::numeric_limits<T>::denorm_min());
-    }
-    template<typename T>
-    PORTABLE_INLINE_FUNCTION static T reverse(const T u) {
-      return std::exp(u) - std::numeric_limits<T>::denorm_min();
-    }
-  };
+// logarithmic transformation: y = log(x + small)
+struct TransformLogarithmic {
+  template <typename T>
+  PORTABLE_INLINE_FUNCTION static T forward(const T x) {
+    return std::log(x + std::numeric_limits<T>::denorm_min());
+  }
+  template <typename T>
+  PORTABLE_INLINE_FUNCTION static T reverse(const T u) {
+    return std::exp(u) - std::numeric_limits<T>::denorm_min();
+  }
+};
 
-  // TODO: log_NQT and arcsinh_NQT, but these require adding a dependency on
-  //       https://github.com/lanl/not-quite-transcendental.  I may leave this for Jonah ;-)
+// TODO: log_NQT and arcsinh_NQT, but these require adding a dependency on
+//       https://github.com/lanl/not-quite-transcendental.  I may leave this for
+//       Jonah ;-)
 
 } // namespace Spiner
 #endif // _SPINER_TRANSFORM_HPP_
