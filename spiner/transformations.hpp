@@ -51,9 +51,8 @@ namespace Spiner {
     }
   };
 
-  // TODO: log_NQT
-
-  // TODO: arcsinh_NQT
+  // TODO: log_NQT and arcsinh_NQT, but these require adding a dependency on
+  //       https://github.com/lanl/not-quite-transcendental.  I may leave this for Jonah ;-)
 
 } // namespace Spiner
 #endif // _SPINER_TRANSFORM_HPP_
