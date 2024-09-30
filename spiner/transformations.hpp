@@ -17,6 +17,7 @@
 
 #include "ports-of-call/portability.hpp"
 
+#include <cmath>
 #include <limits>
 
 namespace Spiner {
