@@ -153,80 +153,44 @@ class DataBox {
     resize(AllocationTarget::Host, std::forward<Args>(args)...);
   }
 
-  // TODO: The index operators are a problem.  If you assign to them, you _think_ you're assigning
-  // the y value, but in actuality you're assigning the v value, which means the transformations
-  // will be all messed up.  I can imagine two possible approaches.
-  // -- The "Safer" Solution ______________________________________________________________________
-  //    In order to avoid the problems that come with more-complex machinery and all the weirdness
-  //    that can arise, the "safer" solution is to simply get rid of operator() and replace it with
-  //    get() and set().  The downside to this is that it will break existing interfaces.
-  // -- We don't _have_ to call these get() and set().  For example, if we want to do something
-  //    analogous to x() from RegularGrid1D, we could call them both y() or dependent_variable() or
-  //    something like that.  Then we would use dispatch to disambiguate: y(i,j) is a getter but
-  //    y(value, i, j) is a setter.  Of course, if T is the same type as the indices, then it
-  //    becomes ambiguous whether you mean y(i,j,k) or y(value,i,j).  And with variadic parameter
-  //    packs, it may always be ambiguous even if T is not the same type as the indices.
-  // -- The "Sneaky" Solution _____________________________________________________________________
-  //    If we want to preserve the existing interface (where you can assign to db(i,j) and also
-  //    read from db(i,j)), we can create a hidden helper class: db_value_ref.  It is templated on
-  //    T and Transform the same as DataBox, and it holds a reference (or pointer if you prefer) to
-  //    a single value within the DataBox's data array.  It implements two functions;
-  //    -- operator=(const T new_value) will handle statements of the form `db(i,j) = new_value`
-  //    -- implicit cast to T will handle statements that read the value of db(i,j)
-  //    Problems I can already see with this approach:
-  //    -- Our data types have more than just `operator=`; for example, `double` has `+=`, `*=`,
-  //       `++`, etc, so to truly hide this we would need to implement all such operators.  But
-  //       since we don't _know_ the data type, we would have to use some careful SFINAE to
-  //       implement them if they work for the type T but not compile them if they don't work for
-  //       the type T.
-  //    -- Because of the nature of generic programming, there could well be a lot of `auto value =
-  //       db(i,j)`, and then using that to do some things.  We can't easily control the context
-  //       where `value` is then used, so we can't guarantee that the compiler will recognize that
-  //       something should be an implicit cast to type T.  That means some statements could break.
-  //       It also means some statements could work, but you end up with things like
-  //       `std::vector<db_value_ref>` when you want `std::vector<T>`, which could cause
-  //       significant problems somewhere else down the line.
-  // Because of the dangers in the "sneaky" solution, I'm more inclined towards the "safer"
-  // solution because we can change that more quickly and with little chance of failure (whereas
-  // the "sneaky" solution would take longer and may not even be workable without some serious C++
-  // wizardry, or possibly even possible at all).  But it does mean changing the interface for our
-  // users, which is unfortunate.
-  //     We could, in theory, keep operator() as they are.  Instead of being an accessor to the y
-  // values, they're now accessors to the v values (recall: v = Transform::forward(y)).  This is
-  // not inherently wrong so long as we're okay with the idea of exposing the u and v (transformed)
-  // values, which we may not be.  But where this idea runs into serious problems is that we would
-  // be keeping an interface but changing its meaning, which means that user code changes but
-  // doesn't necessarily break.  And that's a big problem.
-  //     Another option to preserve functionality, but which is a hack that has problems of its
-  // own, would be to keep operator() as they are but use SFINAE to only enable them if the
-  // transform template is something we know to be a no-op transformation (that is, we would have
-  // to hard-code it explicitly to TransformLinear, and a user-defined equivalent wouldn't work).
-  // The advantage to this is that existing code will still work: existing code won't specify a
-  // transformation, so it'll default to TransformLinear, so operator() will be enabled and will
-  // effectively mean what it always meant.  But if the user starts using the new feature and adds
-  // any transformation other than the default, then operator() will simply disappear, which will
-  // prevent the user from accidentally mis-using operator() due to not understanding how it
-  // changed.  It hides the change and keeps existing code using and is safe.  But it does mean
-  // that the interface to DataBox changes depending on the template parameters.  If a user writes
-  // code that has no transformation and uses operator(), then decides to add a transformation
-  // later on, they may in for a rude surprise when they have to go through their code and
-  // carefully change every operator() to get() and/or set().  But we could then highlight this
-  // problem and deprecate operator(), giving users time to shift their code, and then eventually
-  // delete operator() completely in some future release, forcing users to adopt the (hopefully
-  // by-then long-existing and commonly-used) get() / set() paradigm instead of the operator()
-  // paradigm.
-  // -- This may run into issues with a variadic template.  But since the argument list will define
-  //    the variadic template, then hopefully the "leftover" SFINAE will be allowed.  Or maybe the
-  //    SFINAE goes first.  Or maybe the SFINAE goes on the return type.  I'll have to experiment.
-  // -- We could get around this by explicitly typing out the different numbers of indices, because
-  //    there's a finite set (that is, MAXRANK is known; I think it's currently 6).
-  // If you want to play _even more_ SFINAE shenanigans, you could keep `operator()(indices...)
-  // const` to always be a getter and then write `operator()(value, indices...)` to be a setter.
-  // Then you SFINAE on the Transform to turn on or off `operator()(indices...)` as a _setter_.
-  // But this gets complicated and confusing, and I think different function names is a smarter
-  // choice.  Plus, as noted above, if the getter and setter have the same name, then there is the
-  // possibility of ambiguity between `operator()(i,j,k)` (a getter) and `operator()(value,i,j)` (a
-  // setter).
+  // TODO: The existence and implementation of operator() is a problem.
+  //    -- If you use operator() to assign to the dependent variable, you _think_ you're assigning
+  //       to the y (untransformed) value, because that was the previous behavior.  But in reality,
+  //       you're assigning to the v (transformed) value, which means that you're not storing the
+  //       right value unless you know this quirk.  But that means that we're no longer hiding the
+  //       transformations, but exposing things that users won't necessarily know about.  It's also
+  //       surprising (I wrote the code and made this mistake already myself).
+  //       -- We could try to be clever by writing a value_reference_t class that's returned by
+  //          operator() and has customized operators to hide the transformations.  This would be a
+  //          non-trivial amount of work, and I can imagine a number of ways that this would break.
+  //       -- Instead, I've opted for a "safer" option: write new methods get_data_value and
+  //          set_data_value (I'm not attached to these names), which are classic accessors to the
+  //          dependent variable values, which allow the DataBox to handle the transformations
+  //          correctly.
+  //    -- The next question is how to handle existing code, which already uses operator().
+  //       -- If we add the accessors but leave operator(), we still have the surprising behavior.
+  //          Users will naturally tend to use the feature they're used to (operator()) and will
+  //          run into trouble without understanding why.
+  //       -- If we remove operator() to avoid causing problems, we break existing code.  As much
+  //          as possible, I'd like to hide changes so that existing code continues to work.  It's
+  //          not always possible, but it's preferable when possible.
+  //       -- I've opted for a compromise solution:
+  //          -- Leave operator() in place, but add some SFINAE so that it only works if you use
+  //             the default transformation (TransformLinear) where y = v (that is, the transform
+  //             is a no-op).  This will preserve existing code.
+  //          -- Existing code also has the option to use the new accessors.
+  //          -- If you add a transformation, operator() is removed and you _must_ use the new
+  //             accessors.  In this situation, you're writing new code using new features, so the
+  //             "keep existing code working as-is" argument doesn't apply.
+  //          -- The trickiest situation is a user adapting existing code by adding a
+  //             transformation.  We'll have to clearly communicate the behavior here so that they
+  //             understand what's going on (documentation, release notes, etc.).
+  //          -- In the future, operator() _could_ be removed from a later release of Spiner,
+  //             although this is not required.  Personal opinion: it should (eventually) be
+  //             removed.  In the case of an interpolator, operator() would most naturally be
+  //             assumed to be the method that does the interpolation (I ran into this problem when
+  //             I first used Spiner), so I think operator() being a way to access the data points
+  //             isn't the most intuitive way to name things.
 
   // Data array accessors
   template <typename... Args>
