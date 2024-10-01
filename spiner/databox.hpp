@@ -236,7 +236,11 @@ class DataBox {
   template <std::size_t N, typename Callable, typename ...Args>
   PORTABLE_FORCEINLINE_FUNCTION T
   interp_core(Callable &&callable, const indexweight *iwlist,
-                    const T arg0, Args... other_args) const noexcept;
+                    const T coordinate, Args... other_args) const noexcept;
+  template <std::size_t N, typename Callable, typename ...Args>
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interp_core(Callable &&callable, const indexweight *iwlist,
+                    const int index, Args... other_args) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
@@ -480,11 +484,20 @@ class DataBox {
   }
 
   template <typename ...Args>
-  static PORTABLE_INLINE_FUNCTION void
-  append_index_and_weights(indexweight* iwlist, const Grid_t* grid, const T x, Args... other_args) {
+  static PORTABLE_INLINE_FUNCTION void append_index_and_weights(
+          indexweight* iwlist, const Grid_t* grid, const T x, Args... other_args) {
       grid[0].weights(x, iwlist->index, iwlist->weights);
       // Note: grids are in reverse order relative to arguments
       append_index_and_weights(iwlist + 1, grid - 1, other_args...);
+  }
+
+  template <typename ...Args>
+  static PORTABLE_INLINE_FUNCTION void append_index_and_weights(
+          indexweight* iwlist, const Grid_t* grid, const int index, Args... other_args) {
+      // The index is passed as an argument and there's no weight, so we don't need to bother doing
+      // anything with iwlist.  But we do need to step to the next grid.
+      // Note: grids are in reverse order relative to arguments
+      append_index_and_weights(iwlist, grid - 1, other_args...);
   }
 
   template <typename ...Args>
@@ -508,8 +521,7 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
   indexweight iwlist[N];
-  indexweight * iw_curr = iwlist;
-  append_index_and_weights(iw_curr, &(grids_[N - 1]), coords...);
+  append_index_and_weights(iwlist, &(grids_[N - 1]), coords...);
   return interp_core<N>(
       [this](auto... ii) { return this->dataView_(ii...); },
       iwlist, coords...);
@@ -520,7 +532,7 @@ template <std::size_t N, typename Callable, typename ...Args>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
     Callable &&callable,
     const indexweight *iwlist,
-    const T arg0,
+    const T coordinate,
     Args... other_args) const noexcept {
   const auto & current = iwlist[0];
   const T w0 = current.weights[0];
@@ -541,6 +553,25 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
                     iwlist + 1,
                     other_args...);
     return w0 * v0 + w1 * v1;
+  }
+}
+
+template <typename T, typename Grid_t, typename Concept>
+template <std::size_t N, typename Callable, typename ...Args>
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
+    Callable &&callable,
+    const indexweight *iwlist,
+    const int index,
+    Args... other_args) const noexcept {
+  if constexpr (N == 1) {
+    // base case
+    return callable(index);
+  } else {
+    // recursive case
+    return interp_core<N - 1>(
+                [&c = callable, i = index]( auto... ii) { return c(i, ii...); },
+                iwlist, // we didn't use iwlist so don't advance the pointer
+                other_args...);
   }
 }
 
