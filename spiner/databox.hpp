@@ -593,36 +593,10 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
   return interpolate_alt(x3, x2, x1);
 }
 
-// BKK: This is a 4D interpolation, where one axis (in this case the last one)
-//      is known to lie exactly on a grid point.  The other three axes are
-//      interpolated as normal.
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1, const int idx) const noexcept {
-  assert(rank_ == 4);
-  for (int r = 1; r < rank_; ++r) {
-    assert(indices_[r] == IndexType::Interpolated);
-    assert(grids_[r].isWellFormed());
-  }
-  int ix[3];
-  weights_t<T> w[3];
-  grids_[1].weights(x1, ix[0], w[0]);
-  grids_[2].weights(x2, ix[1], w[1]);
-  grids_[3].weights(x3, ix[2], w[2]);
-  // TODO: prefect corners for speed?
-  // TODO: re-order access pattern?
-  return (
-      w[2][0] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0], idx) +
-                      w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1, idx)) +
-           w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0], idx) +
-                      w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1, idx))) +
-      w[2][1] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0], idx) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1, idx)) +
-           w[1][1] *
-               (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0], idx) +
-                w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
+  return interpolate_alt(x3, x2, x1, idx);
 }
 
 // DH: this is a large function to force an inline, perhaps just make it a
@@ -633,70 +607,11 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
   return interpolate_alt(x4, x3, x2, x1);
 }
 
-// BKK: This is a 5D interpolation, where one axis (in this case the
-//      second-to-last one) is known to lie exactly on a grid point.  The other
-//      four axes are interpolated as normal.
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const int idx,
     const T x1) const noexcept {
-  assert(rank_ == 5);
-  assert(indices_[0] == IndexType::Interpolated);
-  assert(grids_[0].isWellFormed());
-  for (int i = 2; i < 5; ++i) {
-    assert(indices_[i] == IndexType::Interpolated);
-    assert(grids_[i].isWellFormed());
-  }
-  T x[] = {x1, x2, x3, x4};
-  int ix[4];
-  weights_t<T> w[4];
-  grids_[0].weights(x[0], ix[0], w[0]);
-  for (int i = 1; i < 4; ++i) {
-    grids_[i + 1].weights(x[i], ix[i], w[i]);
-  }
-  // TODO(JMM): This is getty pretty gross. Should we automate?
-  // Hand-written is probably faster, though.
-  // Breaking line-limit to make this easier to read
-  return (
-      w[3][0] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1], idx, ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1], idx, ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx,
-                                               ix[0] + 1)))) +
-      w[3][1] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx,
-                                               ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx,
-                                               ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1,
-                                               idx, ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1,
-                                               idx, ix[0] + 1))))
-
-  );
+  return interpolate_alt(x4, x3, x2, idx, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
