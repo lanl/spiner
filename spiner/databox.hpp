@@ -479,11 +479,17 @@ class DataBox {
     }
   }
 
-  static PORTABLE_INLINE_FUNCTION indexweight*
-  append_index_and_weights(const T x, Grid_t grid, indexweight* iwlist) {
-      grid.weights(x, iwlist->index, iwlist->weights);
-      return iwlist + 1;
+  template <typename ...Args>
+  static PORTABLE_INLINE_FUNCTION void
+  append_index_and_weights(indexweight* iwlist, const Grid_t* grid, const T x, Args... other_args) {
+      grid[0].weights(x, iwlist->index, iwlist->weights);
+      // Note: grids are in reverse order relative to arguments
+      append_index_and_weights(iwlist + 1, grid - 1, other_args...);
   }
+
+  template <typename ...Args>
+  static PORTABLE_INLINE_FUNCTION void
+  append_index_and_weights(indexweight* iwlist, const Grid_t* grid) {} // terminate recursion
 
 };
 
@@ -503,9 +509,7 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
   assert(canInterpToReal_(N));
   indexweight iwlist[N];
   indexweight * iw_curr = iwlist;
-  for (std::size_t n = 0; n < N; ++n) {
-    iw_curr = append_index_and_weights(get_value(n, coords...), grids_[N - 1 - n], iw_curr);
-  }
+  append_index_and_weights(iw_curr, &(grids_[N - 1]), coords...);
   return interp_core<N>(
       [this](auto... ii) { return this->dataView_(ii...); },
       iwlist, coords...);
