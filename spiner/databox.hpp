@@ -217,19 +217,27 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2,
                                                const T x1) const noexcept;
+  // Note to reviewer: I intentionally did not choose the name interpToReal:
+  // (1) There are possible name collisions with the various different versions
+  //     of interpToReal that I don't want to trip over.
+  // (2) I think it would be worth testing if DataBox works for other types,
+  //     such as std::complex.
+  // If this means that interpolate_alt needs to be private, that's a fairly
+  // simple change to make.
   template <typename... Coords>
   PORTABLE_FORCEINLINE_FUNCTION T
-  interpToReal_alt(const Coords... coords) const noexcept;
+  interpolate_alt(const Coords... coords) const noexcept;
+  // TODO: This function definitely should be private.
   template <std::size_t N, typename Callable>
   PORTABLE_FORCEINLINE_FUNCTION T
-  interpToReal_core(Callable &&callable, const weights_t<T> *weightlist,
+  interp_core(Callable &&callable, const weights_t<T> *weightlist,
                     const int *indices) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
   // JMM: Trust me---this is a common pattern
   // TODO: We could get rid of the interpToReal wrappers and rename
-  //       interpToReal_alt to just be interpToReal but there's an ambiguity
+  //       interpolate_alt to just be interpToReal but there's an ambiguity
   //       here.  We would have to SFINAE things to make the variadic parameter
   //       pack only match if all types are the same type.  Note: if T = int,
   //       this is guaranteed to be ambiguous no matter what we do.  Should the
@@ -477,7 +485,7 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
 
 template <typename T, typename Grid_t, typename Concept>
 template <typename... Coords>
-PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_alt(
+PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
     const Coords... coords) const noexcept {
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
@@ -486,13 +494,13 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_alt(
   for (std::size_t n = 0; n < N; ++n) {
     grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
   }
-  return interpToReal_core<N>(
+  return interp_core<N>(
       [this](auto... ii) { return this->dataView_(ii...); }, weights, indices);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 template <std::size_t N, typename Callable>
-PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_core(
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
     Callable &&callable, const weights_t<T> *weightlist,
     const int *indices) const noexcept {
   if constexpr (N == 0) {
@@ -501,12 +509,10 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_core(
   } else {
     // recursive case
     const weights_t<T> &w = weightlist[0];
-    return w[0] *
-               interpToReal_core<N - 1>([&c = callable, i = indices[0]](
+    return w[0] * interp_core<N - 1>([&c = callable, i = indices[0]](
                                             auto... ii) { return c(i, ii...); },
                                         weightlist + 1, indices + 1) +
-           w[1] *
-               interpToReal_core<N - 1>([&c = callable, i = indices[0] + 1](
+           w[1] * interp_core<N - 1>([&c = callable, i = indices[0] + 1](
                                             auto... ii) { return c(i, ii...); },
                                         weightlist + 1, indices + 1);
   }
@@ -515,19 +521,19 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_core(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
-  return interpToReal_alt(x);
+  return interpolate_alt(x);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x2, const T x1) const noexcept {
-  return interpToReal_alt(x2, x1);
+  return interpolate_alt(x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1) const noexcept {
-  return interpToReal_alt(x3, x2, x1);
+  return interpolate_alt(x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
@@ -564,7 +570,7 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const T x1) const noexcept {
-  return interpToReal_alt(x4, x3, x2, x1);
+  return interpolate_alt(x4, x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
