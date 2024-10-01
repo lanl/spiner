@@ -50,22 +50,6 @@ enum class DataStatus {
 };
 enum class AllocationTarget { Host, Device };
 
-// Note: This only works if all values have the same type
-// (or are all convertible to the type of the first value)
-template <typename Value0, typename... OtherValues>
-PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0,
-                                        OtherValues... other) {
-  if constexpr (sizeof...(OtherValues) == 0) {
-    return v0;
-  } else {
-    if (n == 0) {
-      return v0;
-    } else {
-      return get_value(n - 1, other...);
-    }
-  }
-}
-
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
@@ -209,6 +193,8 @@ class DataBox {
   // TODO: We _might_ be able to get rid of all the interpToReal wrappers and
   //       just use interpolate directly.  If we do, then we should rename
   //       interpolate back to interpToReal despite my concerns noted below.
+  //    -- If we keep the interpToReal wrappers, then should interpolate be
+  //       made private?
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x) const noexcept;
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x2,
                                                const T x1) const noexcept;
