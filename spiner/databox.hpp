@@ -66,22 +66,15 @@ PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0,
   }
 }
 
-template <typename T>
-struct indexweight {
-  int index;
-  weights_t<T> weights;
-};
-
-template <typename T, typename Grid_t>
-PORTABLE_INLINE_FUNCTION indexweight<T>* append_index_and_weights(const T x, Grid_t grid, indexweight<T>* iwlist) {
-    grid.weights(x, iwlist->index, iwlist->weights);
-    return iwlist + 1;
-}
-
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
 class DataBox {
+  struct indexweight {
+    int index;
+    weights_t<T> weights;
+  };
+  
  public:
   using ValueType = T;
   using GridType = Grid_t;
@@ -242,7 +235,7 @@ class DataBox {
   // TODO: This function definitely should be private.
   template <std::size_t N, typename Callable, typename ...Args>
   PORTABLE_FORCEINLINE_FUNCTION T
-  interp_core(Callable &&callable, const indexweight<T> *iwlist,
+  interp_core(Callable &&callable, const indexweight *iwlist,
                     const T arg0, Args... other_args) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
@@ -485,6 +478,13 @@ class DataBox {
       status_ = DataStatus::AllocatedHost;
     }
   }
+
+  static PORTABLE_INLINE_FUNCTION indexweight*
+  append_index_and_weights(const T x, Grid_t grid, indexweight* iwlist) {
+      grid.weights(x, iwlist->index, iwlist->weights);
+      return iwlist + 1;
+  }
+
 };
 
 // Read an array, shallow
@@ -501,8 +501,8 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
     const Coords... coords) const noexcept {
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
-  indexweight<T> iwlist[N];
-  indexweight<T> * iw_curr = iwlist;
+  indexweight iwlist[N];
+  indexweight * iw_curr = iwlist;
   for (std::size_t n = 0; n < N; ++n) {
     iw_curr = append_index_and_weights(get_value(n, coords...), grids_[N - 1 - n], iw_curr);
   }
@@ -515,7 +515,7 @@ template <typename T, typename Grid_t, typename Concept>
 template <std::size_t N, typename Callable, typename ...Args>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
     Callable &&callable,
-    const indexweight<T> *iwlist,
+    const indexweight *iwlist,
     const T arg0,
     Args... other_args) const noexcept {
   const auto & current = iwlist[0];
