@@ -228,10 +228,10 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T
   interpolate_alt(const Coords... coords) const noexcept;
   // TODO: This function definitely should be private.
-  template <std::size_t N, typename Callable>
+  template <std::size_t N, typename Callable, typename ...Args>
   PORTABLE_FORCEINLINE_FUNCTION T
   interp_core(Callable &&callable, const weights_t<T> *weightlist,
-                    const int *indices) const noexcept;
+                    const int *indices, const T arg0, Args... other_args) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
@@ -495,26 +495,37 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
     grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
   }
   return interp_core<N>(
-      [this](auto... ii) { return this->dataView_(ii...); }, weights, indices);
+      [this](auto... ii) { return this->dataView_(ii...); },
+      weights, indices, coords...);
 }
 
 template <typename T, typename Grid_t, typename Concept>
-template <std::size_t N, typename Callable>
+template <std::size_t N, typename Callable, typename ...Args>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
-    Callable &&callable, const weights_t<T> *weightlist,
-    const int *indices) const noexcept {
-  if constexpr (N == 0) {
+    Callable &&callable,
+    const weights_t<T> *weightlist,
+    const int *indices,
+    const T arg0,
+    Args... other_args) const noexcept {
+  const weights_t<T> &w = weightlist[0];
+  if constexpr (N == 1) {
     // base case
-    return callable();
+    const T v0 = callable(indices[0]);
+    const T v1 = callable(indices[0] + 1);
+    return w[0] * v0 + w[1] * v1;
   } else {
     // recursive case
-    const weights_t<T> &w = weightlist[0];
-    return w[0] * interp_core<N - 1>([&c = callable, i = indices[0]](
-                                            auto... ii) { return c(i, ii...); },
-                                        weightlist + 1, indices + 1) +
-           w[1] * interp_core<N - 1>([&c = callable, i = indices[0] + 1](
-                                            auto... ii) { return c(i, ii...); },
-                                        weightlist + 1, indices + 1);
+    const T v0 = interp_core<N - 1>(
+                    [&c = callable, i = indices[0]]( auto... ii) { return c(i, ii...); },
+                    weightlist + 1,
+                    indices + 1,
+                    other_args...);
+    const T v1 = interp_core<N - 1>(
+                    [&c = callable, i = indices[0] + 1]( auto... ii) { return c(i, ii...); },
+                    weightlist + 1,
+                    indices + 1,
+                    other_args...);
+    return w[0] * v0 + w[1] * v1;
   }
 }
 
@@ -536,6 +547,9 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
   return interpolate_alt(x3, x2, x1);
 }
 
+// BKK: This is a 4D interpolation, where one axis (in this case the last one)
+//      is known to lie exactly on a grid point.  The other three axes are
+//      interpolated as normal.
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1, const int idx) const noexcept {
@@ -573,6 +587,9 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
   return interpolate_alt(x4, x3, x2, x1);
 }
 
+// BKK: This is a 5D interpolation, where one axis (in this case the
+//      second-to-last one) is known to lie exactly on a grid point.  The other
+//      four axes are interpolated as normal.
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const int idx,
