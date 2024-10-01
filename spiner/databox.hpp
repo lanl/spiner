@@ -482,7 +482,7 @@ DataBox<T, Grid_t, Concept>::interpToReal_alt(const Coords... coords) const noex
   int indices[N];
   weights_t<T> weights[N];
   for (std::size_t n = 0; n < N; ++n) {
-      grids_[n].weights(get_value(n, coords...), indices[n], weights[n]);
+      grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
   }
   return interpToReal_core<N>(
           [this](auto ...ii) { return this->dataView_(ii...); },
@@ -496,12 +496,12 @@ PORTABLE_FORCEINLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal_core(Callable && callable,
                                                const weights_t<T> * weightlist,
                                                const int * indices) const noexcept {
-    const weights_t<T> & w = weightlist[0];
     if constexpr (N == 0) {
         // base case
         return callable();
     } else {
         // recursive case
+        const weights_t<T> & w = weightlist[0];
         return w[0] * interpToReal_core<N-1>(
                       [&c=callable, i=indices[0]](auto ...ii) { return c(i, ii...); },
                       weightlist + 1,
