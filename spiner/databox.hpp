@@ -66,6 +66,18 @@ PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0,
   }
 }
 
+template <typename T>
+struct indexweight {
+  int index;
+  weights_t<T> weights;
+};
+
+template <typename T, typename Grid_t>
+PORTABLE_INLINE_FUNCTION indexweight<T>* append_index_and_weights(const T x, Grid_t grid, indexweight<T>* iwlist) {
+    grid.weights(x, iwlist->index, iwlist->weights);
+    return iwlist + 1;
+}
+
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
               typename std::enable_if<std::is_arithmetic<T>::value, bool>::type>
@@ -230,8 +242,8 @@ class DataBox {
   // TODO: This function definitely should be private.
   template <std::size_t N, typename Callable, typename ...Args>
   PORTABLE_FORCEINLINE_FUNCTION T
-  interp_core(Callable &&callable, const weights_t<T> *weightlist,
-                    const int *indices, const T arg0, Args... other_args) const noexcept;
+  interp_core(Callable &&callable, const indexweight<T> *iwlist,
+                    const T arg0, Args... other_args) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
@@ -489,43 +501,42 @@ PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate_alt(
     const Coords... coords) const noexcept {
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
-  int indices[N];
-  weights_t<T> weights[N];
+  indexweight<T> iwlist[N];
+  indexweight<T> * iw_curr = iwlist;
   for (std::size_t n = 0; n < N; ++n) {
-    grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
+    iw_curr = append_index_and_weights(get_value(n, coords...), grids_[N - 1 - n], iw_curr);
   }
   return interp_core<N>(
       [this](auto... ii) { return this->dataView_(ii...); },
-      weights, indices, coords...);
+      iwlist, coords...);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 template <std::size_t N, typename Callable, typename ...Args>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
     Callable &&callable,
-    const weights_t<T> *weightlist,
-    const int *indices,
+    const indexweight<T> *iwlist,
     const T arg0,
     Args... other_args) const noexcept {
-  const weights_t<T> &w = weightlist[0];
+  const auto & current = iwlist[0];
+  const T w0 = current.weights[0];
+  const T w1 = current.weights[1];
   if constexpr (N == 1) {
     // base case
-    const T v0 = callable(indices[0]);
-    const T v1 = callable(indices[0] + 1);
-    return w[0] * v0 + w[1] * v1;
+    const T v0 = callable(current.index);
+    const T v1 = callable(current.index + 1);
+    return w0 * v0 + w1 * v1;
   } else {
     // recursive case
     const T v0 = interp_core<N - 1>(
-                    [&c = callable, i = indices[0]]( auto... ii) { return c(i, ii...); },
-                    weightlist + 1,
-                    indices + 1,
+                    [&c = callable, i = current.index]( auto... ii) { return c(i, ii...); },
+                    iwlist + 1,
                     other_args...);
     const T v1 = interp_core<N - 1>(
-                    [&c = callable, i = indices[0] + 1]( auto... ii) { return c(i, ii...); },
-                    weightlist + 1,
-                    indices + 1,
+                    [&c = callable, i = current.index + 1]( auto... ii) { return c(i, ii...); },
+                    iwlist + 1,
                     other_args...);
-    return w[0] * v0 + w[1] * v1;
+    return w0 * v0 + w1 * v1;
   }
 }
 
