@@ -52,17 +52,18 @@ enum class AllocationTarget { Host, Device };
 
 // Note: This only works if all values have the same type
 // (or are all convertible to the type of the first value)
-template <typename Value0, typename ...OtherValues>
-PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0, OtherValues... other) {
-    if constexpr (sizeof...(OtherValues) == 0) {
-        return v0;
+template <typename Value0, typename... OtherValues>
+PORTABLE_INLINE_FUNCTION auto get_value(std::size_t n, Value0 v0,
+                                        OtherValues... other) {
+  if constexpr (sizeof...(OtherValues) == 0) {
+    return v0;
+  } else {
+    if (n == 0) {
+      return v0;
     } else {
-        if (n == 0) {
-            return v0;
-        } else {
-            return get_value(n - 1, other...);
-        }
+      return get_value(n - 1, other...);
     }
+  }
 }
 
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
@@ -216,12 +217,13 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2,
                                                const T x1) const noexcept;
-  template <typename ...Coords>
-  PORTABLE_FORCEINLINE_FUNCTION T interpToReal_alt(const Coords... coords) const noexcept;
+  template <typename... Coords>
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interpToReal_alt(const Coords... coords) const noexcept;
   template <std::size_t N, typename Callable>
-  PORTABLE_FORCEINLINE_FUNCTION T interpToReal_core(Callable && callable,
-                                                    const weights_t<T> * weightlist,
-                                                    const int * indices) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interpToReal_core(Callable &&callable, const weights_t<T> *weightlist,
+                    const int *indices) const noexcept;
   // Interpolates the whole databox to a real number,
   // with one intermediate, non-interpolatable index,
   // which is simply indexed into
@@ -474,43 +476,40 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
 }
 
 template <typename T, typename Grid_t, typename Concept>
-template <typename ...Coords>
-PORTABLE_INLINE_FUNCTION T
-DataBox<T, Grid_t, Concept>::interpToReal_alt(const Coords... coords) const noexcept {
+template <typename... Coords>
+PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_alt(
+    const Coords... coords) const noexcept {
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
   int indices[N];
   weights_t<T> weights[N];
   for (std::size_t n = 0; n < N; ++n) {
-      grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
+    grids_[N - 1 - n].weights(get_value(n, coords...), indices[n], weights[n]);
   }
   return interpToReal_core<N>(
-          [this](auto ...ii) { return this->dataView_(ii...); },
-          weights,
-          indices);
+      [this](auto... ii) { return this->dataView_(ii...); }, weights, indices);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 template <std::size_t N, typename Callable>
-PORTABLE_FORCEINLINE_FUNCTION T
-DataBox<T, Grid_t, Concept>::interpToReal_core(Callable && callable,
-                                               const weights_t<T> * weightlist,
-                                               const int * indices) const noexcept {
-    if constexpr (N == 0) {
-        // base case
-        return callable();
-    } else {
-        // recursive case
-        const weights_t<T> & w = weightlist[0];
-        return w[0] * interpToReal_core<N-1>(
-                      [&c=callable, i=indices[0]](auto ...ii) { return c(i, ii...); },
-                      weightlist + 1,
-                      indices + 1) +
-               w[1] * interpToReal_core<N-1>(
-                      [&c=callable, i=indices[0]+1](auto ...ii) { return c(i, ii...); },
-                      weightlist + 1,
-                      indices + 1);
-    }
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal_core(
+    Callable &&callable, const weights_t<T> *weightlist,
+    const int *indices) const noexcept {
+  if constexpr (N == 0) {
+    // base case
+    return callable();
+  } else {
+    // recursive case
+    const weights_t<T> &w = weightlist[0];
+    return w[0] *
+               interpToReal_core<N - 1>([&c = callable, i = indices[0]](
+                                            auto... ii) { return c(i, ii...); },
+                                        weightlist + 1, indices + 1) +
+           w[1] *
+               interpToReal_core<N - 1>([&c = callable, i = indices[0] + 1](
+                                            auto... ii) { return c(i, ii...); },
+                                        weightlist + 1, indices + 1);
+  }
 }
 
 template <typename T, typename Grid_t, typename Concept>
