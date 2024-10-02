@@ -31,11 +31,11 @@ namespace Spiner {
 // linear transformation (aka no-op): y = x
 struct TransformLinear {
   template <typename T>
-  PORTABLE_FORCEINLINE_FUNCTION static T forward(const T x) {
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
     return x;
   }
   template <typename T>
-  PORTABLE_FORCEINLINE_FUNCTION static T reverse(const T u) {
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
     return u;
   }
 };
@@ -43,11 +43,11 @@ struct TransformLinear {
 // logarithmic transformation: y = log(x + small)
 struct TransformLogarithmic {
   template <typename T>
-  PORTABLE_FORCEINLINE_FUNCTION static T forward(const T x) {
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
     return std::log(std::abs(x) + std::numeric_limits<T>::denorm_min());
   }
   template <typename T>
-  PORTABLE_FORCEINLINE_FUNCTION static T reverse(const T u) {
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
     return std::exp(u) - std::numeric_limits<T>::denorm_min();
   }
 };
