@@ -44,7 +44,7 @@ struct TransformLinear {
 struct TransformLogarithmic {
   template <typename T>
   PORTABLE_INLINE_FUNCTION static T forward(const T x) {
-    return std::log(x + std::numeric_limits<T>::denorm_min());
+   return std::log(std::abs(x) + std::numeric_limits<T>::denorm_min());
   }
   template <typename T>
   PORTABLE_INLINE_FUNCTION static T reverse(const T u) {
