@@ -472,7 +472,7 @@ class DataBox {
   static PORTABLE_INLINE_FUNCTION void
   append_index_and_weights(indexweight *iwlist, const Grid_t *grid, const T x,
                            Args... other_args) {
-    grid[0].weights(x, iwlist->index, iwlist->weights);
+    grid->.weights(x, iwlist->index, iwlist->weights);
     // Note: grids are in reverse order relative to arguments
     append_index_and_weights(iwlist + 1, grid - 1, other_args...);
   }
