@@ -218,6 +218,11 @@ class DataBox {
   //     of interpToReal that I don't want to trip over.
   // (2) I think it would be worth testing if DataBox works for other
   //     (non-real) types, such as std::complex.
+  // Entry point for recursive interpolation.  See interp_core for actual
+  // recursion.  There are multiple versions of interp_core to handle the
+  // different inputs allowed:
+  // * int: an index telling the exact data point to use for that axis
+  // * T  : a coordinate to interpolate to that point on that axis
   template <typename... Coords>
   PORTABLE_FORCEINLINE_FUNCTION T
   interpolate(const Coords... coords) const noexcept;
@@ -454,9 +459,11 @@ class DataBox {
     }
   }
 
+  // Recursive interpolation: coordinate to interpolate to along this axis
   template <std::size_t N, typename... Args>
   PORTABLE_FORCEINLINE_FUNCTION T
   interp_core(const index_and_weights_t<T> *iwlist, const T coordinate, Args... other_args) const noexcept;
+  // Recursive interpolation: index for exact data point to use along this axis
   template <std::size_t N, typename... Args>
   PORTABLE_FORCEINLINE_FUNCTION T
   interp_core(const index_and_weights_t<T> *iwlist, const int index, Args... other_args) const noexcept;
