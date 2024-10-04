@@ -34,18 +34,11 @@
 
 namespace Spiner {
 
-// a poor-man's std::pair
 template <typename T = Real>
-struct weights_t {
-  T first, second;
-  PORTABLE_INLINE_FUNCTION T &operator[](const int i) {
-    assert(0 <= i && i <= 1);
-    return i == 0 ? first : second;
-  }
-  PORTABLE_INLINE_FUNCTION const T &operator[](const int i) const {
-    assert(0 <= i && i <= 1);
-    return i == 0 ? first : second;
-  }
+struct index_and_weights_t { // TODO: This name seems rather wordy
+    int index;
+    T w0;
+    T w1;
 };
 
 template <typename T = Real,
@@ -82,21 +75,19 @@ class RegularGrid1D {
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
-                                        weights_t<T> &w) const {
-    ix = index(x);
-    const auto floor = static_cast<T>(ix) * dx_ + min_;
-    w[1] = idx_ * (x - floor);
-    w[0] = (1. - w[1]);
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, index_and_weights_t<T> &iw) const {
+    iw.index = index(x);
+    const auto floor = static_cast<T>(iw.index) * dx_ + min_;
+    iw.w1 = idx_ * (x - floor);
+    iw.w0 = (1. - iw.w1);
   }
 
   // 1D interpolation
   PORTABLE_INLINE_FUNCTION T operator()(const T &x,
                                         const PortableMDArray<T> &A) const {
-    int ix;
-    weights_t<T> w;
-    weights(x, ix, w);
-    return w[0] * A(ix) + w[1] * A(ix + 1);
+    index_and_weights_t<T> iw;
+    weights(x, iw);
+    return iw.w0 * A(iw.index) + iw.w1 * A(iw.index + 1);
   }
 
   // utitilies

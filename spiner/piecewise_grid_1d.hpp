@@ -116,11 +116,10 @@ class PiecewiseGrid1D {
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
-                                        weights_t<T> &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, index_and_weights_t<T> &iw) const {
     int ig = findGridFromPosition(x);
-    grids_[ig].weights(x, ix, w);
-    ix += pointTotals_[ig];
+    grids_[ig].weights(x, iw);
+    iw.index += pointTotals_[ig];
   }
 
   PORTABLE_INLINE_FUNCTION
