@@ -86,9 +86,15 @@ This would result in interpolation according to the equation
 
 .. math::
 
-   \arctan(y) = b + \sum m_i \log(x_i)
+   v &= \arctan(y)
 
-where :math:`x_i` are the independent variables.
+   u_i &= \log(x_i)
+
+   v &= b + \sum m_i u_i
+
+where :math:`x_i` are the independent variables.  By convention, the Spiner
+documentation uses :math:`u_i` as the transformed independent variables, and
+:math:`v` as the transformed dependent variable.
 
 .. note::
    In C++17 and later, you can also get the default type specialization
