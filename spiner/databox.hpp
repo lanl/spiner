@@ -522,6 +522,11 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
   return current.w0 * v0 + current.w1 * v1;
 }
 
+// TODO: std::size_t is a common type for indices.  Because it can be equally
+// well cast to int or float or double (the latter two being the most common
+// values for T), you get ambiguous overloads.  It might help to explicitly add
+// a std::size_t version of interp_core, which simply dispatches to the int
+// version?
 template <typename T, typename Grid_t, typename Concept>
 template <std::size_t N, typename... Args>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
@@ -540,25 +545,47 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
-  return interpolate(x);
+  assert(canInterpToReal_(1));
+  assert(false);
+  return 0;
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x2, const T x1) const noexcept {
-  return interpolate(x2, x1);
+  assert(canInterpToReal_(2));
+  assert(false);
+  return 0;
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1) const noexcept {
-  return interpolate(x3, x2, x1);
+  assert(canInterpToReal_(3));
+  index_and_weights_t<T> iw[3];
+  grids_[0].weights(x1, iw[0]);
+  grids_[1].weights(x2, iw[1]);
+  grids_[2].weights(x3, iw[2]);
+  // TODO: prefect corners for speed?
+  // TODO: re-order access pattern?
+  return (
+      iw[2].w0 * (iw[1].w0 * (iw[0].w0 * dataView_(iw[2].index, iw[1].index, iw[0].index) +
+                            iw[0].w1 * dataView_(iw[2].index, iw[1].index, iw[0].index + 1)) +
+                 iw[1].w1 * (iw[0].w0 * dataView_(iw[2].index, iw[1].index + 1, iw[0].index) +
+                            iw[0].w1 * dataView_(iw[2].index, iw[1].index + 1, iw[0].index + 1))) +
+      iw[2].w1 *
+          (iw[1].w0 * (iw[0].w0 * dataView_(iw[2].index + 1, iw[1].index, iw[0].index) +
+                      iw[0].w1 * dataView_(iw[2].index + 1, iw[1].index, iw[0].index + 1)) +
+           iw[1].w1 * (iw[0].w0 * dataView_(iw[2].index + 1, iw[1].index + 1, iw[0].index) +
+                      iw[0].w1 * dataView_(iw[2].index + 1, iw[1].index + 1, iw[0].index + 1))));
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1, const int idx) const noexcept {
-  return interpolate(x3, x2, x1, idx);
+  assert(rank_ == 4);
+  assert(false);
+  return 0;
 }
 
 // DH: this is a large function to force an inline, perhaps just make it a
@@ -566,14 +593,18 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const T x1) const noexcept {
-  return interpolate(x4, x3, x2, x1);
+  assert(canInterpToReal_(4));
+  assert(false);
+  return 0;
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const int idx,
     const T x1) const noexcept {
-  return interpolate(x4, x3, x2, idx, x1);
+  assert(rank_ == 5);
+  assert(false);
+  return 0;
 }
 
 template <typename T, typename Grid_t, typename Concept>

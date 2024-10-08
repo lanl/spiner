@@ -76,6 +76,14 @@ target_link_libraries(benchmark.bin
     spiner_test
 )
 
+# Benchmarking
+add_executable(benchmark2.bin benchmark2.cpp)
+target_link_libraries(benchmark2.bin
+  PRIVATE 
+    spiner::spiner
+    spiner_test
+)
+
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin
