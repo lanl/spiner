@@ -480,10 +480,14 @@ class DataBox {
   static PORTABLE_INLINE_FUNCTION void
   append_index_and_weights(index_and_weights_t<T> *iwlist, const Grid_t *grid,
                            const int index, Args... other_args) {
-    // The index is passed as an argument and there's no weight, so we don't
-    // need to bother doing anything with iwlist.  But we do need to step to the
-    // next grid. Note: grids are in reverse order relative to arguments
-    append_index_and_weights(iwlist, grid - 1, other_args...);
+    // We don't actually need to store this for the recursion, but it keeps the
+    // bookkeeping cleaner and allows for some debugging checks to be added in
+    // more easily if necessary.
+    iwlist->index = index;
+    iwlist->w0 = 1;
+    iwlist->w1 = 0;
+    // Note: grids are in reverse order relative to arguments
+    append_index_and_weights(iwlist + 1, grid - 1, other_args...);
   }
   template <typename... Args>
   static PORTABLE_INLINE_FUNCTION void
@@ -531,8 +535,10 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
     return dataView_(index, other_args...);
   } else {
     // recursive case
+    // -- Note: We don't actually need to use iwlist[0], but for bookkeeping
+    //    purposes we have to advance to the next entry
     return interp_core<N-1>(
-        iwlist, // we didn't use iwlist so don't advance the pointer
+        iwlist + 1,
         other_args..., index);
   }
 }
