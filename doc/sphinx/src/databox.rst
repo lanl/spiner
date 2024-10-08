@@ -14,7 +14,13 @@ To use databox, simply include the relevant header:
 
   #include <databox.hpp>
 
-``DatBox`` is templated on underyling data type, which defaults to the
+``DataBox`` Templates
+^^^^^^^^^^^^^^^^^^^^^
+
+Underlying Data Type
+--------------------
+
+``DataBox`` is templated on the underyling data type, which defaults to the
 ``Real`` type provided by ``ports-of-call``. (This is usually a
 ``double``.)
 
@@ -29,6 +35,9 @@ single type, you may wish to declare a type alias such as:
 .. code-block:: cpp
 
    using DataBox = Spiner::DataBox<double>
+
+Interpolation Gridding
+----------------------
 
 Spiner is also templated on how the interpolation gridding works. This
 template parameter is called ``Grid_t``. The available options at this time are:
@@ -46,6 +55,40 @@ as, for example:
 
 More detail on the interpolation gridding is available below and in
 the interpolation section.
+
+Transformations
+---------------
+
+Spiner performs linear interpolation of the data, but can apply transformations
+to the data in order to enable interpolation methods like log-log, log-lin,
+etc.  Spiner will perform linear interpolation of the transformed variables.
+
+When constructing the gridding, ``Spiner::RegularGrid1D<T>`` and
+``Spiner::PiecewiseGrid1D<T>`` are templated on the independent variable
+transformation.  Note that all independent variables will use the same
+transformation.  ``DataBox`` is templated on the dependent variable
+transformation.  In all cases, the default is a linear "transformation" (no
+transformation to the data), so if you do not specify the transformation then
+you get linear interpolation.  The available transformations are in
+``spiner/transformations.hpp`` and users can write custom transformations
+following the examples there.
+
+For example, if the user wants to transform the independent variables with a
+logarithm and the dependent variable with a custom arctangent transformation,
+the declaration of the ``DataBox`` might look like
+
+.. code-block:: cpp
+
+   using DataBox = Spiner::DataBox<double, Spiner::RegularGrid1D<double,
+   Spiner::TransformLogarithmic>, CustomArctanTransform>;
+
+This would result in interpolation according to the equation
+
+.. math::
+
+   \arctan(y) = b + \sum m_i \log(x_i)
+
+where :math:`x_i` are the independent variables.
 
 .. note::
    In C++17 and later, you can also get the default type specialization
