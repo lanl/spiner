@@ -44,11 +44,40 @@ struct TransformLinear {
 struct TransformLogarithmic {
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
-    return std::log(std::abs(x) + std::numeric_limits<T>::denorm_min());
+    constexpr T eps = eps_f<T>();
+    return std::log(std::abs(x) + eps);
   }
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
-    return std::exp(u) - std::numeric_limits<T>::denorm_min();
+    constexpr T eps = eps_r<T>();
+    return std::exp(u) - eps;
+  }
+private:
+  // When possible, we use asymetric epsilon values to ensure that
+  // reverse(forward(0)) is exact.  In general, a performant calculation is
+  // more important than getting this value exactly correct, so we require that
+  // our epsilon values be constexpr.
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T eps_f() {
+    return std::numeric_limits<T>::min();
+  }
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T eps_r() {
+    // If std::exp and std::log were constexpr, we could explicitly calculate
+    // the right epsilon value as a constexpr value:
+    //     return std::exp(forward<T>(static_cast<T>(0)));
+    // Unfortunately, we have to wait for C++26 for constexpr math.  We
+    // hard-code certain known values, but default to a symmetric epsilon if
+    // that's the best that we can do.
+    if constexpr (std::is_same_v<std::decay_t<T>, float> &&
+                  std::numeric_limits<T>::is_iec559) {
+      return 1.175490707446280263444352135525329e-38f;
+    } else if constexpr (std::is_same_v<std::decay_t<T>, double> &&
+                         std::numeric_limits<T>::is_iec559) {
+      return 2.225073858507262647230317031903882e-308;
+    } else {
+      return eps_f<T>();
+    }
   }
 };
 

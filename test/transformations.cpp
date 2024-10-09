@@ -68,21 +68,28 @@ TEST_CASE("transformation: logarithmic", "[transformations]") {
   // Test on CPU
   auto matcher = [](const double d) {
     // return WithinULP(d, 500);
-    return WithinRel(d, 6.0e-12);
+    return WithinRel(d, 1.0e-12);
   };
   // Scan across most of the range
-  for (int p = -300; p <= 300; ++p) {
+  for (int p = -307; p <= 307; ++p) {
     const double x = std::pow(double(10), p);
     const double y = std::log(x);
     // Basic checks
-    CHECK_THAT(Transform::forward(x), matcher(y));
-    CHECK_THAT(Transform::reverse(y), matcher(x));
+    // -- The "exact" calculation (y = log(x)) won't match the transformation
+    //    (y = log(x + epsilon) for very small values of x, so skip checks.
+    if (p >= -295) {
+      CHECK_THAT(Transform::forward(x), matcher(y));
+      CHECK_THAT(Transform::reverse(y), matcher(x));
+    }
     // Round trip
     CHECK_THAT(Transform::reverse(Transform::forward(x)), matcher(x));
   }
   // Special value
-  CHECK(std::isfinite(Transform::forward(0)));
-  CHECK(Transform::reverse(Transform::forward(0)) == 0);
+  // -- Transform::forward(0) will infer the type to be an integer, and you
+  //    will get a WILDLY incorrect answer for the round trip.
+  CHECK(std::isfinite(Transform::forward(0.0)));
+  CHECK(Transform::reverse(Transform::forward(static_cast<double>(0))) == 0);
+  CHECK(Transform::reverse(Transform::forward(static_cast<float>(0))) == 0);
 
   // Test on GPU (or CPU if no GPU available)
   const int num_threads = 101;
