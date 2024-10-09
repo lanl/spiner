@@ -52,7 +52,8 @@ struct TransformLogarithmic {
     constexpr T eps = eps_r<T>();
     return std::exp(u) - eps;
   }
-private:
+
+ private:
   // When possible, we use asymetric epsilon values to ensure that
   // reverse(forward(0)) is exact.  In general, a performant calculation is
   // more important than getting this value exactly correct, so we require that
