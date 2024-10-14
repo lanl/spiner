@@ -74,8 +74,10 @@ int main(int argc, char *argv[]) {
 
     RegularGrid1D gcoarse(xmin, xmax, ncoarse);
     std::vector<RegularGrid1D> gfine;
+    std::vector<Real> dxfine;
     for (const auto &n : nfine) {
       gfine.push_back(RegularGrid1D(xmin, xmax, n));
+      dxfine.push_back((xmax - xmin) / n);
     }
 
     std::cout << "# ncoarse = " << ncoarse << std::endl;
@@ -98,7 +100,8 @@ int main(int argc, char *argv[]) {
     for (int ifine = 0; ifine < nfine.size(); ++ifine) {
       auto n = nfine[ifine];
       auto g = gfine[ifine];
-      Real d3x = g.dx() * g.dx() * g.dx();
+      auto dx = dxfine[ifine];
+      Real d3x = dx * dx * dx;
       Real L2_error;
 #ifdef PORTABILITY_STRATEGY_KOKKOS
       Kokkos::fence();
