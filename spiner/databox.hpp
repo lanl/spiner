@@ -165,18 +165,15 @@ class DataBox {
   // Index operators
   // examle calls:
   // T x = db(n4, n3, n2, n1);
-  template <typename... Args,
-            typename transform_t = Transform, // only for SFINAE
-            typename std::enable_if<std::is_same<
-                transform_t, TransformLinear>::value>::type * = nullptr>
-  PORTABLE_INLINE_FUNCTION T &operator()(Args... args) {
-    return dataView_(std::forward<Args>(args)...);
-  }
-  template <typename... Args,
-            typename transform_t = Transform, // only for SFINAE
-            typename std::enable_if<std::is_same<
-                transform_t, TransformLinear>::value>::type * = nullptr>
+  template <typename... Args>
   PORTABLE_INLINE_FUNCTION T &operator()(Args... args) const {
+    static_assert(std::is_same<Transform, TransformLinear>::value,
+            "DataBox::operator() is only available if the independent "
+            "variable data transform is Spiner::TransformLinear, because "
+            "otherwise accessing the underlying data is not doing what you "
+            "expect.  Use DataBox::get_data_value and DataBox::set_data_value "
+            "instead, because those correctly account for the independent "
+            "value data transformation.");
     return dataView_(std::forward<Args>(args)...);
   }
 
