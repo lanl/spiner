@@ -81,9 +81,9 @@ void run_tests(
           Real zz = g.x(iz);
           Real yy = g.x(iy);
           Real xx = g.x(ix);
-          for (int sz = -1; sz <= 1; ++sz) {
-            for (int sy = -1; sy <= 1; ++sy) {
-              for (int sx = -1; sx <= 1; ++sx) {
+          for (int sz = -8; sz <= 8; ++sz) {
+            for (int sy = -8; sy <= 8; ++sy) {
+              for (int sx = -8; sx <= 8; ++sx) {
                 Real z = zz + sz * del;
                 Real y = yy + sy * del;
                 Real x = xx + sx * del;
