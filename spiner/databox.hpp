@@ -213,11 +213,6 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
-  // TODO: I intentionally did not choose the name interpToReal.
-  // (1) There are possible name collisions with the various different versions
-  //     of interpToReal that I don't want to trip over.
-  // (2) I think it would be worth testing if DataBox works for other
-  //     (non-real) types, such as std::complex.
   // Entry point for recursive interpolation.  See interp_core for actual
   // recursion.  There are multiple versions of interp_core to handle the
   // different inputs allowed:
