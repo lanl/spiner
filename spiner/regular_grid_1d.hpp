@@ -71,29 +71,12 @@ class RegularGrid1D {
     PORTABLE_ALWAYS_REQUIRE(xmin_ < xmax_ && N_ > 0, "Valid grid");
   }
 
-  // Forces x in the interval
-  PORTABLE_INLINE_FUNCTION int bound(int ix) const {
-#ifndef SPINER_DISABLE_BOUNDS_CHECKS
-    if (ix < 0) ix = 0;
-    if (ix >= (int)N_ - 1) ix = (int)N_ - 2; // Ensures ix+1 exists
-#endif
-    return ix;
-  }
-
-  // TODO: make these private to hide u as an internal detail
-  // Translate between u (transformed variable) coordinate and index
-  PORTABLE_INLINE_FUNCTION T u(const int i) const { return i * du_ + umin_; }
-  PORTABLE_INLINE_FUNCTION int index_u(const T u) const {
-    return bound(inv_du_ * (u - umin_));
-  }
-
+  // TODO: min() and x(0) won't necessarily match.
+  //       max() and x(nPoints-1) won't necessarily match.
+  //       Should we do anything about this?
   // Translate between x coordinate and index
   PORTABLE_INLINE_FUNCTION T x(const int i) const {
     return Transform::reverse(u(i));
-  }
-  // TODO: Delete index since internally we only use index_u?
-  PORTABLE_INLINE_FUNCTION int index(const T x) const {
-    return index_u(Transform::forward(x));
   }
 
   // Returns closest index and weights for interpolation
@@ -126,9 +109,6 @@ class RegularGrid1D {
   operator!=(const RegularGrid1D<T, Transform> &other) const {
     return !(*this == other);
   }
-  // TODO: umin, umax should be private
-  PORTABLE_INLINE_FUNCTION T umin() const { return umin_; }
-  PORTABLE_INLINE_FUNCTION T umax() const { return umax_; }
 
   PORTABLE_INLINE_FUNCTION T min() const { return xmin_; }
   PORTABLE_INLINE_FUNCTION T max() const { return xmax_; }
@@ -184,6 +164,21 @@ class RegularGrid1D {
 #endif
 
  private:
+  // Forces x in the interval
+  PORTABLE_INLINE_FUNCTION int bound(int ix) const {
+#ifndef SPINER_DISABLE_BOUNDS_CHECKS
+    if (ix < 0) ix = 0;
+    if (ix >= (int)N_ - 1) ix = (int)N_ - 2; // Ensures ix+1 exists
+#endif
+    return ix;
+  }
+
+  // Translate between u (transformed variable) coordinate and index
+  PORTABLE_INLINE_FUNCTION T u(const int i) const { return i * du_ + umin_; }
+  PORTABLE_INLINE_FUNCTION int index_u(const T u) const {
+    return bound(inv_du_ * (u - umin_));
+  }
+
   T xmin_, xmax_;
   T umin_, umax_;
   T du_, inv_du_;
