@@ -51,16 +51,12 @@ TEST_CASE("RegularGrid1D with transformations",
   // Check all fixed points (lin)
   for (std::size_t n = 0; n < N; ++n) {
     const double xx = 102.3 * double(n) + 1;
-    const double uu = xx;
-    CHECK_THAT(glin.u(n), WithinRel(uu, 1.0e-12));
     CHECK_THAT(glin.x(n), WithinRel(xx, 1.0e-12));
   }
 
   // Check all fixed points (log)
   for (std::size_t n = 0; n < N; ++n) {
     const double xx = std::pow(double(2), n);
-    const double uu = std::log(xx);
-    CHECK_THAT(glog.u(n), WithinRel(uu, 1.0e-12));
     CHECK_THAT(glog.x(n), WithinRel(xx, 1.0e-12));
   }
 

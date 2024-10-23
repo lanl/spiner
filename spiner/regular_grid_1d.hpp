@@ -49,7 +49,7 @@ template <typename T = Real, typename Transform = TransformLinear,
           typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
               true>
 class RegularGrid1D {
- public:
+public:
   using ValueType = T;
   static constexpr T rNaN = std::numeric_limits<T>::signaling_NaN();
   static constexpr int iNaN = std::numeric_limits<int>::signaling_NaN();
@@ -71,14 +71,6 @@ class RegularGrid1D {
     PORTABLE_ALWAYS_REQUIRE(xmin_ < xmax_ && N_ > 0, "Valid grid");
   }
 
-  // TODO: min() and x(0) won't necessarily match.
-  //       max() and x(nPoints-1) won't necessarily match.
-  //       Should we do anything about this?
-  // Translate between x coordinate and index
-  PORTABLE_INLINE_FUNCTION T x(const int i) const {
-    return Transform::reverse(u(i));
-  }
-
   // Returns closest index and weights for interpolation
   PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix, weights_t<T> &w) const {
     const T u = Transform::forward(x);
@@ -97,7 +89,7 @@ class RegularGrid1D {
     return w[0] * A(ix) + w[1] * A(ix + 1);
   }
 
-  // utitilies
+  // (in)equality comparison
   PORTABLE_INLINE_FUNCTION bool
   operator==(const RegularGrid1D<T, Transform> &other) const {
     return (umin_ == other.umin_ &&
@@ -110,6 +102,7 @@ class RegularGrid1D {
     return !(*this == other);
   }
 
+  // queries
   PORTABLE_INLINE_FUNCTION T min() const { return xmin_; }
   PORTABLE_INLINE_FUNCTION T max() const { return xmax_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
@@ -123,7 +116,19 @@ class RegularGrid1D {
             std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
+  // TODO: min() and x(0) won't necessarily match.
+  //       max() and x(nPoints-1) won't necessarily match.
+  //       Should we do anything about this?
+  //       The easiest fix: if i == 0 return xmin_ and similar for xmax_
+  // Translate between x coordinate and index
+  PORTABLE_INLINE_FUNCTION T x(const int i) const {
+    return Transform::reverse(u(i));
+  }
+  PORTABLE_INLINE_FUNCTION int index(const T x) const {
+    return index_u(Transform::forward(x));
+  }
 
+  // HDF
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
     static_assert(
@@ -163,7 +168,7 @@ class RegularGrid1D {
   }
 #endif
 
- private:
+private:
   // Forces x in the interval
   PORTABLE_INLINE_FUNCTION int bound(int ix) const {
 #ifndef SPINER_DISABLE_BOUNDS_CHECKS
