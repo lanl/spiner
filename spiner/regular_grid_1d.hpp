@@ -58,9 +58,17 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
       : umin_(rNaN), umax_(rNaN), du_(rNaN), inv_du_(rNaN), N_(iNaN) {}
   PORTABLE_INLINE_FUNCTION RegularGrid1D(T xmin, T xmax, size_t N)
-      : umin_(Transform::forward(xmin)), umax_(Transform::forward(xmax)),
-        du_((umax_ - umin_) / ((T)(N - 1))), inv_du_(1 / du_), N_(N) {
-    PORTABLE_ALWAYS_REQUIRE(umin_ < umax_ && N_ > 0, "Valid grid");
+      : xmin_(xmin)
+      , xmax_(xmax)
+      , umin_(Transform::forward(xmin))
+      , umax_(Transform::forward(xmax))
+      , du_((umax_ - umin_) / static_cast<T>(N - 1))
+      , inv_du_(1 / du_)
+      , N_(N)
+  {
+    // A transform could be monotonically decreasing, so there's no guarantee
+    // that umin_ < umax_
+    PORTABLE_ALWAYS_REQUIRE(xmin_ < xmax_ && N_ > 0, "Valid grid");
   }
 
   // Forces x in the interval
@@ -72,6 +80,7 @@ class RegularGrid1D {
     return ix;
   }
 
+  // TODO: make these private to hide u as an internal detail
   // Translate between u (transformed variable) coordinate and index
   PORTABLE_INLINE_FUNCTION T u(const int i) const { return i * du_ + umin_; }
   PORTABLE_INLINE_FUNCTION int index_u(const T u) const {
@@ -82,13 +91,13 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION T x(const int i) const {
     return Transform::reverse(u(i));
   }
+  // TODO: Delete index since internally we only use index_u?
   PORTABLE_INLINE_FUNCTION int index(const T x) const {
     return index_u(Transform::forward(x));
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
-                                        weights_t<T> &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix, weights_t<T> &w) const {
     const T u = Transform::forward(x);
     ix = index_u(u);
     const auto floor = static_cast<T>(ix) * du_ + umin_;
@@ -107,22 +116,31 @@ class RegularGrid1D {
 
   // utitilies
   PORTABLE_INLINE_FUNCTION bool
-  operator==(const RegularGrid1D<T> &other) const {
-    return (umin_ == other.umin_ && umax_ == other.umax_ && du_ == other.du_ &&
-            inv_du_ == other.inv_du_ && N_ == other.N_);
+  operator==(const RegularGrid1D<T, Transform> &other) const {
+    return (umin_ == other.umin_ &&
+            umax_ == other.umax_ &&
+            du_ == other.du_ &&
+            N_ == other.N_);
   }
   PORTABLE_INLINE_FUNCTION bool
-  operator!=(const RegularGrid1D<T> &other) const {
+  operator!=(const RegularGrid1D<T, Transform> &other) const {
     return !(*this == other);
   }
+  // TODO: umin, umax should be private
   PORTABLE_INLINE_FUNCTION T umin() const { return umin_; }
   PORTABLE_INLINE_FUNCTION T umax() const { return umax_; }
-  PORTABLE_INLINE_FUNCTION T min() const { return Transform::reverse(umin_); }
-  PORTABLE_INLINE_FUNCTION T max() const { return Transform::reverse(umax_); }
+
+  PORTABLE_INLINE_FUNCTION T min() const { return xmin_; }
+  PORTABLE_INLINE_FUNCTION T max() const { return xmax_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
-    return (std::isnan(umin_) || std::isnan(umax_) || std::isnan(du_) ||
-            std::isnan(inv_du_) || std::isnan((T)N_));
+    return (std::isnan(xmin_) ||
+            std::isnan(xmax_) ||
+            std::isnan(umin_) ||
+            std::isnan(umax_) ||
+            std::isnan(du_) ||
+            std::isnan(inv_du_) ||
+            std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
 
@@ -166,6 +184,7 @@ class RegularGrid1D {
 #endif
 
  private:
+  T xmin_, xmax_;
   T umin_, umax_;
   T du_, inv_du_;
   size_t N_;
