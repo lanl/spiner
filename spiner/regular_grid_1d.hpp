@@ -118,8 +118,18 @@ public:
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
   // TODO: min() and x(0) won't necessarily match.
   //       max() and x(nPoints-1) won't necessarily match.
-  //       Should we do anything about this?
-  //       The easiest fix: if i == 0 return xmin_ and similar for xmax_
+  //       Possible fixes:
+  //       -- If (i == 0) return xmin_.  Introduces two "if" statements every
+  //          time you look up at x value.
+  //       -- Allow min() and x(0) to differ.  This could be confusing and
+  //          cause issues in corner cases.
+  //       -- Allow min() to be different from xmin passed in by the user,
+  //          which may be unexpected (and possibly undesirable) behavior.
+  //       -- Apply an additional linear transformation calibrated so that the
+  //          bounds are exact.  This may muck with any calibrations of the
+  //          transform itself.
+  //       -- Carry an additional array of x values to be used here.  This
+  //          introduces a lot of memory, when no memory was used before.
   // Translate between x coordinate and index
   PORTABLE_INLINE_FUNCTION T x(const int i) const {
     return Transform::reverse(u(i));
