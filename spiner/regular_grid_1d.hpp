@@ -60,8 +60,7 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION RegularGrid1D(T xmin, T xmax, size_t N)
       : xmin_(xmin), xmax_(xmax), umin_(Transform::forward(xmin)),
         umax_(Transform::forward(xmax)),
-        du_((umax_ - umin_) / static_cast<T>(N - 1)), inv_du_(1 / du_), N_(N)
-  {
+        du_((umax_ - umin_) / static_cast<T>(N - 1)), inv_du_(1 / du_), N_(N) {
     // A transform could be monotonically decreasing, so there's no guarantee
     // that umin_ < umax_
     PORTABLE_ALWAYS_REQUIRE(xmin_ < xmax_ && N_ > 0, "Valid grid");
