@@ -22,6 +22,54 @@
 
 using Catch::Matchers::WithinRel;
 
+// test transform: reverse(forward(xlo)) and reverse(forward(xhi)) don't map
+// 100% correctly and end up inside the bounds of [xlo, xhi], so long as xlo
+// and xhi bracket xref = 0.5
+struct TxNarrow {
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
+    constexpr T xref = 0.5;
+    constexpr T eps = 10 * std::numeric_limits<T>::epsilon();
+    return (static_cast<T>(1) - eps) * (x - xref) + xref;
+  }
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
+    constexpr T uref = 0.5;
+    constexpr T eps = 10 * std::numeric_limits<T>::epsilon();
+    return (static_cast<T>(1) - eps) * (u - uref) + uref;
+  }
+};
+
+// test transform: reverse(forward(xlo)) and reverse(forward(xhi)) don't map
+// 100% correctly and end up outside the bounds of [xlo, xhi], so long as xlo
+// and xhi bracket xref = 0.5
+struct TxExpand {
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
+    constexpr T xref = 0.5;
+    constexpr T eps = 10 * std::numeric_limits<T>::epsilon();
+    return (static_cast<T>(1) + eps) * (x - xref) + xref;
+  }
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
+    constexpr T uref = 0.5;
+    constexpr T eps = 10 * std::numeric_limits<T>::epsilon();
+    return (static_cast<T>(1) + eps) * (u - uref) + uref;
+  }
+};
+
+// test transform: monotonically decreasing instead of increasing
+struct TxDecrease {
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T forward(const T x) {
+    return 1 - x;
+  }
+  template <typename T>
+  PORTABLE_FORCEINLINE_FUNCTION static constexpr T reverse(const T u) {
+    return 1 - u;
+  }
+};
+
 TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   SECTION("A regular grid 1d emits appropriate metadata") {
     constexpr Real min = -1;
@@ -34,7 +82,7 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   }
 }
 
-TEST_CASE("RegularGrid1D with transformations",
+TEST_CASE("RegularGrid1D with production transformations",
           "[RegularGrid1D][transformations]") {
   constexpr double min = 1;
   constexpr double max = 1024;
@@ -80,5 +128,90 @@ TEST_CASE("RegularGrid1D with transformations",
     CHECK(ilog == n - 1);
     CHECK_THAT(wlog.first, WithinRel(0.5));
     CHECK_THAT(wlog.second, WithinRel(0.5));
+  }
+}
+
+TEST_CASE("RegularGrid1D with test transformations",
+          "[RegularGrid1D][transformations]") {
+  constexpr double min = 0.0;
+  constexpr double max = 1.0;
+  constexpr size_t N = 101;
+  Spiner::RegularGrid1D<double, TxNarrow> gn(min, max, N);
+  Spiner::RegularGrid1D<double, TxExpand> ge(min, max, N);
+  Spiner::RegularGrid1D<double, TxDecrease> gd(min, max, N);
+
+  // Basic tests (narrow)
+  REQUIRE(gn.min() == min);
+  REQUIRE(gn.max() == max);
+  REQUIRE(gn.nPoints() == N);
+  // TODO: Do we want the bounds to be exact?
+  CHECK(gn.x(0) == min);
+  CHECK(gn.x(N-1) == max);
+
+  // Basic tests (expand)
+  REQUIRE(ge.min() == min);
+  REQUIRE(ge.max() == max);
+  REQUIRE(ge.nPoints() == N);
+  // TODO: Do we want the bounds to be exact?
+  CHECK(ge.x(0) == min);
+  CHECK(ge.x(N-1) == max);
+
+  // Basic tests (decrease)
+  REQUIRE(gd.min() == min);
+  REQUIRE(gd.max() == max);
+  REQUIRE(gd.nPoints() == N);
+  // TODO: Do we want the bounds to be exact?
+  CHECK(gd.x(0) == min);
+  CHECK(gd.x(N-1) == max);
+
+  // Check all fixed points (narrow)
+  for (std::size_t n = 0; n < N; ++n) {
+    const double xx = 0.01 * double(n);
+    CHECK_THAT(gn.x(n), WithinRel(xx, 1.0e-12));
+  }
+
+  // Check all fixed points (expand)
+  for (std::size_t n = 0; n < N; ++n) {
+    const double xx = 0.01 * double(n);
+    CHECK_THAT(ge.x(n), WithinRel(xx, 1.0e-12));
+  }
+
+  // Check all fixed points (decrease)
+  for (std::size_t n = 0; n < N; ++n) {
+    const double xx = 0.01 * double(n);
+    CHECK_THAT(gd.x(n), WithinRel(xx, 1.0e-12));
+  }
+
+  // Check weights (narrow)
+  for (std::size_t n = 1; n < N; ++n) {
+    const double x = 0.5 * (gn.x(n - 1) + gn.x(n));
+    int index;
+    Spiner::weights_t<double> weights;
+    gn.weights(x, index, weights);
+    CHECK(index == n - 1);
+    CHECK_THAT(weights.first, WithinRel(0.5, 1.0e-12));
+    CHECK_THAT(weights.second, WithinRel(0.5, 1.0e-12));
+  }
+
+  // Check weights (expand)
+  for (std::size_t n = 1; n < N; ++n) {
+    const double x = 0.5 * (ge.x(n - 1) + ge.x(n));
+    int index;
+    Spiner::weights_t<double> weights;
+    ge.weights(x, index, weights);
+    CHECK(index == n - 1);
+    CHECK_THAT(weights.first, WithinRel(0.5, 1.0e-12));
+    CHECK_THAT(weights.second, WithinRel(0.5, 1.0e-12));
+  }
+
+  // Check weights (decrease)
+  for (std::size_t n = 1; n < N; ++n) {
+    const double x = 0.5 * (gd.x(n - 1) + gd.x(n));
+    int index;
+    Spiner::weights_t<double> weights;
+    gd.weights(x, index, weights);
+    CHECK(index == n - 1);
+    CHECK_THAT(weights.first, WithinRel(0.5, 1.0e-12));
+    CHECK_THAT(weights.second, WithinRel(0.5, 1.0e-12));
   }
 }
