@@ -31,6 +31,7 @@
 #include "ports-of-call/portable_errors.hpp"
 #include "sp5.hpp"
 #include "spiner_types.hpp"
+#include "transformations.hpp"
 
 namespace Spiner {
 
@@ -44,7 +45,7 @@ struct weights_t {
   }
 };
 
-template <typename T = Real,
+template <typename T = Real, typename Transform = TransformLinear,
           typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
               true>
 class RegularGrid1D {
@@ -55,34 +56,23 @@ class RegularGrid1D {
 
   // Constructors
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
-      : min_(rNaN), max_(rNaN), dx_(rNaN), idx_(rNaN), N_(iNaN) {}
-  PORTABLE_INLINE_FUNCTION RegularGrid1D(T min, T max, size_t N)
-      : min_(min), max_(max), dx_((max - min) / ((T)(N - 1))), idx_(1 / dx_),
-        N_(N) {
-    PORTABLE_ALWAYS_REQUIRE(min_ < max_ && N_ > 0, "Valid grid");
-  }
-
-  // Forces x in the interval
-  PORTABLE_INLINE_FUNCTION int bound(int ix) const {
-#ifndef SPINER_DISABLE_BOUNDS_CHECKS
-    if (ix < 0) ix = 0;
-    if (ix >= (int)N_ - 1) ix = (int)N_ - 2; // Ensures ix+1 exists
-#endif
-    return ix;
-  }
-
-  // Gets real value at index
-  PORTABLE_INLINE_FUNCTION T x(const int i) const { return i * dx_ + min_; }
-  PORTABLE_INLINE_FUNCTION int index(const T x) const {
-    return bound(idx_ * (x - min_));
+      : umin_(rNaN), umax_(rNaN), du_(rNaN), inv_du_(rNaN), N_(iNaN) {}
+  PORTABLE_INLINE_FUNCTION RegularGrid1D(T xmin, T xmax, size_t N)
+      : xmin_(xmin), xmax_(xmax), umin_(Transform::forward(xmin)),
+        umax_(Transform::forward(xmax)),
+        du_((umax_ - umin_) / static_cast<T>(N - 1)), inv_du_(1 / du_), N_(N) {
+    // A transform could be monotonically decreasing, so there's no guarantee
+    // that umin_ < umax_
+    PORTABLE_ALWAYS_REQUIRE(xmin_ < xmax_ && N_ > 0, "Valid grid");
   }
 
   // Returns closest index and weights for interpolation
   PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
                                         weights_t<T> &w) const {
-    ix = index(x);
-    const auto floor = static_cast<T>(ix) * dx_ + min_;
-    w[1] = idx_ * (x - floor);
+    const T u = Transform::forward(x);
+    ix = index_u(u);
+    const auto floor = static_cast<T>(ix) * du_ + umin_;
+    w[1] = inv_du_ * (u - floor);
     w[0] = (1. - w[1]);
   }
 
@@ -95,26 +85,50 @@ class RegularGrid1D {
     return w[0] * A(ix) + w[1] * A(ix + 1);
   }
 
-  // utitilies
+  // (in)equality comparison
   PORTABLE_INLINE_FUNCTION bool
-  operator==(const RegularGrid1D<T> &other) const {
-    return (min_ == other.min_ && max_ == other.max_ && dx_ == other.dx_ &&
-            idx_ == other.idx_ && N_ == other.N_);
+  operator==(const RegularGrid1D<T, Transform> &other) const {
+    return (umin_ == other.umin_ && umax_ == other.umax_ && du_ == other.du_ &&
+            N_ == other.N_);
   }
   PORTABLE_INLINE_FUNCTION bool
-  operator!=(const RegularGrid1D<T> &other) const {
+  operator!=(const RegularGrid1D<T, Transform> &other) const {
     return !(*this == other);
   }
-  PORTABLE_INLINE_FUNCTION T min() const { return min_; }
-  PORTABLE_INLINE_FUNCTION T max() const { return max_; }
-  PORTABLE_INLINE_FUNCTION T dx() const { return dx_; }
+
+  // queries
+  PORTABLE_INLINE_FUNCTION T min() const { return xmin_; }
+  PORTABLE_INLINE_FUNCTION T max() const { return xmax_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
-    return (std::isnan(min_) || std::isnan(max_) || std::isnan(dx_) ||
-            std::isnan(idx_) || std::isnan((T)N_));
+    return (std::isnan(xmin_) || std::isnan(xmax_) || std::isnan(umin_) ||
+            std::isnan(umax_) || std::isnan(du_) || std::isnan(inv_du_) ||
+            std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
+  // TODO: min() and x(0) won't necessarily match.
+  //       max() and x(nPoints-1) won't necessarily match.
+  //       Possible fixes:
+  //       -- If (i == 0) return xmin_.  Introduces two "if" statements every
+  //          time you look up at x value.
+  //       -- Allow min() and x(0) to differ.  This could be confusing and
+  //          cause issues in corner cases.
+  //       -- Allow min() to be different from xmin passed in by the user,
+  //          which may be unexpected (and possibly undesirable) behavior.
+  //       -- Apply an additional linear transformation calibrated so that the
+  //          bounds are exact.  This may muck with any calibrations of the
+  //          transform itself.
+  //       -- Carry an additional array of x values to be used here.  This
+  //          introduces a lot of memory, when no memory was used before.
+  // Translate between x coordinate and index
+  PORTABLE_INLINE_FUNCTION T x(const int i) const {
+    return Transform::reverse(u(i));
+  }
+  PORTABLE_INLINE_FUNCTION int index(const T x) const {
+    return index_u(Transform::forward(x));
+  }
 
+  // HDF
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
     static_assert(
@@ -123,7 +137,7 @@ class RegularGrid1D {
     auto H5T_T =
         std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     herr_t status;
-    T range[] = {min_, max_, dx_};
+    T range[] = {umin_, umax_, du_};
     hsize_t range_dims[] = {3};
     int n = static_cast<int>(N_);
     status = H5LTmake_dataset(loc, name.c_str(), SP5::RG1D::RANGE_RANK,
@@ -144,10 +158,10 @@ class RegularGrid1D {
     T range[3];
     int n;
     status = H5LTread_dataset(loc, name.c_str(), H5T_T, range);
-    min_ = range[0];
-    max_ = range[1];
-    dx_ = range[2];
-    idx_ = 1. / dx_;
+    umin_ = range[0];
+    umax_ = range[1];
+    du_ = range[2];
+    inv_du_ = 1. / du_;
     status += H5LTget_attribute_int(loc, name.c_str(), SP5::RG1D::N, &n);
     N_ = n;
     return status;
@@ -155,8 +169,24 @@ class RegularGrid1D {
 #endif
 
  private:
-  T min_, max_;
-  T dx_, idx_;
+  // Forces x in the interval
+  PORTABLE_INLINE_FUNCTION int bound(int ix) const {
+#ifndef SPINER_DISABLE_BOUNDS_CHECKS
+    if (ix < 0) ix = 0;
+    if (ix >= (int)N_ - 1) ix = (int)N_ - 2; // Ensures ix+1 exists
+#endif
+    return ix;
+  }
+
+  // Translate between u (transformed variable) coordinate and index
+  PORTABLE_INLINE_FUNCTION T u(const int i) const { return i * du_ + umin_; }
+  PORTABLE_INLINE_FUNCTION int index_u(const T u) const {
+    return bound(inv_du_ * (u - umin_));
+  }
+
+  T xmin_, xmax_;
+  T umin_, umax_;
+  T du_, inv_du_;
   size_t N_;
 };
 
