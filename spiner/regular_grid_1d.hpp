@@ -49,7 +49,7 @@ template <typename T = Real, typename Transform = TransformLinear,
           typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
               true>
 class RegularGrid1D {
-public:
+ public:
   using ValueType = T;
   static constexpr T rNaN = std::numeric_limits<T>::signaling_NaN();
   static constexpr int iNaN = std::numeric_limits<int>::signaling_NaN();
@@ -58,13 +58,9 @@ public:
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
       : umin_(rNaN), umax_(rNaN), du_(rNaN), inv_du_(rNaN), N_(iNaN) {}
   PORTABLE_INLINE_FUNCTION RegularGrid1D(T xmin, T xmax, size_t N)
-      : xmin_(xmin)
-      , xmax_(xmax)
-      , umin_(Transform::forward(xmin))
-      , umax_(Transform::forward(xmax))
-      , du_((umax_ - umin_) / static_cast<T>(N - 1))
-      , inv_du_(1 / du_)
-      , N_(N)
+      : xmin_(xmin), xmax_(xmax), umin_(Transform::forward(xmin)),
+        umax_(Transform::forward(xmax)),
+        du_((umax_ - umin_) / static_cast<T>(N - 1)), inv_du_(1 / du_), N_(N)
   {
     // A transform could be monotonically decreasing, so there's no guarantee
     // that umin_ < umax_
@@ -72,7 +68,8 @@ public:
   }
 
   // Returns closest index and weights for interpolation
-  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix, weights_t<T> &w) const {
+  PORTABLE_INLINE_FUNCTION void weights(const T &x, int &ix,
+                                        weights_t<T> &w) const {
     const T u = Transform::forward(x);
     ix = index_u(u);
     const auto floor = static_cast<T>(ix) * du_ + umin_;
@@ -92,9 +89,7 @@ public:
   // (in)equality comparison
   PORTABLE_INLINE_FUNCTION bool
   operator==(const RegularGrid1D<T, Transform> &other) const {
-    return (umin_ == other.umin_ &&
-            umax_ == other.umax_ &&
-            du_ == other.du_ &&
+    return (umin_ == other.umin_ && umax_ == other.umax_ && du_ == other.du_ &&
             N_ == other.N_);
   }
   PORTABLE_INLINE_FUNCTION bool
@@ -107,12 +102,8 @@ public:
   PORTABLE_INLINE_FUNCTION T max() const { return xmax_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
-    return (std::isnan(xmin_) ||
-            std::isnan(xmax_) ||
-            std::isnan(umin_) ||
-            std::isnan(umax_) ||
-            std::isnan(du_) ||
-            std::isnan(inv_du_) ||
+    return (std::isnan(xmin_) || std::isnan(xmax_) || std::isnan(umin_) ||
+            std::isnan(umax_) || std::isnan(du_) || std::isnan(inv_du_) ||
             std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
@@ -178,7 +169,7 @@ public:
   }
 #endif
 
-private:
+ private:
   // Forces x in the interval
   PORTABLE_INLINE_FUNCTION int bound(int ix) const {
 #ifndef SPINER_DISABLE_BOUNDS_CHECKS

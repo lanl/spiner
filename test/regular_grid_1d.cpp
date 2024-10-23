@@ -146,7 +146,7 @@ TEST_CASE("RegularGrid1D with test transformations",
   REQUIRE(gn.nPoints() == N);
   // TODO: Do we want the bounds to be exact?
   CHECK(gn.x(0) == min);
-  CHECK(gn.x(N-1) == max);
+  CHECK(gn.x(N - 1) == max);
 
   // Basic tests (expand)
   REQUIRE(ge.min() == min);
@@ -154,7 +154,7 @@ TEST_CASE("RegularGrid1D with test transformations",
   REQUIRE(ge.nPoints() == N);
   // TODO: Do we want the bounds to be exact?
   CHECK(ge.x(0) == min);
-  CHECK(ge.x(N-1) == max);
+  CHECK(ge.x(N - 1) == max);
 
   // Basic tests (decrease)
   REQUIRE(gd.min() == min);
@@ -162,7 +162,7 @@ TEST_CASE("RegularGrid1D with test transformations",
   REQUIRE(gd.nPoints() == N);
   // TODO: Do we want the bounds to be exact?
   CHECK(gd.x(0) == min);
-  CHECK(gd.x(N-1) == max);
+  CHECK(gd.x(N - 1) == max);
 
   // Check all fixed points (narrow)
   for (std::size_t n = 0; n < N; ++n) {
