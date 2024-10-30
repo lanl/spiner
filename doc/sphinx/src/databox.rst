@@ -479,6 +479,15 @@ so on. These interpolation routines are hand-tuned for performance.
   or try to interpolate on indices that are not interpolatable.
   This is checked with an ``assert`` statement.
 
+.. warning::
+   The ``DataBox::interpToReal`` method is deprecated, and will be replaced by
+   the ``DataBox::interpToScalar`` method.  The ``DataBox::interpToScalar``
+   method is already available, so we recommend changing your code to use that
+   instead so as to future-proof your code against the upcoming removal of
+   ``DataBox::interpToReal``.  The semantics of the two functions are
+   identical, but the change to ``DataBox::interpToScalar`` will enable new
+   features and improve maintainability of Spiner.
+
 Mixed interpolation and indexing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

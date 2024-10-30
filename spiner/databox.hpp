@@ -190,11 +190,6 @@ class DataBox {
 
   // Interpolates whole DataBox to a real number,
   // x1 is fastest index. xN is slowest.
-  // TODO: We _might_ be able to get rid of all the interpToReal wrappers and
-  //       just use interpolate directly.  If we do, then we should rename
-  //       interpolate back to interpToReal despite my concerns noted below.
-  //    -- If we keep the interpToReal wrappers, then should interpolate be
-  //       made private?
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x) const noexcept;
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x2,
                                                const T x1) const noexcept;
@@ -220,9 +215,9 @@ class DataBox {
   // * T  : a coordinate to interpolate to that point on that axis
   template <typename... Coords>
   PORTABLE_FORCEINLINE_FUNCTION T
-  interpolate(const Coords... coords) const noexcept;
+  interpToScalar(const Coords... coords) const noexcept;
 
-  // TODO: In principle, the logic for interpolate and interp_core could be
+  // TODO: In principle, the logic for interpToScalar and interp_core could be
   //       extended to work on these routines.  I've not looked at how easy it
   //       would be, so it may be more work than it's worth?
   // Interpolates SLOWEST indices of databox to a new
@@ -502,7 +497,7 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
 
 template <typename T, typename Grid_t, typename Concept>
 template <typename... Coords>
-PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpolate(
+PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToScalar(
     const Coords... coords) const noexcept {
   constexpr std::size_t N = sizeof...(Coords);
   assert(canInterpToReal_(N));
@@ -541,25 +536,25 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
-  return interpolate(x);
+  return interpToScalar(x);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x2, const T x1) const noexcept {
-  return interpolate(x2, x1);
+  return interpToScalar(x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1) const noexcept {
-  return interpolate(x3, x2, x1);
+  return interpToScalar(x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1, const int idx) const noexcept {
-  return interpolate(x3, x2, x1, idx);
+  return interpToScalar(x3, x2, x1, idx);
 }
 
 // DH: this is a large function to force an inline, perhaps just make it a
@@ -567,14 +562,14 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const T x1) const noexcept {
-  return interpolate(x4, x3, x2, x1);
+  return interpToScalar(x4, x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const int idx,
     const T x1) const noexcept {
-  return interpolate(x4, x3, x2, idx, x1);
+  return interpToScalar(x4, x3, x2, idx, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
