@@ -71,6 +71,26 @@ openmpi_cuda_gcc_ampere:
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p shared-gpu-ampere"
     SUBMIT_TO_CDASH: "${ENABLE_CDASH}"
 
+venado_craympich_cuda_gracehopper_gcc:
+  extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
+  needs: []
+  variables:
+    SPACK_ENV_NAME: craympich-cuda-gracehopper-gcc
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # Venado nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system
+
+venado_craympich_cuda_gracehopper_nvhpc:
+  extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
+  needs: []
+  variables:
+    SPACK_ENV_NAME: craympich-cuda-gracehopper-nvhpc
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # Venado nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system
+
 rzansel_spectrummpi_cuda_volta_gcc:
   extends: [.ascgit_job, .rzansel_job, .rzansel_regular_job, .build_and_test]
   needs:
