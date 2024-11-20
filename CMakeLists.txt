@@ -119,6 +119,11 @@ if(SPINER_USE_HDF)
   target_compile_definitions(spiner INTERFACE SPINER_USE_HDF)
 endif()
 
+if(SPINER_BUILD_TESTS)
+  message(STATUS "\nConfiguring tests")
+  add_subdirectory(test)
+endif()
+
 spiner_content_populate(NAMESPACE spinerDeps)
 
 # We don't know about this until HDF5 is populated, so we need to delay until
@@ -143,11 +148,6 @@ target_link_libraries(spiner INTERFACE ${spinerDeps_POPULATED_TARGETS}
 target_include_directories(
   spiner INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# Option imported from `CTest`
-if(SPINER_BUILD_TESTS)
-  message(STATUS "\nConfiguring tests")
-  add_subdirectory(test)
-endif()
 
 # ----------------------------------------------------------------------------#
 # Generate config settings
