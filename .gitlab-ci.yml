@@ -53,12 +53,16 @@ prereq_offline_deps:
 
 openmpi_gcc:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs:
+   - prereq_offline_deps
   variables:
     SPACK_ENV_NAME: openmpi-gcc
     SUBMIT_TO_CDASH: "${ENABLE_CDASH}"
 
 openmpi_cuda_gcc_volta:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs:
+   - prereq_offline_deps
   variables:
     SPACK_ENV_NAME: openmpi-cuda-gcc-volta
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p volta-x86 -C cpu_family:haswell --time=02:00:00"
@@ -66,6 +70,8 @@ openmpi_cuda_gcc_volta:
 
 openmpi_cuda_gcc_ampere:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs:
+   - prereq_offline_deps
   variables:
     SPACK_ENV_NAME: openmpi-cuda-gcc-ampere
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p shared-gpu-ampere"
@@ -73,7 +79,8 @@ openmpi_cuda_gcc_ampere:
 
 venado_craympich_cuda_gracehopper_gcc:
   extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
-  needs: []
+  needs:
+   - prereq_offline_deps
   variables:
     SPACK_ENV_NAME: craympich-cuda-gracehopper-gcc
     SUBMIT_TO_CDASH: false
@@ -83,7 +90,8 @@ venado_craympich_cuda_gracehopper_gcc:
 
 venado_craympich_cuda_gracehopper_nvhpc:
   extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
-  needs: []
+  needs:
+   - prereq_offline_deps
   variables:
     SPACK_ENV_NAME: craympich-cuda-gracehopper-nvhpc
     SUBMIT_TO_CDASH: false
