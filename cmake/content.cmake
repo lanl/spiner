@@ -104,7 +104,7 @@ macro(spiner_content_declare pkg_name)
   # return some info
 
   list(APPEND ${fp_NAMESPACE}_DECLARED_EXTERNAL_CONTENT ${pkg_name})
-  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS ${fp_COMPONENTS})
+  set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONENTS ${fp_COMPONENTS})
   set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_ENABLEOPTS ${fp_ENABLE_OPTS})
   set(${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_PRIORS ${fp_PRIORS})
 
@@ -144,7 +144,7 @@ macro(spiner_content_populate)
       if(NOT CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
         find_package(
           ${pkg_name}
-          COMPONENTS ${${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONETS}
+          COMPONENTS ${${fp_NAMESPACE}_DECLARED_EXTERNAL_${pkg_CAP}_COMPONENTS}
           QUIET)
         if(${pkg_name}_FOUND)
           message(VERBOSE "${pkg_name} located with `find_package`"
