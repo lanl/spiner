@@ -57,7 +57,7 @@ target_link_libraries(spiner_test
     ${spinerTest_POPULATED_TARGETS}
 )
 # add unit tests
-add_executable(test.bin test.cpp)
+add_executable(test.bin test.cpp regular_grid_1d.cpp transformations.cpp)
 target_link_libraries(test.bin
   PRIVATE
     spiner::spiner
