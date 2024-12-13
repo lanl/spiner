@@ -58,6 +58,8 @@ set(
 )
 
 file(GLOB_RECURSE FORMAT_SOURCES CONFIGURE_DEPENDS ${GLOBS})
+message(STATUS "Files to format are ${FORMAT_SOURCES}")
+message(STATUS "Format program found is ${CLANG_FORMAT}")
 
 if (CLANG_FORMAT)
   add_custom_target(format_spiner

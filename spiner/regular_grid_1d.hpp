@@ -33,6 +33,7 @@
 #include "spiner_types.hpp"
 
 namespace Spiner {
+using PortsOfCall::PortableMDArray;
 
 // a poor-man's std::pair
 template <typename T = Real>

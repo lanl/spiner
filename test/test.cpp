@@ -32,6 +32,7 @@
 #include <catch2/catch_session.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+using PortsOfCall::PortableMDArray;
 using DataBox = Spiner::DataBox<Real>;
 using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
@@ -67,8 +68,8 @@ SCENARIO("PortableMDArrays can be allocated from a pointer",
   a.NewPortableMDArray(data.data(), M, N);
 
   SECTION("Shape should be NxM") {
-    REQUIRE(a.GetDim1() == N);
-    REQUIRE(a.GetDim2() == M);
+    REQUIRE(a.GetDim<1>() == N);
+    REQUIRE(a.GetDim<2>() == M);
   }
 
   SECTION("Stride is as set by initialized pointer") {

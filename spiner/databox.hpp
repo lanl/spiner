@@ -40,6 +40,7 @@
 // TODO: If asserts are too slow, remove them.
 
 namespace Spiner {
+using PortsOfCall::PortableMDArray;
 
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
 enum class DataStatus {

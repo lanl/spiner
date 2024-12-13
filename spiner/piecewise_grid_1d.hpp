@@ -33,6 +33,7 @@
 #include "regular_grid_1d.hpp"
 
 namespace Spiner {
+using PortsOfCall::PortableMDArray;
 
 template <typename T = Real, int NGRIDSMAX = 5,
           typename =
