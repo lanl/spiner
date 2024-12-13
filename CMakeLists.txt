@@ -102,8 +102,8 @@ spiner_content_declare(
   https://github.com/lanl/ports-of-call
   # most recent relase as of April 05, 2023
   GIT_TAG
-  # TODO change to relevant release
-  d47b0756ebe05577b111dc1d54c43da5897ff811)
+  # TODO change to relevant release 
+  b3aba8684fde0427ee4e0d53afb48659ab951dec)
   #v1.5.1)
 
 if(SPINER_USE_HDF)
