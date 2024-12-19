@@ -12,7 +12,7 @@
 
 spiner_content_declare(Catch2
   GIT_REPO       https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.0.1 # or any later release
+  GIT_TAG        v3.7.1 # or any later release
   EXPECTED_TARGETS Catch2::Catch2
   NAMESPACE spinerTest
 )
