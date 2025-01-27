@@ -418,6 +418,24 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     REQUIRE(error <= EPSTEST);
   }
 
+  SECTION("interpToReal in 3D with one non-interpolated index") {
+    Real error = 0;
+    for (int iz = 0; iz < NFINE; iz++) {
+      Real z = fine_grids[2].x(iz);
+      for (int iy = 0; iy < NFINE; iy++) {
+        Real y = fine_grids[1].x(iy);
+        for (int ix = 0; ix < NX; ix++) {
+          Real x = grids[0].x(ix);
+          Real f_true = linearFunction(z, y, x);
+          Real difference = db.interpToReal(z, y, ix) - f_true;
+          error += (difference * difference);
+        }
+      }
+    }
+    error = sqrt(error);
+    REQUIRE(error <= EPSTEST);
+  }
+
   SECTION("interpFromDB 3D->2D") {
     constexpr Real z = (zmax + zmin) / 2.;
 
