@@ -193,6 +193,8 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x) const noexcept;
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x2,
                                                const T x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x2, const T x1,
+                                               const int idx) const noexcept;
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x3, const T x2,
                                                const T x1) const noexcept;
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x3, const T x2,
@@ -470,6 +472,23 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
               (w1[0] * dataView_(ix2, ix1) + w1[1] * dataView_(ix2, ix1 + 1)) +
           w2[1] * (w1[0] * dataView_(ix2 + 1, ix1) +
                    w1[1] * dataView_(ix2 + 1, ix1 + 1)));
+}
+
+template <typename T, typename Grid_t, typename Concept>
+PORTABLE_FORCEINLINE_FUNCTION T
+DataBox<T, Grid_t, Concept>::interpToReal(const T x2, const T x1, const int idx) const noexcept {
+  assert(canInterpToReal_(2));
+  int ix1, ix2;
+  weights_t<T> w1, w2;
+  grids_[1].weights(x1, ix1, w1);
+  grids_[2].weights(x2, ix2, w2);
+
+  // TODO: prefectch corners for speed?
+  // TODO: re-order access pattern?
+  return (w2[0] *
+              (w1[0] * dataView_(ix2, ix1, idx) + w1[1] * dataView_(ix2, ix1 + 1, idx)) +
+          w2[1] * (w1[0] * dataView_(ix2 + 1, ix1, idx) +
+                   w1[1] * dataView_(ix2 + 1, ix1 + 1, idx)));
 }
 
 template <typename T, typename Grid_t, typename Concept>
