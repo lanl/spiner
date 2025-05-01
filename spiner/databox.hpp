@@ -477,7 +477,12 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x2, const T x1, const int idx) const noexcept {
-  assert(canInterpToReal_(2));
+  assert(rank_ == 3);
+  for (int r = 1; r < rank_; ++r) {
+    assert(indices_[r] == IndexType::Interpolated);
+    assert(grids_[r].isWellFormed());
+  }
+
   int ix1, ix2;
   weights_t<T> w1, w2;
   grids_[1].weights(x1, ix1, w1);
