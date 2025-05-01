@@ -6,6 +6,13 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(ports-of-call)
 
+if(@SPINER_ENABLE_HDF5@)
+  find_dependency(hdf5 COMPONENTS C HL)
+  if(@HDF5_IS_PARALLEL@)
+    find_dependency(MPI COMPONENTS CXX)
+  endif()
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/spinerTargets.cmake")
 
 check_required_components(spiner)
