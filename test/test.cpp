@@ -139,12 +139,11 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
         REQUIRE(h.index(100) == 19);
       }
       AND_THEN("We can compute weights") {
-        Spiner::weights_t<Real> w;
-        int ix;
-        h.weights(0.8751, ix, w);
-        REQUIRE(ix == 17);
-        REQUIRE(std::abs(w[1] - 0.0024) < EPSTEST);
-        REQUIRE(std::abs(w[0] - (1 - 0.0024)) < EPSTEST);
+        Spiner::index_and_weights_t<Real> iw;
+        h.weights(0.8751, iw);
+        REQUIRE(iw.index == 17);
+        REQUIRE(std::abs(iw.w1 - 0.0024) < EPSTEST);
+        REQUIRE(std::abs(iw.w0 - (1 - 0.0024)) < EPSTEST);
       }
     }
   }
