@@ -52,7 +52,7 @@ class PiecewiseGrid1D {
         NGRIDS_ <= NGRIDSMAX,
         "Total number of grids must be within maximum allowed");
     int point_tot = 0;
-    for (int i = 0; i < NGRIDS_; ++i) {
+    for (int i = 1; i < NGRIDS_; ++i) {
       grids_[i] = grids[i];
       pointTotals_[i] = point_tot;
       point_tot += grids[i].nPoints();
