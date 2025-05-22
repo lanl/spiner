@@ -57,13 +57,13 @@ class PiecewiseGrid1D {
       pointTotals_[i] = point_tot;
       point_tot += grids[i].nPoints();
       if (i > 0) {
-	const Real diff = std::abs(grids_[i].min() - grids_[i - 1].max());
-	const Real avg =
-          0.5 * (std::abs(grids_[i].min()) + std::abs(grids_[i - 1].max()));
-	if (ratio_(diff, avg) >= EPS_()) {
-	  PORTABLE_ALWAYS_THROW_OR_ABORT(
+        const Real diff = std::abs(grids_[i].min() - grids_[i - 1].max());
+        const Real avg =
+            0.5 * (std::abs(grids_[i].min()) + std::abs(grids_[i - 1].max()));
+        if (ratio_(diff, avg) >= EPS_()) {
+          PORTABLE_ALWAYS_THROW_OR_ABORT(
               "Grids must be ordered and intersect at exactly one point.");
-	}
+        }
       }
     }
   }
