@@ -475,8 +475,8 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 }
 
 template <typename T, typename Grid_t, typename Concept>
-PORTABLE_FORCEINLINE_FUNCTION T
-DataBox<T, Grid_t, Concept>::interpToReal(const T x2, const T x1, const int idx) const noexcept {
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
+    const T x2, const T x1, const int idx) const noexcept {
   assert(rank_ == 3);
   for (int r = 1; r < rank_; ++r) {
     assert(indices_[r] == IndexType::Interpolated);
@@ -490,8 +490,8 @@ DataBox<T, Grid_t, Concept>::interpToReal(const T x2, const T x1, const int idx)
 
   // TODO: prefectch corners for speed?
   // TODO: re-order access pattern?
-  return (w2[0] *
-              (w1[0] * dataView_(ix2, ix1, idx) + w1[1] * dataView_(ix2, ix1 + 1, idx)) +
+  return (w2[0] * (w1[0] * dataView_(ix2, ix1, idx) +
+                   w1[1] * dataView_(ix2, ix1 + 1, idx)) +
           w2[1] * (w1[0] * dataView_(ix2 + 1, ix1, idx) +
                    w1[1] * dataView_(ix2 + 1, ix1 + 1, idx)));
 }
