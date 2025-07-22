@@ -11,7 +11,7 @@
 # publicly and display publicly, and to permit others to do so.
 # ------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.24)
 
 set(SPINER_VERSION 1.6.3)
 project(spiner VERSION ${SPINER_VERSION})
@@ -56,7 +56,8 @@ option(SPINER_BUILD_TESTS "Compile Tests" OFF)
 cmake_dependent_option(SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests"
                        ON "SPINER_BUILD_TESTS" OFF)
 cmake_dependent_option(
-  SPINER_TEST_USE_KOKKOS_CUDA "Use kokkos cuda offloading for tests (affects submodule-build only)" ON
+  SPINER_TEST_USE_KOKKOS_CUDA
+  "Use kokkos cuda offloading for tests (affects submodule-build only)" ON
   "SPINER_TEST_USE_KOKKOS" ON)
 
 # CTest
@@ -76,73 +77,47 @@ target_compile_features(spiner INTERFACE cxx_std_17)
 
 include(FetchContent)
 
-# If we are on version 3.24+, then set FetchContent to always try to
-# `find_package` before trying a download method
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
-  set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
-  message(STATUS "FetchContent routines will try `find_package` first")
-else()
-  message(
-    DEPRECATION
-      "Detected cmake version (${CMAKE_VERSION}) older then 3.24. `spiner`"
-      "will begin requiring this version soon.  The current depedency "
-      "resolution is a soft-copy of the pattern of FetchContent introduced"
-      "in cmake 3.24.")
-endif()
+# always use find_package() for FetchContent calls first NB: not an error if
+# find_package() fails (will try to download if it can)
+set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-# content is a wrapper to `FetchContent` calls
-include(content)
-spiner_content_declare(
+FetchContent_Declare(
   ports-of-call
-  NAMESPACE
-  spinerDeps
-  GIT_REPO
-  https://github.com/lanl/ports-of-call
-  # most recent relase as of April 05, 2023
-  GIT_TAG
-  v1.5.1)
+  GIT_REPOSITORY https://github.com/lanl/ports-of-call
+  GIT_TAG v1.5.1 # TODO: update if needed
+)
+
+# list of dependencies
+set(SPINER_DEP_LIST "ports-of-call")
+set(SPINER_DEP_TARGETS "ports-of-call::ports-of-call")
 
 if(SPINER_USE_HDF)
-  spiner_content_declare(
-    HDF5
-    NO_FETCH
-    NAMESPACE
-    spinerDeps
-    COMPONENTS
-    C
-    HL
-    EXPECTED_TARGETS
-    hdf5::hdf5
-    hdf5::hdf5_hl)
+  FetchContent_Declare(HDF5 FIND_PACKAGE_ARGS COMPONENTS C HL)
   target_compile_definitions(spiner INTERFACE SPINER_USE_HDF)
+  list(APPEND SPINER_DEP_LIST "HDF5")
+  list(APPEND SPINER_DEP_TARGETS "hdf5::hdf5 hdf5::hdf5_hl")
 endif()
+
+# We don't know about this until HDF5 is populated, so we need to delay until
+# it's been (NB: newer versions of HDF5/CMake appear to fix this) 2025-07-22:
+# removing this to see if it breaks anything
+if(HDF5_IS_PARALLEL)
+  FetchContent_Declare(MPI FIND_PACKAGE_ARGS COMPONENTS CXX)
+  list(APPEND SPINER_DEP_LIST "MPI")
+  list(APPEND SPINER_DEP_TARGETS "MPI::MPI_CXX")
+endif()
+
+# spiner_content_populate(NAMESPACE spinerDeps)
+FetchContent_MakeAvailable(${SPINER_DEP_LIST})
 
 if(SPINER_BUILD_TESTS)
   message(STATUS "\nConfiguring tests")
   add_subdirectory(test)
 endif()
 
-spiner_content_populate(NAMESPACE spinerDeps)
-
-# We don't know about this until HDF5 is populated, so we need to delay until
-# it's been (NB: newer versions of HDF5/CMake appear to fix this)
-if(HDF5_IS_PARALLEL)
-  spiner_content_declare(
-    MPI
-    NO_FETCH
-    COMPONENTS
-    CXX
-    EXPECTED_TARGETS
-    MPI::MPI_CXX
-    NAMESPACE
-    spinerMPI)
-  spiner_content_populate(NAMESPACE spinerMPI)
-endif()
-
-target_link_libraries(spiner INTERFACE ${spinerDeps_POPULATED_TARGETS}
-                                       ${spinerMPI_POPULATED_TARGETS})
+target_link_libraries(spiner INTERFACE ${SPINER_DEP_TARGERS})
 
 # Enables #include <spiner>
 target_include_directories(
