@@ -100,7 +100,7 @@ if(SPINER_USE_HDF)
   FetchContent_Declare(HDF5 FIND_PACKAGE_ARGS COMPONENTS C HL)
   target_compile_definitions(spiner INTERFACE SPINER_USE_HDF)
   list(APPEND SPINER_DEP_LIST "HDF5")
-  list(APPEND SPINER_DEP_TARGETS "hdf5::hdf5 hdf5::hdf5_hl")
+  list(APPEND SPINER_DEP_TARGETS "hdf5::hdf5;hdf5::hdf5_hl")
 endif()
 
 # We don't know about this until HDF5 is populated, so we need to delay until
