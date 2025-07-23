@@ -6,9 +6,9 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(ports-of-call)
 
-if(@SPINER_ENABLE_HDF5@)
-  find_dependency(hdf5 COMPONENTS C HL)
-  if(@HDF5_IS_PARALLEL@)
+if(@SPINER_USE_HDF@)
+  find_dependency(HDF5 COMPONENTS C HL)
+  if(HDF5_IS_PARALLEL)
     find_dependency(MPI COMPONENTS CXX)
   endif()
 endif()
