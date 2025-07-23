@@ -14,7 +14,10 @@
 cmake_minimum_required(VERSION 3.24)
 
 set(SPINER_VERSION 1.6.4)
-project(spiner VERSION ${SPINER_VERSION} LANGUAGES CXX)
+project(
+  spiner
+  VERSION ${SPINER_VERSION}
+  LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -112,7 +115,7 @@ endif()
 # spiner_content_populate(NAMESPACE spinerDeps)
 FetchContent_MakeAvailable(${SPINER_DEP_LIST})
 
-target_link_libraries(spiner INTERFACE ${SPINER_DEP_TARGERS})
+target_link_libraries(spiner INTERFACE ${SPINER_DEP_TARGETS})
 
 # Enables #include <spiner>
 target_include_directories(
