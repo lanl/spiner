@@ -11,7 +11,7 @@
 
 FetchContent_Declare(
   Catch2
-  GIT_REPO https://github.com/catchorg/Catch2.git
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG v3.7.1 # TODO: make sure this is correct
 )
 
@@ -39,7 +39,7 @@ if(SPINER_TEST_USE_KOKKOS)
 
   FetchContent_Declare(
     Kokkos
-    GIT_REPO https://github.com/kokkos/kokkos.git
+    GIT_REPOSITORY https://github.com/kokkos/kokkos.git
     GIT_TAG 61d7db55fceac3318c987a291f77b844fd94c165 # TODO: make sure this is
                                                      # correct
   )
