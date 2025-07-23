@@ -112,17 +112,17 @@ endif()
 # spiner_content_populate(NAMESPACE spinerDeps)
 FetchContent_MakeAvailable(${SPINER_DEP_LIST})
 
-if(SPINER_BUILD_TESTS)
-  message(STATUS "\nConfiguring tests")
-  add_subdirectory(test)
-endif()
-
 target_link_libraries(spiner INTERFACE ${SPINER_DEP_TARGERS})
 
 # Enables #include <spiner>
 target_include_directories(
   spiner INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+if(SPINER_BUILD_TESTS)
+  message(STATUS "\nConfiguring tests")
+  add_subdirectory(test)
+endif()
 
 # ----------------------------------------------------------------------------#
 # Generate config settings
