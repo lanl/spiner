@@ -103,17 +103,15 @@ if(SPINER_USE_HDF)
   list(APPEND SPINER_DEP_TARGETS "hdf5::hdf5;hdf5::hdf5_hl")
 endif()
 
-# We don't know about this until HDF5 is populated, so we need to delay until
-# it's been (NB: newer versions of HDF5/CMake appear to fix this) 2025-07-22:
-# removing this to see if it breaks anything
-if(HDF5_IS_PARALLEL)
-  FetchContent_Declare(MPI FIND_PACKAGE_ARGS COMPONENTS CXX)
-  list(APPEND SPINER_DEP_LIST "MPI")
-  list(APPEND SPINER_DEP_TARGETS "MPI::MPI_CXX")
-endif()
-
 # spiner_content_populate(NAMESPACE spinerDeps)
 FetchContent_MakeAvailable(${SPINER_DEP_LIST})
+
+# MPI::MPI_C dependency isn't propagated through hdf5::hdf5
+# link to MPI::MPI_CXX explicitly
+if(HDF5_IS_PARALLEL)
+  find_package(MPI COMPONENTS CXX REQUIRED)
+  target_link_libraries(spiner INTERFACE MPI::MPI_CXX)
+endif()
 
 target_link_libraries(spiner INTERFACE ${SPINER_DEP_TARGETS})
 
