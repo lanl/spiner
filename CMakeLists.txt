@@ -86,20 +86,25 @@ set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-FetchContent_Declare(
-  ports-of-call
-  GIT_REPOSITORY https://github.com/lanl/ports-of-call
-  GIT_TAG v1.5.1 # TODO: update if needed
-)
+if(NOT TARGET ports-of-call::ports-of-call)
+  FetchContent_Declare(
+    ports-of-call
+    GIT_REPOSITORY https://github.com/lanl/ports-of-call
+    GIT_TAG v1.5.1 # TODO: update if needed
+  )
+set(SPINER_DEP_LIST "ports-of-call")
+endif()
 
 # list of dependencies
-set(SPINER_DEP_LIST "ports-of-call")
 set(SPINER_DEP_TARGETS "ports-of-call::ports-of-call")
 
+
 if(SPINER_USE_HDF)
-  FetchContent_Declare(HDF5 FIND_PACKAGE_ARGS COMPONENTS C HL)
-  target_compile_definitions(spiner INTERFACE SPINER_USE_HDF)
-  list(APPEND SPINER_DEP_LIST "HDF5")
+  if(NOT TARGET hdf5::hdf5)
+    FetchContent_Declare(HDF5 FIND_PACKAGE_ARGS COMPONENTS C HL)
+    target_compile_definitions(spiner INTERFACE SPINER_USE_HDF)
+    list(APPEND SPINER_DEP_LIST "HDF5")
+  endif()
   list(APPEND SPINER_DEP_TARGETS "hdf5::hdf5;hdf5::hdf5_hl")
 endif()
 

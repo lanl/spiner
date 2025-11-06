@@ -23,42 +23,43 @@ add_library(spiner_test INTERFACE)
 # https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_SOURCE_DIR_%3CuppercaseName%3E
 # TLDR: set FETCHCONTENT_SOURCE_DIR_KOKKOS=path/to/local/checkout
 if(SPINER_TEST_USE_KOKKOS)
-  # put together a list of kokkos configure options TODO: put this into fetch
-  list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
-  if(SPINER_TEST_USE_KOKKOS_CUDA)
-    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
-    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
-    list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_CONSTEXPR")
+  # If Kokkos exists, ignore
+  if(NOT TARGET Kokkos::kokkos)
+    # put together a list of kokkos configure options TODO: put this into fetch
+    list(APPEND _spiner_content_opts "Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION")
+    if(SPINER_TEST_USE_KOKKOS_CUDA)
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_LAMBDA")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_CUDA_CONSTEXPR")
+    endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
+      list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
+      list(APPEND _spiner_content_opts
+           "Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK")
+    endif()
+
+    FetchContent_Declare(
+      Kokkos
+      GIT_REPOSITORY https://github.com/kokkos/kokkos.git
+      GIT_TAG 61d7db55fceac3318c987a291f77b844fd94c165 # TODO: make sure this is correct
+    )
+
+    foreach(ext_opt ${_spiner_content_opts})
+      message(DEBUG "setting \"${ext_opt}\"=ON")
+      set(${ext_opt}
+          ON
+          CACHE INTERNAL "")
+    endforeach()
+
+    list(APPEND SPINER_TEST_DEPS Kokkos)
   endif()
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG")
-    list(APPEND _spiner_content_opts "Kokkos_ENABLE_DEBUG_BOUNDS_CHECK")
-    list(APPEND _spiner_content_opts
-         "Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK")
-  endif()
-
-  FetchContent_Declare(
-    Kokkos
-    GIT_REPOSITORY https://github.com/kokkos/kokkos.git
-    GIT_TAG 61d7db55fceac3318c987a291f77b844fd94c165 # TODO: make sure this is
-                                                     # correct
-  )
-
-  foreach(ext_opt ${_fetchOpts})
-    message(DEBUG "setting \"${ext_opt}\"=ON")
-    set(${ext_opt}
-        ON
-        CACHE INTERNAL "")
-  endforeach()
-
-  list(APPEND SPINER_TEST_DEPS Kokkos)
+  
   list(APPEND SPINER_TEST_DEP_TARGETS Kokkos::kokkos)
-
   target_compile_definitions(spiner_test INTERFACE PORTABILITY_STRATEGY_KOKKOS)
 endif()
 
 # populate test content
-
 FetchContent_MakeAvailable(${SPINER_TEST_DEPS})
 
 target_link_libraries(spiner_test INTERFACE ${SPINER_TEST_DEP_TARGETS})
