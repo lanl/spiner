@@ -24,8 +24,10 @@ jobs:
             repository: lanl/ports-of-call
             path: build/ports-of-call
             fetch-depth: 0
-        - name: copy over spack-repo/packages
-          run: cp -R build/ports-of-call/spack-repo/packages/* spack-repo/packages/
+        - name: copy over spack-repo v1 packages
+          run: cp -R build/ports-of-call/spack-repo/v1/packages/* spack-repo/v1/packages/
+        - name: copy over spack-repo v2 packages
+          run: cp -R build/ports-of-call/spack-repo/v2/spack_repo/ports_of_call/packages/* spack-repo/v2/spack_repo/spiner/packages/
         - name: is there a difference?
           run: git diff --exit-code --compact-summary
           id: no_change
