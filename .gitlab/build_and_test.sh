@@ -4,6 +4,8 @@ export PROJECT_NAME=spiner
 export PROJECT_DEFAULT_BRANCH=main
 export PROJECT_TYPE=oss
 export PROJECT_GROUP=oss
+export PROJECT_SPACK_ENV_CURRENT_DEFAULT="20250118"
+export PROJECT_SPACK_ENV_VERSION_DEFAULT="${PROJECT_SPACK_ENV_VERSION_DEFAULT:-${PROJECT_SPACK_ENV_CURRENT_DEFAULT}}"
 ###############################################################################
 
 export BUILD_DIR=${BUILD_DIR:-build}
@@ -17,6 +19,7 @@ SUBMIT_ON_ERROR=${SUBMIT_ON_ERROR:-${SUBMIT_TO_CDASH}}
 SHOW_HELP_MESSAGE=${SHOW_HELP_MESSAGE:-true}
 DEFAULT_TEST_TIMEOUT=${DEFAULT_TEST_TIMEOUT:-600}
 AVAILABLE_CLUSTERS=darwin,rocinante,venado,chicoma,rzvernal,rzadams
+export XCAP_SPACKAGES_CHECKOUT="${XCAP_SPACKAGES_CHECKOUT:-${SOURCE_DIR}/extern/xcap_spackages}"
 
 if ${SUBMIT_TO_CDASH}; then
   UNTIL=${UNTIL:-submit}
@@ -29,7 +32,12 @@ if ${SUBMIT_ON_ERROR}; then
 else
   REPORT_ERRORS=""
 fi
-PROJECT_SPACK_ENV_VERSION=${PROJECT_SPACK_ENV_VERSION:-current}
+
+if [ -n "$PROJECT_SPACK_ENV_MR" ]; then
+  PROJECT_SPACK_ENV_VERSION=${PROJECT_SPACK_ENV_VERSION:-mr/${PROJECT_SPACK_ENV_MR}/${PROJECT_SPACK_ENV_VERSION_DEFAULT}}
+else
+  PROJECT_SPACK_ENV_VERSION=${PROJECT_SPACK_ENV_VERSION:-${PROJECT_SPACK_ENV_VERSION_DEFAULT}}
+fi
 
 # colors
 COLOR_BLUE='\033[1;34m'
@@ -191,13 +199,15 @@ prepare_env() {
   fi
 
   source ${CI_SPACK_ENV}/systems/${SYSTEM_NAME}/activate.sh ${PROJECT_GROUP}/${PROJECT_NAME}/${SPACK_ENV_NAME}
+
   if [ -d ${SOURCE_DIR}/spack-repo ]; then
     spack repo add ${SOURCE_DIR}/spack-repo
   fi
 
-  if [ -d ${SOURCE_DIR}/extern/ports-of-call.git ]; then
-    spack config add "packages:ports-of-call:package_attributes:git:'file://${SOURCE_DIR}/extern/ports-of-call.git'"
+  if [ -d ${SOURCE_DIR}/extern/ports-of-call/.git ]; then
+    spack develop --no-clone -p ${SOURCE_DIR}/extern/ports-of-call ports-of-call@main
   fi
+
 
   spack develop -b ${BUILD_DIR} -p ${SOURCE_DIR} --no-clone ${PROJECT_NAME}@${PROJECT_DEFAULT_BRANCH}
 
@@ -299,18 +309,19 @@ if ${SHOW_HELP_MESSAGE}; then
     echo " "
     echo -e "${COLOR_BLUE}ssh ${CLUSTER}${COLOR_PLAIN}"
     echo -e "${COLOR_BLUE}cd /your/${PROJECT_NAME}/checkout${COLOR_PLAIN}"
-    if [ -d ${SOURCE_DIR}/extern/ports-of-call.git ]; then
-      echo -e "${COLOR_BLUE}mkdir extern${COLOR_PLAIN}"
-      echo -e "${COLOR_BLUE}git clone --bare ssh://git@re-git.lanl.gov:10022/xcap/oss/ports-of-call.git extern/ports-of-call.git${COLOR_PLAIN}"
+    if [ -n "${XCAP_SPACKAGES_MR}" ]; then
+      echo -e "${COLOR_BLUE}export XCAP_SPACKAGES_MR=${XCAP_SPACKAGES_MR}${COLOR_PLAIN}"
     fi
+    if [ -n "${PORTS_OF_CALL_MR}" ]; then
+      echo -e "${COLOR_BLUE}export PORTS_OF_CALL_MR=${PORTS_OF_CALL_MR}${COLOR_PLAIN}"
+    fi
+    echo -e "${COLOR_BLUE}source .gitlab/download_prereqs.sh${COLOR_PLAIN}"
     if [[ ! -z "${LLNL_FLUX_SCHEDULER_PARAMETERS}" ]]; then
       echo -e "${COLOR_BLUE}flux alloc ${LLNL_FLUX_SCHEDULER_PARAMETERS}${COLOR_PLAIN}"
-    elif [[ ! -z "${LLNL_LSF_SCHEDULER_PARAMETERS}" ]]; then
-      echo -e "${COLOR_BLUE}bsub -I ${LLNL_LSF_SCHEDULER_PARAMETERS}${COLOR_PLAIN}"
     else
       echo -e "${COLOR_BLUE}salloc ${SCHEDULER_PARAMETERS}${COLOR_PLAIN}"
     fi
-    if [[ "${PROJECT_SPACK_ENV_VERSION}" != "current" ]]; then
+    if [[ "${PROJECT_SPACK_ENV_VERSION}" != "${PROJECT_SPACK_ENV_CURRENT_DEFAULT}" ]]; then
       echo -e "${COLOR_BLUE}export PROJECT_SPACK_ENV_VERSION=${PROJECT_SPACK_ENV_VERSION}${COLOR_PLAIN}"
     fi
     if [[ ! -z "${SPACK_ENV_SPEC}" ]]; then
