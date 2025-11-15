@@ -212,3 +212,30 @@ export(
   TARGETS spiner
   NAMESPACE spiner::
   FILE "${CMAKE_CURRENT_BINARY_DIR}/spinerTargets.cmake")
+
+# Configuration summary ---------------------------------------------------------------------------
+
+include(config_summary)
+
+config_summary_header("Spiner" "spiner" 27) # longest option name is 26 characters
+
+config_summary_block("CMake Options")
+config_summary_variable("CMAKE_BUILD_TYPE")
+config_summary_variable("CMAKE_CXX_COMPILER")
+config_summary_variable("CMAKE_CXX_COMPILER_VERSION")
+config_summary_variable("CMAKE_CXX_FLAGS")
+config_summary_variable("CLANG_FORMAT_VERSION")
+
+config_summary_block("Dependencies")
+config_summary_dependency("Catch2" "Catch2")
+config_summary_dependency("HDF5" "hdf5")
+config_summary_dependency("Kokkos" "Kokkos" "${SPINER_TEST_USE_KOKKOS}")
+config_summary_dependency("Ports-of-Call" "ports-of-call")
+
+config_summary_block("User Options")
+config_summary_option("SPINER_USE_HDF")
+config_summary_option("SPINER_BUILD_TESTS")
+config_summary_option("SPINER_TEST_USE_KOKKOS")
+config_summary_option("SPINER_TEST_USE_KOKKOS_CUDA")
+
+config_summary_print()
