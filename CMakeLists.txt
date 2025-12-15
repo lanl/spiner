@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 3.24)
 
-set(SPINER_VERSION 1.7.4)
+set(SPINER_VERSION 1.7.0)
 project(
   spiner
   VERSION ${SPINER_VERSION}
