@@ -587,6 +587,51 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
       free(db);
       free(dbh);
     }
+
+    WHEN("We construct a 3D databox based on this grid, where the slowest "
+         "moving index is not interpolatable") {
+      constexpr int NSLOW = 3;
+      constexpr int RANK = 3;
+      PiecewiseDB<NGRIDS> dbh(Spiner::AllocationTarget::Host, NSLOW, NCOARSE,
+                              NCOARSE);
+      for (int i = 0; i < RANK - 1; ++i) {
+        dbh.setRange(i, g);
+      }
+      dbh.setIndexType(RANK - 1, Spiner::IndexType::Indexed);
+      for (int iz = 0; iz < NSLOW; ++iz) {
+        for (int iy = 0; iy < NCOARSE; ++iy) {
+          for (int ix = 0; ix < NCOARSE; ++ix) {
+            Real x = g.x(ix);
+            Real y = g.x(iy);
+            dbh(iz, iy, ix) = linearFunction(static_cast<Real>(iz), y, x);
+          }
+        }
+      }
+      auto db = dbh.getOnDevice();
+
+      THEN("We can do mixed slice interpolation operations") {
+        constexpr int NFINE = 21;
+        for (int iz = 0; iz < NSLOW; ++iz) {
+          auto slc = db.slice(iz);
+          Real error = 0;
+          portableReduce(
+              "Interpolate 2D databox", 0, NFINE, 0, NFINE,
+              PORTABLE_LAMBDA(const int iy, const int ix,
+                              Real &accumulate) {
+                RegularGrid1D gfine(xmin, xmax, NFINE);
+                Real x = gfine.x(ix);
+                Real y = gfine.x(iy);
+                Real f_true = linearFunction(iz, y, x);
+                Real difference = slc.interpToReal(y, x) - f_true;
+                accumulate += (difference * difference);
+              },
+              error);
+          REQUIRE(error <= EPSTEST);
+        }
+      }
+      free(db);
+      free(dbh);
+    }
   }
 }
 
