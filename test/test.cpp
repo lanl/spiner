@@ -589,7 +589,7 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
     }
 
     WHEN("We construct a 3D databox based on this grid, where the slowest "
-         "moving index is not indexable") {
+         "moving index is not interpolatable") {
       constexpr int NSLOW = 3;
       constexpr int RANK = 3;
       PiecewiseDB<NGRIDS> dbh(Spiner::AllocationTarget::Host, NSLOW, NCOARSE,
