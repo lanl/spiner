@@ -425,8 +425,10 @@ independent variable, ``max`` is the maximum value of the indpendent
 variable, and ``N`` is the number of points in the ``i``
 dimension. (Here ``T`` is the underlying templated data type.)
 
-.. note::
-  In these routines, the dimension is indexed from zero.
+.. warning::
+  In these routines, the dimension is indexed from zero. Moreover, the
+  indexing possibly the opposite direction you're expecting. The zeroth
+  dimension is the right most index when ``interpToReal`` is called.
 
 .. note::
   There is a set of lower-level objects, ``RegularGrid1D``, and
