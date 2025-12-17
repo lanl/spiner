@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gridding for Interpolation &mdash; Spiner  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to Use Sphinx for Writing Docs" href="sphinx-howto.html" />
+    <link rel="prev" title="The DataBox" href="databox.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Spiner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="statement-of-need.html">Why Develop Spiner?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building and Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="databox.html">The DataBox</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Gridding for Interpolation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#regulargrid1d"><code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#construction">Construction</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4N13RegularGrid1D13RegularGrid1DE1T1T6size_t"><code class="docutils literal notranslate"><span class="pre">RegularGrid1D()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#mapping-an-index-to-a-real-number-and-vice-versa">Mapping an index to a real number and vice-versa</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D1xEKi"><code class="docutils literal notranslate"><span class="pre">x()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D5indexEK1T"><code class="docutils literal notranslate"><span class="pre">index()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D3minEv"><code class="docutils literal notranslate"><span class="pre">min()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D3maxEv"><code class="docutils literal notranslate"><span class="pre">max()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D2dxEv"><code class="docutils literal notranslate"><span class="pre">dx()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK13RegularGrid1D7nPointsEv"><code class="docutils literal notranslate"><span class="pre">nPoints()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-piecewisegrid1d">The <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#constructiong-a-piecewisegrid1d">Constructiong a <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#index-mapping-with-piecewisegrid1d">Index Mapping with <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D1xEKi"><code class="docutils literal notranslate"><span class="pre">x()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D5indexEK1T"><code class="docutils literal notranslate"><span class="pre">index()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D3minEv"><code class="docutils literal notranslate"><span class="pre">min()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D3maxEv"><code class="docutils literal notranslate"><span class="pre">max()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D2dxEv"><code class="docutils literal notranslate"><span class="pre">dx()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#_CPPv4NK15PiecewiseGrid1D7nPointsEv"><code class="docutils literal notranslate"><span class="pre">nPoints()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#developer-functionality">Developer functionality</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sphinx-howto.html">How to Use Sphinx for Writing Docs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Spiner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Gridding for Interpolation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/src/interpolation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="gridding-for-interpolation">
+<span id="interpolation"></span><h1>Gridding for Interpolation<a class="headerlink" href="#gridding-for-interpolation" title="Link to this heading"></a></h1>
+<p>nSpiner performs interpolation on Cartesian-product
+grids. There are two lower-level objects:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code></p></li>
+</ul>
+<p>These objects contain the metadata required for interpolation
+operations and have a few useful userspace functions, which are
+described here.</p>
+<p>Like <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>, these grid objects are templated on
+underlying data type, the default type being a <code class="docutils literal notranslate"><span class="pre">Real</span></code> as provided by
+<code class="docutils literal notranslate"><span class="pre">ports-of-call</span></code>. You may wish to specialize to a specific type with
+a type alias such as:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">RegularGrid1D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">PiecewiseGrid1D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">PiecewiseGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the function signature below we refer to <code class="docutils literal notranslate"><span class="pre">T</span></code> and <code class="docutils literal notranslate"><span class="pre">Real</span></code> as
+the underlying arithmetic data type.</p>
+</div>
+<p>When constructing a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>, you may wish to specify which
+interpolation object you are using. It is a template parameter.</p>
+<section id="regulargrid1d">
+<h2><code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code><a class="headerlink" href="#regulargrid1d" title="Link to this heading"></a></h2>
+<p>We begin by discussing <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code>, as the <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code>
+object is built on top of it.</p>
+<section id="construction">
+<h3>Construction<a class="headerlink" href="#construction" title="Link to this heading"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code> requires three values to specify an interpolation
+grid: the minimum value of the independent variable, the maximum value
+of the independent variable, and the number of points on the
+grid. These are passed into the constructor:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N13RegularGrid1D13RegularGrid1DE1T1T6size_t">
+<span id="_CPPv3N13RegularGrid1D13RegularGrid1DE1T1T6size_t"></span><span id="_CPPv2N13RegularGrid1D13RegularGrid1DE1T1T6size_t"></span><span id="RegularGrid1D::RegularGrid1D__T.T.s"></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv4N13RegularGrid1D13RegularGrid1DE1T1T6size_t" title="RegularGrid1D::RegularGrid1D"><span class="n"><span class="pre">RegularGrid1D</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">RegularGrid1D</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">min</span></span>, <span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">max</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">N</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N13RegularGrid1D13RegularGrid1DE1T1T6size_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>Default constructors and copy constructors are also provided.</p>
+</section>
+<section id="mapping-an-index-to-a-real-number-and-vice-versa">
+<h3>Mapping an index to a real number and vice-versa<a class="headerlink" href="#mapping-an-index-to-a-real-number-and-vice-versa" title="Link to this heading"></a></h3>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D1xEKi">
+<span id="_CPPv3NK13RegularGrid1D1xEKi"></span><span id="_CPPv2NK13RegularGrid1D1xEKi"></span><span id="RegularGrid1D::x__iCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">x</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D1xEKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns a “physical” position on the grid given an index <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D5indexEK1T">
+<span id="_CPPv3NK13RegularGrid1D5indexEK1T"></span><span id="_CPPv2NK13RegularGrid1D5indexEK1T"></span><span id="RegularGrid1D::index__TCC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">index</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D5indexEK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the index on the grid of a “physical” value <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D3minEv">
+<span id="_CPPv3NK13RegularGrid1D3minEv"></span><span id="_CPPv2NK13RegularGrid1D3minEv"></span><span id="RegularGrid1D::minC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">min</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D3minEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the minimum value on the independent variable grid.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D3maxEv">
+<span id="_CPPv3NK13RegularGrid1D3maxEv"></span><span id="_CPPv2NK13RegularGrid1D3maxEv"></span><span id="RegularGrid1D::maxC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">max</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D3maxEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the maximum value on the independent variable grid.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D2dxEv">
+<span id="_CPPv3NK13RegularGrid1D2dxEv"></span><span id="_CPPv2NK13RegularGrid1D2dxEv"></span><span id="RegularGrid1D::dxC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">dx</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D2dxEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the grid spacing for the independent variable.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK13RegularGrid1D7nPointsEv">
+<span id="_CPPv3NK13RegularGrid1D7nPointsEv"></span><span id="_CPPv2NK13RegularGrid1D7nPointsEv"></span><span id="RegularGrid1D::nPointsC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">RegularGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">nPoints</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK13RegularGrid1D7nPointsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the number of points in the independent variable grid.</p>
+</section>
+</section>
+<section id="the-piecewisegrid1d">
+<h2>The <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code><a class="headerlink" href="#the-piecewisegrid1d" title="Link to this heading"></a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code> is a non-intersecting, contiguous, ordered
+collection <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code> s. It can be used to construct grids with
+non-uniform spacing, so long as the grid spacing is piecewise
+constant.</p>
+<p>The maximum number of <code class="docutils literal notranslate"><span class="pre">RegularGrid1D``s</span> <span class="pre">that</span> <span class="pre">can</span> <span class="pre">be</span> <span class="pre">used</span> <span class="pre">to</span> <span class="pre">construct</span>
+<span class="pre">a</span> <span class="pre">``PiecewiseGrid1D</span></code> is a compile-time parameter (default is 5). You
+can specify a different value with, e.g.,</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Maximum number of &quot;pieces&quot; in a grid = 10</span>
+<span class="k">using</span><span class="w"> </span><span class="n">PiecewiseGrid1D</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">PiecewiseGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="o">&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<section id="constructiong-a-piecewisegrid1d">
+<h3>Constructiong a <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code><a class="headerlink" href="#constructiong-a-piecewisegrid1d" title="Link to this heading"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code> is constructed from either a <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or
+a <code class="docutils literal notranslate"><span class="pre">std::initializer_list</span></code> of <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code> s. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Initialize the regular grids</span>
+<span class="c1">// Note that the start and end points match</span>
+<span class="c1">// for each consecutive pair of grids.</span>
+<span class="c1">// g1 ends when g2 starts, etc.</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">g1</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">g2</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="mf">0.75</span><span class="p">,</span><span class="w"> </span><span class="mi">11</span><span class="p">);</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">g3</span><span class="p">(</span><span class="mf">0.75</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">7</span><span class="p">);</span>
+
+<span class="c1">// Build the piecewise grid. The double bracket notation</span>
+<span class="c1">// is an &quot;initalizer list&quot; and is very convenient,</span>
+<span class="c1">// as it is a C++ language feature.</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">PiecewiseGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{{</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">g3</span><span class="p">}};</span>
+</pre></div>
+</div>
+<p>Default constructors and copy constructors are also provided.</p>
+</section>
+<section id="index-mapping-with-piecewisegrid1d">
+<h3>Index Mapping with <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code><a class="headerlink" href="#index-mapping-with-piecewisegrid1d" title="Link to this heading"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code> has all the same functionality as
+<code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code>, but it automatically uses the relevant underlying
+grid spacing.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D1xEKi">
+<span id="_CPPv3NK15PiecewiseGrid1D1xEKi"></span><span id="_CPPv2NK15PiecewiseGrid1D1xEKi"></span><span id="PiecewiseGrid1D::x__iCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">x</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D1xEKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns a “physical” position on the grid given an index <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D5indexEK1T">
+<span id="_CPPv3NK15PiecewiseGrid1D5indexEK1T"></span><span id="_CPPv2NK15PiecewiseGrid1D5indexEK1T"></span><span id="PiecewiseGrid1D::index__TCC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">index</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D5indexEK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the index on the grid of a “physical” value <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D3minEv">
+<span id="_CPPv3NK15PiecewiseGrid1D3minEv"></span><span id="_CPPv2NK15PiecewiseGrid1D3minEv"></span><span id="PiecewiseGrid1D::minC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">min</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D3minEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the minimum value on the independent variable grid.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D3maxEv">
+<span id="_CPPv3NK15PiecewiseGrid1D3maxEv"></span><span id="_CPPv2NK15PiecewiseGrid1D3maxEv"></span><span id="PiecewiseGrid1D::maxC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">max</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D3maxEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the maximum value on the independent variable grid.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D2dxEv">
+<span id="_CPPv3NK15PiecewiseGrid1D2dxEv"></span><span id="_CPPv2NK15PiecewiseGrid1D2dxEv"></span><span id="PiecewiseGrid1D::dxC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">dx</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D2dxEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the grid spacing for the independent variable.</p>
+<p>The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK15PiecewiseGrid1D7nPointsEv">
+<span id="_CPPv3NK15PiecewiseGrid1D7nPointsEv"></span><span id="_CPPv2NK15PiecewiseGrid1D7nPointsEv"></span><span id="PiecewiseGrid1D::nPointsC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">PiecewiseGrid1D</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">nPoints</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK15PiecewiseGrid1D7nPointsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the number of points in the independent variable grid.</p>
+</section>
+</section>
+<section id="developer-functionality">
+<h2>Developer functionality<a class="headerlink" href="#developer-functionality" title="Link to this heading"></a></h2>
+<p>For developers, additional functionality is available. Please consult
+the code.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="databox.html" class="btn btn-neutral float-left" title="The DataBox" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sphinx-howto.html" class="btn btn-neutral float-right" title="How to Use Sphinx for Writing Docs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Triad National Security.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: 1.6.4
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../1.4.0/src/interpolation.html">1.4.0</a></dd>
+      <dd><a href="../../1.5.0/src/interpolation.html">1.5.0</a></dd>
+      <dd><a href="../../1.5.1/src/interpolation.html">1.5.1</a></dd>
+      <dd><a href="../../1.6.0/src/interpolation.html">1.6.0</a></dd>
+      <dd><a href="../../1.6.1/src/interpolation.html">1.6.1</a></dd>
+      <dd><a href="../../1.6.2/src/interpolation.html">1.6.2</a></dd>
+      <dd><a href="../../1.6.3/src/interpolation.html">1.6.3</a></dd>
+      <dd><a href="interpolation.html">1.6.4</a></dd>
+      <dd><a href="../../v1.7.0/src/interpolation.html">v1.7.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../bkk_config_summary/src/interpolation.html">bkk_config_summary</a></dd>
+      <dd><a href="../../bkk_interpToReal/src/interpolation.html">bkk_interpToReal</a></dd>
+      <dd><a href="../../bkk_interp_benchmark/src/interpolation.html">bkk_interp_benchmark</a></dd>
+      <dd><a href="../../bkk_wrapper/src/interpolation.html">bkk_wrapper</a></dd>
+      <dd><a href="../../dholladay00/hide_attribute/src/interpolation.html">dholladay00/hide_attribute</a></dd>
+      <dd><a href="../../dholladay00/separate_get_sg_eos/index.html">dholladay00/separate_get_sg_eos</a></dd>
+      <dd><a href="../../jmm/document-indexing/src/interpolation.html">jmm/document-indexing</a></dd>
+      <dd><a href="../../jmm/no-cmake-package-registry/src/interpolation.html">jmm/no-cmake-package-registry</a></dd>
+      <dd><a href="../../jmm/test-md-refactor/src/interpolation.html">jmm/test-md-refactor</a></dd>
+      <dd><a href="../../main/src/interpolation.html">main</a></dd>
+      <dd><a href="../../mauneyc/fix/macro2function/src/interpolation.html">mauneyc/fix/macro2function</a></dd>
+      <dd><a href="../../mauneyc/testCI/src/interpolation.html">mauneyc/testCI</a></dd>
+      <dd><a href="../../rberger/move_to_re-cdash/src/interpolation.html">rberger/move_to_re-cdash</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

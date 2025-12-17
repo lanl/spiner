@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; Spiner  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="The DataBox" href="databox.html" />
+    <link rel="prev" title="Building and Installation" href="building.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Spiner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="statement-of-need.html">Why Develop Spiner?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building and Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="databox.html">The DataBox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpolation.html">Gridding for Interpolation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sphinx-howto.html">How to Use Sphinx for Writing Docs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Spiner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/src/getting-started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="getting-started">
+<span id="id1"></span><h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<p>The following provides a simple example of utilizing a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;databox.hpp&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">DataBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// create a databox</span>
+<span class="w">  </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NX1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="w">  </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NX2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<span class="w">  </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">NX3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="w">  </span><span class="n">DataBox</span><span class="w"> </span><span class="n">db</span><span class="p">(</span><span class="n">NX3</span><span class="p">,</span><span class="w"> </span><span class="n">NX2</span><span class="p">,</span><span class="w"> </span><span class="n">NX1</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// fill the databox with the flat index of each element</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">db</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="c1">// set the interpolation ranges to [0,1] or each dimension</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">rank</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">d</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">db</span><span class="p">.</span><span class="n">setRange</span><span class="p">(</span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">dim</span><span class="p">(</span><span class="n">d</span><span class="p">));</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="c1">// interpolate</span>
+<span class="w">  </span><span class="kt">double</span><span class="w"> </span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">interpToReal</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// save to file</span>
+<span class="w">  </span><span class="n">db</span><span class="p">.</span><span class="n">saveHDF</span><span class="p">(</span><span class="s">&quot;my_data.sp5&quot;</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// load a new databox from file</span>
+<span class="w">  </span><span class="n">DataBox</span><span class="w"> </span><span class="n">db2</span><span class="p">;</span>
+<span class="w">  </span><span class="n">db2</span><span class="p">.</span><span class="n">loadHDF</span><span class="p">(</span><span class="s">&quot;my_data.sp5&quot;</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// interpolate new databox to the same location</span>
+<span class="w">  </span><span class="kt">double</span><span class="w"> </span><span class="n">val2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db2</span><span class="p">.</span><span class="n">itnerpToReal</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// print the interpolated values and see they&#39;re the same</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">val1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;, &quot;</span><span class="w"> </span><span class="n">val2</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">val1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">val2</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// free the databoxes</span>
+<span class="w">  </span><span class="n">free</span><span class="p">(</span><span class="n">db</span><span class="p">);</span>
+<span class="w">  </span><span class="n">free</span><span class="p">(</span><span class="n">db2</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For more examples, please consult the test directory.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="building.html" class="btn btn-neutral float-left" title="Building and Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="databox.html" class="btn btn-neutral float-right" title="The DataBox" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Triad National Security.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: 1.6.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../1.4.0/src/getting-started.html">1.4.0</a></dd>
+      <dd><a href="../../1.5.0/src/getting-started.html">1.5.0</a></dd>
+      <dd><a href="../../1.5.1/src/getting-started.html">1.5.1</a></dd>
+      <dd><a href="../../1.6.0/src/getting-started.html">1.6.0</a></dd>
+      <dd><a href="getting-started.html">1.6.1</a></dd>
+      <dd><a href="../../1.6.2/src/getting-started.html">1.6.2</a></dd>
+      <dd><a href="../../1.6.3/src/getting-started.html">1.6.3</a></dd>
+      <dd><a href="../../1.6.4/src/getting-started.html">1.6.4</a></dd>
+      <dd><a href="../../v1.7.0/src/getting-started.html">v1.7.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../bkk_config_summary/src/getting-started.html">bkk_config_summary</a></dd>
+      <dd><a href="../../bkk_interpToReal/src/getting-started.html">bkk_interpToReal</a></dd>
+      <dd><a href="../../bkk_interp_benchmark/src/getting-started.html">bkk_interp_benchmark</a></dd>
+      <dd><a href="../../bkk_wrapper/src/getting-started.html">bkk_wrapper</a></dd>
+      <dd><a href="../../dholladay00/hide_attribute/src/getting-started.html">dholladay00/hide_attribute</a></dd>
+      <dd><a href="../../dholladay00/separate_get_sg_eos/src/getting-started.html">dholladay00/separate_get_sg_eos</a></dd>
+      <dd><a href="../../jmm/document-indexing/src/getting-started.html">jmm/document-indexing</a></dd>
+      <dd><a href="../../jmm/no-cmake-package-registry/src/getting-started.html">jmm/no-cmake-package-registry</a></dd>
+      <dd><a href="../../jmm/test-md-refactor/src/getting-started.html">jmm/test-md-refactor</a></dd>
+      <dd><a href="../../main/src/getting-started.html">main</a></dd>
+      <dd><a href="../../mauneyc/fix/macro2function/src/getting-started.html">mauneyc/fix/macro2function</a></dd>
+      <dd><a href="../../mauneyc/testCI/src/getting-started.html">mauneyc/testCI</a></dd>
+      <dd><a href="../../rberger/move_to_re-cdash/src/getting-started.html">rberger/move_to_re-cdash</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

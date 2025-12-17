@@ -1,0 +1,901 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The DataBox &mdash; Spiner  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Gridding for Interpolation" href="interpolation.html" />
+    <link rel="prev" title="Getting Started" href="getting-started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Spiner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="statement-of-need.html">Why Develop Spiner?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building and Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The DataBox</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#databox-templates"><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> Templates</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#underlying-data-type">Underlying Data Type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interpolation-gridding">Interpolation Gridding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transformations">Transformations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-a-databox">Creating a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox5resetEv"><code class="docutils literal notranslate"><span class="pre">reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#copying-a-databox-to-device">Copying a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to device</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv418getOnDeviceDataBoxR7DataBox"><code class="docutils literal notranslate"><span class="pre">getOnDeviceDataBox()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7Databox11getOnDeviceEv"><code class="docutils literal notranslate"><span class="pre">getOnDevice()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#semantics-and-memory-management">Semantics and Memory Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv44freeR7DataBox"><code class="docutils literal notranslate"><span class="pre">free()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox8finalizeEv"><code class="docutils literal notranslate"><span class="pre">finalize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox10dataStatusEv"><code class="docutils literal notranslate"><span class="pre">dataStatus()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox19ownsAllocatedMemoryEv"><code class="docutils literal notranslate"><span class="pre">ownsAllocatedMemory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox11isReferenceEv"><code class="docutils literal notranslate"><span class="pre">isReference()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#using-databox-with-smart-pointers">Using <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> with smart pointers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#serialization-and-de-serialization">Serialization and de-serialization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox21serializedSizeInBytesEv"><code class="docutils literal notranslate"><span class="pre">serializedSizeInBytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK9serializeEPc"><code class="docutils literal notranslate"><span class="pre">serialize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox10setPointerEP1T"><code class="docutils literal notranslate"><span class="pre">setPointer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox10setPointerEPc"><code class="docutils literal notranslate"><span class="pre">setPointer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox11deSerializeEPc"><code class="docutils literal notranslate"><span class="pre">deSerialize()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#accessing-elements-of-a-databox">Accessing Elements of a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#slicing">Slicing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox5sliceEKiKiKi"><code class="docutils literal notranslate"><span class="pre">slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox5sliceEKi"><code class="docutils literal notranslate"><span class="pre">slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox5sliceEKii"><code class="docutils literal notranslate"><span class="pre">slice()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#index-types-and-interpolation-ranges">Index Types and Interpolation Ranges</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox8setRangeEi6Grid_t"><code class="docutils literal notranslate"><span class="pre">setRange()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox8setRangeEi1T1Ti"><code class="docutils literal notranslate"><span class="pre">setRange()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox12copyMetadataERK7DataBox"><code class="docutils literal notranslate"><span class="pre">copyMetadata()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox12setIndexTypeEi9IndexType"><code class="docutils literal notranslate"><span class="pre">setIndexType()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox9indexTypeEKi"><code class="docutils literal notranslate"><span class="pre">indexType()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#interpolation-to-a-real-number">Interpolation to a real number</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1T"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1TK1T"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1T"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TK1T"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#mixed-interpolation-and-indexing">Mixed interpolation and indexing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKi"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKiK1T"><code class="docutils literal notranslate"><span class="pre">interpToReal()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#interpolating-into-another-databox">Interpolating into another <code class="docutils literal notranslate"><span class="pre">DataBox</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox12interpFromDBERK7DataBoxK1T"><code class="docutils literal notranslate"><span class="pre">interpFromDB()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox12interpFromDBERK7DataBoxK1TK1T"><code class="docutils literal notranslate"><span class="pre">interpFromDB()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7Databox10InterpToDBEK1T"><code class="docutils literal notranslate"><span class="pre">InterpToDB()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7Databox10InterpToDBEK1TK1T"><code class="docutils literal notranslate"><span class="pre">InterpToDB()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#file-i-o">File I/O</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox7saveHDFERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">saveHDF()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox7saveHDFE5hid_tRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">saveHDF()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox7loadHDFERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">loadHDF()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4N7DataBox7loadHDFE5hid_tRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">loadHDF()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#miscellany">Miscellany</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox3minEv"><code class="docutils literal notranslate"><span class="pre">min()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK7DataBox3maxEv"><code class="docutils literal notranslate"><span class="pre">max()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK4rankEv"><code class="docutils literal notranslate"><span class="pre">rank()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK4sizeEv"><code class="docutils literal notranslate"><span class="pre">size()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK9sizeBytesEv"><code class="docutils literal notranslate"><span class="pre">sizeBytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv4NK3dimEi"><code class="docutils literal notranslate"><span class="pre">dim()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="interpolation.html">Gridding for Interpolation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sphinx-howto.html">How to Use Sphinx for Writing Docs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Spiner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">The DataBox</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/src/databox.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="the-databox">
+<span id="databox"></span><h1>The DataBox<a class="headerlink" href="#the-databox" title="Link to this heading"></a></h1>
+<p>The fundamental data type in <code class="docutils literal notranslate"><span class="pre">spiner</span></code> is the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>. A
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> packages a multi-dimensional (up to six dimensions) array
+with routines for interpolating on the array and for saving the data
+to and loading the data from file.</p>
+<p>To use databox, simply include the relevant header:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;databox.hpp&gt;</span>
+</pre></div>
+</div>
+<section id="databox-templates">
+<h2><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> Templates<a class="headerlink" href="#databox-templates" title="Link to this heading"></a></h2>
+<section id="underlying-data-type">
+<h3>Underlying Data Type<a class="headerlink" href="#underlying-data-type" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is templated on the underyling data type, which defaults to the
+<code class="docutils literal notranslate"><span class="pre">Real</span></code> type provided by <code class="docutils literal notranslate"><span class="pre">ports-of-call</span></code>. (This is usually a
+<code class="docutils literal notranslate"><span class="pre">double</span></code>.)</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The default type can be set to type <code class="docutils literal notranslate"><span class="pre">float</span></code> if the preprocessor
+macro <code class="docutils literal notranslate"><span class="pre">SINGLE_PRECISION_ENABLED</span></code> is defined.</p>
+</div>
+<p>Any arithmetic type is supported, although the code has only been
+tested carefully with floating point numbers. To set <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to a
+single type, you may wish to declare a type alias such as:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">DataBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="interpolation-gridding">
+<h3>Interpolation Gridding<a class="headerlink" href="#interpolation-gridding" title="Link to this heading"></a></h3>
+<p>Spiner is also templated on how the interpolation gridding works. This
+template parameter is called <code class="docutils literal notranslate"><span class="pre">Grid_t</span></code>. The available options at this time are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Spiner::RegularGrid1D&lt;T&gt;</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Spiner::PiecewiseGrid1D&lt;T&gt;</span></code></p></li>
+</ul>
+<p>where here <code class="docutils literal notranslate"><span class="pre">T</span></code> is the arithmetic type as discussed above. The
+default type is <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code>. You can further alias <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>
+as, for example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">DataBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">,</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>More detail on the interpolation gridding is available below and in
+the interpolation section.</p>
+</section>
+<section id="transformations">
+<h3>Transformations<a class="headerlink" href="#transformations" title="Link to this heading"></a></h3>
+<p>Spiner performs linear interpolation of the data, but can apply transformations
+to the data in order to enable interpolation methods like log-log, log-lin,
+etc.  Spiner will perform linear interpolation of the transformed variables.</p>
+<p>When constructing the gridding, <code class="docutils literal notranslate"><span class="pre">Spiner::RegularGrid1D&lt;T&gt;</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Spiner::PiecewiseGrid1D&lt;T&gt;</span></code> are templated on the independent variable
+transformation.  Note that all independent variables will use the same
+transformation.  <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is templated on the dependent variable
+transformation.  In all cases, the default is a linear “transformation” (no
+transformation to the data), so if you do not specify the transformation then
+you get linear interpolation.  The available transformations are in
+<code class="docutils literal notranslate"><span class="pre">spiner/transformations.hpp</span></code> and users can write custom transformations
+following the examples there.</p>
+<p>For example, if the user wants to transform the independent variables with a
+logarithm and the dependent variable with a custom arctangent transformation,
+the declaration of the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> might look like</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">DataBox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">,</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">RegularGrid1D</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">,</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">TransformLogarithmic</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">CustomArctanTransform</span><span class="o">&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>This would result in interpolation according to the equation</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}v &amp;= \arctan(y)\\u_i &amp;= \log(x_i)\\v &amp;= b + \sum m_i u_i\end{aligned}\end{align} \]</div>
+<p>where <span class="math notranslate nohighlight">\(x_i\)</span> are the independent variables.  By convention, the Spiner
+documentation uses <span class="math notranslate nohighlight">\(u_i\)</span> as the transformed independent variables, and
+<span class="math notranslate nohighlight">\(v\)</span> as the transformed dependent variable.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In C++17 and later, you can also get the default type specialization
+by simply omitting the template arguments.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the function signatures below, GPU/performance portability
+decorators have been excluded for brevity. However they are present
+in the actual code.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the function signatures below, we will often refer to the type
+<code class="docutils literal notranslate"><span class="pre">Real</span></code> and the type <code class="docutils literal notranslate"><span class="pre">T</span></code>. These are both references to the
+underlying templated arithmetic type.</p>
+</div>
+</section>
+</section>
+<section id="creating-a-databox">
+<h2>Creating a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code><a class="headerlink" href="#creating-a-databox" title="Link to this heading"></a></h2>
+<p>You can create a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> of a given shape via the constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="n">nx1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">nx2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">nx3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">(</span><span class="n">nx3</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The constructor takes any number of shape values (e.g., <code class="docutils literal notranslate"><span class="pre">nx*</span></code>) up to
+six (or <code class="docutils literal notranslate"><span class="pre">Spiner::MAXRANK</span></code>) values. Zero shape values initializes an
+empty, size-zero array.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is row-major ordered. By convention, <code class="docutils literal notranslate"><span class="pre">x3</span></code> is the
+slowest moving index and <code class="docutils literal notranslate"><span class="pre">x1</span></code> is the fastest.</p>
+</div>
+<p>If GPU support is enabled, a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> can be allocated on either
+host or device, depending on the <code class="docutils literal notranslate"><span class="pre">AllocationTarget</span></code>. For example, to
+explicitly allocate one array on the host and one on the device, you
+might call:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Allocates on the host (CPU)</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db_host</span><span class="p">(</span><span class="n">Spiner</span><span class="o">::</span><span class="n">AllocationTarget</span><span class="o">::</span><span class="n">Host</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+<span class="c1">// Allocates on the device (GPU)</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db_dev</span><span class="p">(</span><span class="n">Spiner</span><span class="o">::</span><span class="n">AllocationTarget</span><span class="o">::</span><span class="n">Device</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If GPU support is not enabled, these both allocate on host.</p>
+</div>
+<p>You can also wrap a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> around a pointer you allocated
+yourself. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">mydata</span><span class="p">(</span><span class="n">nx1</span><span class="o">*</span><span class="n">nx2</span><span class="p">);</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">(</span><span class="n">mydata</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>You can also resize a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>, which you can use to modify a
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> in-place. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">;</span><span class="w"> </span><span class="c1">// empty</span>
+<span class="c1">// clears old memory, resizes the underlying array,</span>
+<span class="c1">// and resets strides</span>
+<span class="n">db</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="n">nx3</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Just like the constructor, <code class="docutils literal notranslate"><span class="pre">resize</span></code> takes an optional (first)
+argument for the <code class="docutils literal notranslate"><span class="pre">AllocationTarget</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">DataBox::resize</span></code> is destructive. The underlying data is not preserved.</p>
+</div>
+<p>If you want to change the stride without changing the underlying data,
+you can use <code class="docutils literal notranslate"><span class="pre">reshape</span></code>, which modifies the dimensions of the
+array, without modifying the underlying memory. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// allocate a 1D databox</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">(</span><span class="n">nx3</span><span class="o">*</span><span class="n">nx2</span><span class="o">*</span><span class="n">nx1</span><span class="p">);</span>
+<span class="c1">// interpret it as a 3D object</span>
+<span class="n">db</span><span class="p">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">nx3</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Make sure not to change the underlying size of the array
+when using <code class="docutils literal notranslate"><span class="pre">reshape</span></code>. This is checked with an <code class="docutils literal notranslate"><span class="pre">assert</span></code>
+statement, so you will get errors when compiling without
+the <code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code> preprocessor macro.</p>
+</div>
+<p>The method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox5resetEv">
+<span id="_CPPv3N7DataBox5resetEv"></span><span id="_CPPv2N7DataBox5resetEv"></span><span id="DataBox::reset"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">reset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox5resetEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>sets the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to be empty with zero rank.</p>
+</section>
+<section id="copying-a-databox-to-device">
+<h2>Copying a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to device<a class="headerlink" href="#copying-a-databox-to-device" title="Link to this heading"></a></h2>
+<p>If GPU support is enabled, you can deep-copy a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> and any
+data contained in it from host to device with the function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418getOnDeviceDataBoxR7DataBox">
+<span id="_CPPv318getOnDeviceDataBoxR7DataBox"></span><span id="_CPPv218getOnDeviceDataBoxR7DataBox"></span><span id="getOnDeviceDataBox__DataBoxR"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getOnDeviceDataBox</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">db_host</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv418getOnDeviceDataBoxR7DataBox" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>which returns a new databox with the data in <code class="docutils literal notranslate"><span class="pre">db_host</span></code> copied to
+GPU. An object-oriented method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7Databox11getOnDeviceEv">
+<span id="_CPPv3NK7Databox11getOnDeviceEv"></span><span id="_CPPv2NK7Databox11getOnDeviceEv"></span><span id="Databox::getOnDeviceC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">Databox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getOnDevice</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7Databox11getOnDeviceEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>exists as well, which returns a new object with the underlying data
+copied to GPU.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If GPU support is not enabled, <code class="docutils literal notranslate"><span class="pre">getOnDevice</span></code> and friends are
+no-ops.</p>
+</div>
+</section>
+<section id="semantics-and-memory-management">
+<h2>Semantics and Memory Management<a class="headerlink" href="#semantics-and-memory-management" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> has reference semantics—meaning that copying a
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> does not copy the underlying data. In other words,</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db1</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db1</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>shallow-copies <code class="docutils literal notranslate"><span class="pre">db1</span></code> into <code class="docutils literal notranslate"><span class="pre">db2</span></code>. Especially for <a class="reference external" href="https://github.com/kokkos/kokkos">Kokkos</a> like
+workflows, this is very useful.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is neither reference-counted nor garbage-collected.
+If you create a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> you must clear the memory allocated
+just like you would for a pointer.</p>
+</div>
+<p>Two functions are provided for freeing memory in <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv44freeR7DataBox">
+<span id="_CPPv34freeR7DataBox"></span><span id="_CPPv24freeR7DataBox"></span><span id="free__DataBoxR"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">db</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv44freeR7DataBox" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>and</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox8finalizeEv">
+<span id="_CPPv3N7DataBox8finalizeEv"></span><span id="_CPPv2N7DataBox8finalizeEv"></span><span id="DataBox::finalize"></span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">finalize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox8finalizeEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>both will do the same thing and free the memory in a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> in a
+context-dependent way. I.e., no matter what the <code class="docutils literal notranslate"><span class="pre">AllocationTarget</span></code>
+was, the appropriate memory will be freed.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Do not free a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> if its memory is managed externally, e.g.,
+via a <code class="docutils literal notranslate"><span class="pre">std::vector</span></code>. <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> checks for this use-case
+via an <code class="docutils literal notranslate"><span class="pre">assert</span></code> statement.</p>
+</div>
+<p>You can check whether a given <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is empty, unmanaged, or
+allocated on host or device with the</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox10dataStatusEv">
+<span id="_CPPv3NK7DataBox10dataStatusEv"></span><span id="_CPPv2NK7DataBox10dataStatusEv"></span><span id="DataBox::dataStatusC"></span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">dataStatus</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox10dataStatusEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>method. It returns an <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">class</span></code>, <code class="docutils literal notranslate"><span class="pre">Spiner::DataStatus</span></code>, which
+can take on the values <code class="docutils literal notranslate"><span class="pre">Empty</span></code>, <code class="docutils literal notranslate"><span class="pre">Unmanaged</span></code>, <code class="docutils literal notranslate"><span class="pre">AllocatedHost</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">AllocatedDevice</span></code>. You can also check whether or not <code class="docutils literal notranslate"><span class="pre">free</span></code> should
+be called with the method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox19ownsAllocatedMemoryEv">
+<span id="_CPPv3N7DataBox19ownsAllocatedMemoryEv"></span><span id="_CPPv2N7DataBox19ownsAllocatedMemoryEv"></span><span id="DataBox::ownsAllocatedMemory"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ownsAllocatedMemory</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox19ownsAllocatedMemoryEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>which returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if a given databox is managing memory and
+<code class="docutils literal notranslate"><span class="pre">false</span></code> otherwise. The method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox11isReferenceEv">
+<span id="_CPPv3N7DataBox11isReferenceEv"></span><span id="_CPPv2N7DataBox11isReferenceEv"></span><span id="DataBox::isReference"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">isReference</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox11isReferenceEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns <code class="docutils literal notranslate"><span class="pre">false</span></code> if the databox is managing memory and <code class="docutils literal notranslate"><span class="pre">true</span></code>
+otherwise.</p>
+</section>
+<section id="using-databox-with-smart-pointers">
+<h2>Using <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> with smart pointers<a class="headerlink" href="#using-databox-with-smart-pointers" title="Link to this heading"></a></h2>
+<p>Smart pointers can be used to manage a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> and automatically
+call <code class="docutils literal notranslate"><span class="pre">free</span></code> for you, so long as you use them with a custom
+deleter. Spiner provides the following deleter for use in this
+scenario:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">DBDeleter</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="k">operator</span><span class="p">()(</span><span class="n">T</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ptr</span><span class="o">-&gt;</span><span class="n">finalize</span><span class="p">();</span>
+<span class="w">    </span><span class="k">delete</span><span class="w"> </span><span class="n">ptr</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>It can be used, for example, with a <code class="docutils literal notranslate"><span class="pre">std::unique_ptr</span></code> via:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// needed for smart pointers</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;memory&gt;</span>
+
+<span class="c1">// Creates a unique pointer pointing to a DataBox</span>
+<span class="c1">// with memory allocated on device</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">DataBox</span><span class="p">,</span><span class="w"> </span><span class="n">Spiner</span><span class="o">::</span><span class="n">DBDeleter</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pdb</span><span class="p">(</span>
+<span class="w">  </span><span class="k">new</span><span class="w"> </span><span class="n">DataBox</span><span class="p">(</span><span class="n">Spiner</span><span class="o">::</span><span class="n">AllocationTarget</span><span class="o">::</span><span class="n">Device</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">));</span>
+
+<span class="c1">// Before using the databox in, e.g., a GPU or Kokkos kernel, get a</span>
+<span class="c1">// shallow copy:</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">pdb</span><span class="p">;</span>
+<span class="c1">// some kokkos code...</span>
+
+<span class="c1">// when you leave scope, the data box will be freed.</span>
+</pre></div>
+</div>
+</section>
+<section id="serialization-and-de-serialization">
+<h2>Serialization and de-serialization<a class="headerlink" href="#serialization-and-de-serialization" title="Link to this heading"></a></h2>
+<p>Shared memory models, such as <a class="reference external" href="https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node311.htm">MPI Windows</a>, require allocation of
+memory through an external API call (e.g.,
+<code class="docutils literal notranslate"><span class="pre">MPI_Win_allocate_shared</span></code>), which tabulated data must be written
+to. <code class="docutils literal notranslate"><span class="pre">Spiner</span></code> supports this model through <strong>serialization</strong> and
+<strong>de-serialization</strong>. The relevant methods are as follows. The
+function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox21serializedSizeInBytesEv">
+<span id="_CPPv3NK7DataBox21serializedSizeInBytesEv"></span><span id="_CPPv2NK7DataBox21serializedSizeInBytesEv"></span><span id="DataBox::serializedSizeInBytesC"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">serializedSizeInBytes</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox21serializedSizeInBytesEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>reports how much memory a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> object requires to be externally
+allocated. The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9serializeEPc">
+<span id="_CPPv3NK9serializeEPc"></span><span id="_CPPv2NK9serializeEPc"></span><span id="serialize__cPC"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">serialize</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK9serializeEPc" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>takes a <code class="docutils literal notranslate"><span class="pre">char*</span></code> pointer, assumed to contain enough space for a
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code>, and stores all information needed for the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to
+reconstruct itself. The return value is the amount of memory in bytes
+used in the array by the serialized <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> object. This method is
+non-destructive; the original <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is unchanged. The function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox10setPointerEP1T">
+<span id="_CPPv3N7DataBox10setPointerEP1T"></span><span id="_CPPv2N7DataBox10setPointerEP1T"></span><span id="DataBox::setPointer__TP"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">setPointer</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox10setPointerEP1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>with the overload</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox10setPointerEPc">
+<span id="_CPPv3N7DataBox10setPointerEPc"></span><span id="_CPPv2N7DataBox10setPointerEPc"></span><span id="DataBox::setPointer__cP"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">setPointer</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox10setPointerEPc" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>sets the underlying tabulated data from the src pointer, which is
+assumed to be the right size and shape. This is useful for the
+deSerialize function (described below) and for building your own
+serialization/de-serialization routines in composite objects. The
+function</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox11deSerializeEPc">
+<span id="_CPPv3N7DataBox11deSerializeEPc"></span><span id="_CPPv2N7DataBox11deSerializeEPc"></span><span id="DataBox::deSerialize__cP"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">deSerialize</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox11deSerializeEPc" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>initializes a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to match the serialized <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>
+contained in the <code class="docutils literal notranslate"><span class="pre">src</span></code> pointer.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that the de-serialized <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> has <strong>unmanaged</strong> memory, as
+it is assumed that the <code class="docutils literal notranslate"><span class="pre">src</span></code> pointer manages its memory for
+it. Therefore, one <strong>cannot</strong> <code class="docutils literal notranslate"><span class="pre">free</span></code> the <code class="docutils literal notranslate"><span class="pre">src</span></code> pointer until
+everything you want to do with the de-serialized <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is
+over.</p>
+</div>
+<p>Putting this all together, an application of
+serialization/de-serialization probably looks like this:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// load a databox from, e.g., file</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">;</span>
+<span class="n">db</span><span class="p">.</span><span class="n">loadHDF</span><span class="p">(</span><span class="n">filename</span><span class="p">);</span>
+
+<span class="c1">// get size of databox</span>
+<span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">allocate_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">serialSizeInBytes</span><span class="p">();</span>
+
+<span class="c1">// Allocate the memory for the new databox.</span>
+<span class="c1">// In practice this would be an API call for, e.g., shared memory</span>
+<span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">memory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">allocate_size</span><span class="p">);</span>
+
+<span class="c1">// serialize the old databox</span>
+<span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">write_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">serialize</span><span class="p">(</span><span class="n">memory</span><span class="p">);</span>
+
+<span class="c1">// make a new databox and de-serialize it</span>
+<span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db2</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">read_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db2</span><span class="p">.</span><span class="n">deSerialize</span><span class="p">(</span><span class="n">memory</span><span class="p">);</span>
+
+<span class="c1">// read_size, write_size, and allocate_size should all be the same.</span>
+<span class="n">assert</span><span class="p">((</span><span class="n">read_size</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">write_size</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">write_size</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">allocate_size</span><span class="p">));</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The serialization routines described here are <strong>not</strong> architecture
+aware. Serializing and de-serializing on a single architecture
+inside a single executable will work fine. However, do not use
+serialization as a file I/O strategy, as there is no guarantee that
+the serialized format for a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> on one architecture will be
+the same as on another. This is due to, for example,
+architecture-specific differences in endianness and padding.</p>
+</div>
+</section>
+<section id="accessing-elements-of-a-databox">
+<h2>Accessing Elements of a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code><a class="headerlink" href="#accessing-elements-of-a-databox" title="Link to this heading"></a></h2>
+<p>Elements of a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> can be accessed and set via the <code class="docutils literal notranslate"><span class="pre">()</span></code>
+operator. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Spiner</span><span class="o">::</span><span class="n">DataBox</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">db</span><span class="p">(</span><span class="n">nx3</span><span class="p">,</span><span class="w"> </span><span class="n">nx2</span><span class="p">,</span><span class="w"> </span><span class="n">nx1</span><span class="p">);</span>
+<span class="n">db</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">()</span></code> operator accepts between one and six indexes. If you pass
+in more indexes than the rank of the array, the excess indices are
+ignored. If you pass in fewer, the unset indices are assumed to be
+zero. The exception is the one-dimensional operator. You can always
+stride through the “flattened” array by using the one-dimensional
+accessor. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">nx3</span><span class="o">*</span><span class="n">nx2</span><span class="o">*</span><span class="n">nx1</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">db</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>fills the three-dimensional array above with the flat index of each
+element.</p>
+</section>
+<section id="slicing">
+<h2>Slicing<a class="headerlink" href="#slicing" title="Link to this heading"></a></h2>
+<p>A new <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> containing a shallow slice of another <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>
+can be constructed with the <code class="docutils literal notranslate"><span class="pre">slice</span></code> method:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox5sliceEKiKiKi">
+<span id="_CPPv3NK7DataBox5sliceEKiKiKi"></span><span id="_CPPv2NK7DataBox5sliceEKiKiKi"></span><span id="DataBox::slice__iC.iC.iCC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">slice</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dim</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">indx</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">nvar</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox5sliceEKiKiKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>this is fairly limited functionality. It returns a new <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>
+containing only elements from <code class="docutils literal notranslate"><span class="pre">indx</span></code> to <code class="docutils literal notranslate"><span class="pre">indx</span> <span class="pre">+</span> <span class="pre">nvar</span> <span class="pre">-</span> <span class="pre">1</span></code> in the
+<code class="docutils literal notranslate"><span class="pre">dim</span></code> direction. All other directions are unchanged. The slowest
+moving dimension can be sliced to a single index with</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox5sliceEKi">
+<span id="_CPPv3NK7DataBox5sliceEKi"></span><span id="_CPPv2NK7DataBox5sliceEKi"></span><span id="DataBox::slice__iCC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">slice</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">indx</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox5sliceEKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>and the slowst-moving two dimensions can be sliced to a single pair of
+indicies with</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox5sliceEKii">
+<span id="_CPPv3NK7DataBox5sliceEKii"></span><span id="_CPPv2NK7DataBox5sliceEKii"></span><span id="DataBox::slice__iC.iC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">slice</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i2</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i1</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox5sliceEKii" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</section>
+<section id="index-types-and-interpolation-ranges">
+<h2>Index Types and Interpolation Ranges<a class="headerlink" href="#index-types-and-interpolation-ranges" title="Link to this heading"></a></h2>
+<p>Often-times an array mixes “continuous” and “discrete” variables. In
+other words, some indices of an array are discretizations of a
+continuous quantity, and we want to interpolate in those directions,
+but other indices are discrete—they may index a particle species,
+for example. A common example is in neutrino transport, where an array
+of emissivities may depend on fluid density, fluid temperature,
+electron fraction, neutrino energy, and neutrino species. The species
+can only take three discrete values, but the density, temperature, and
+electron fraction are all continuous.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Spiner</span></code> accounts for this by assigning each dimension in the array
+a “type,” represented as an <code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">class</span></code>, <code class="docutils literal notranslate"><span class="pre">IndexType</span></code>. Currently
+the type can be either <code class="docutils literal notranslate"><span class="pre">Interpolated</span></code> or <code class="docutils literal notranslate"><span class="pre">Indexed</span></code>. When a new
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is created, all dimensions are set to
+<code class="docutils literal notranslate"><span class="pre">IndexType::Indexed</span></code>. A dimension can be set to <code class="docutils literal notranslate"><span class="pre">Interpolated</span></code> via
+the <code class="docutils literal notranslate"><span class="pre">setRange</span></code> method.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox8setRangeEi6Grid_t">
+<span id="_CPPv3N7DataBox8setRangeEi6Grid_t"></span><span id="_CPPv2N7DataBox8setRangeEi6Grid_t"></span><span id="DataBox::setRange__i.Grid_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">setRange</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="n"><span class="pre">Grid_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox8setRangeEi6Grid_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>where here <code class="docutils literal notranslate"><span class="pre">i</span></code> is the dimension and <code class="docutils literal notranslate"><span class="pre">g</span></code> is the gridding object for
+this index. In the default setup, where grids are uniformly spaced
+(i.e., you use a <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code>), this is:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox8setRangeEi1T1Ti">
+<span id="_CPPv3N7DataBox8setRangeEi1T1Ti"></span><span id="_CPPv2N7DataBox8setRangeEi1T1Ti"></span><span id="DataBox::setRange__i.T.T.i"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">setRange</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">min</span></span>, <span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">max</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">N</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox8setRangeEi1T1Ti" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>where here <code class="docutils literal notranslate"><span class="pre">i</span></code> is the dimension, <code class="docutils literal notranslate"><span class="pre">min</span></code> is the minimum value of the
+independent variable, <code class="docutils literal notranslate"><span class="pre">max</span></code> is the maximum value of the indpendent
+variable, and <code class="docutils literal notranslate"><span class="pre">N</span></code> is the number of points in the <code class="docutils literal notranslate"><span class="pre">i</span></code>
+dimension. (Here <code class="docutils literal notranslate"><span class="pre">T</span></code> is the underlying templated data type.)</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In these routines, the dimension is indexed from zero.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is a set of lower-level objects, <code class="docutils literal notranslate"><span class="pre">RegularGrid1D</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">PiecewiseGrid1D</span></code>, which represent these interpolation ranges
+internally. There is a getter method <code class="docutils literal notranslate"><span class="pre">range</span></code> that works
+with the underlying <code class="docutils literal notranslate"><span class="pre">Grid_t</span></code> class directly. For
+more details, see the relevant documentation.</p>
+</div>
+<p>It’s often desirable to have multiple databoxes with the exact same
+shape and interpolation structure (i.e., independent variable
+ranges). In this case, the method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox12copyMetadataERK7DataBox">
+<span id="_CPPv3N7DataBox12copyMetadataERK7DataBox"></span><span id="_CPPv2N7DataBox12copyMetadataERK7DataBox"></span><span id="DataBox::copyMetadata__DataBoxCR"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">copyMetadata</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox12copyMetadataERK7DataBox" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>can assist. This method resets and re-allocates the data in a
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to the exact same size and shape as <code class="docutils literal notranslate"><span class="pre">src</span></code>. More
+importantly, it also copies the relevant <code class="docutils literal notranslate"><span class="pre">IndexType</span></code> and independent
+variable range for each dimension.</p>
+<p>One can also manually set the <code class="docutils literal notranslate"><span class="pre">IndexType</span></code> in a given dimension with</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox12setIndexTypeEi9IndexType">
+<span id="_CPPv3N7DataBox12setIndexTypeEi9IndexType"></span><span id="_CPPv2N7DataBox12setIndexTypeEi9IndexType"></span><span id="DataBox::setIndexType__i.IndexType"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">setIndexType</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="n"><span class="pre">IndexType</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox12setIndexTypeEi9IndexType" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>and retrieve the <code class="docutils literal notranslate"><span class="pre">IndexType</span></code> with</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox9indexTypeEKi">
+<span id="_CPPv3N7DataBox9indexTypeEKi"></span><span id="_CPPv2N7DataBox9indexTypeEKi"></span><span id="DataBox::indexType__iC"></span><span class="n"><span class="pre">IndexType</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">indexType</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox9indexTypeEKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>to see if a dimension is interpolatable.</p>
+</section>
+<section id="interpolation-to-a-real-number">
+<h2>Interpolation to a real number<a class="headerlink" href="#interpolation-to-a-real-number" title="Link to this heading"></a></h2>
+<p>The family of <code class="docutils literal notranslate"><span class="pre">DataBox::interpToReal</span></code> methods interpolate the
+“entire” <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to a real number. Up to four-dimensional
+interpolation is supported:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1T">
+<span id="_CPPv3NK7DataBox12interpToRealEK1T"></span><span id="_CPPv2NK7DataBox12interpToRealEK1T"></span><span id="DataBox::interpToReal__TCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1TK1T">
+<span id="_CPPv3NK7DataBox12interpToRealEK1TK1T"></span><span id="_CPPv2NK7DataBox12interpToRealEK1TK1T"></span><span id="DataBox::interpToReal__TC.TCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1TK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1TK1TK1T">
+<span id="_CPPv3NK7DataBox12interpToRealEK1TK1TK1T"></span><span id="_CPPv2NK7DataBox12interpToRealEK1TK1TK1T"></span><span id="DataBox::interpToReal__TC.TC.TCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x3</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1TK1TK1TK1T">
+<span id="_CPPv3NK7DataBox12interpToRealEK1TK1TK1TK1T"></span><span id="_CPPv2NK7DataBox12interpToRealEK1TK1TK1TK1T"></span><span id="DataBox::interpToReal__TC.TC.TC.TCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x4</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x3</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>where <code class="docutils literal notranslate"><span class="pre">x1</span></code> is the fastest moving direction, <code class="docutils literal notranslate"><span class="pre">x2</span></code> is less fast, and
+so on. These interpolation routines are hand-tuned for performance.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Do not call <code class="docutils literal notranslate"><span class="pre">interpToReal</span></code> with a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> that is the wrong shape
+or try to interpolate on indices that are not interpolatable.
+This is checked with an <code class="docutils literal notranslate"><span class="pre">assert</span></code> statement.</p>
+</div>
+</section>
+<section id="mixed-interpolation-and-indexing">
+<h2>Mixed interpolation and indexing<a class="headerlink" href="#mixed-interpolation-and-indexing" title="Link to this heading"></a></h2>
+<p>In the case where an array has some dimensions that are discrete and
+some that are interpolatable, one can fuse interpolation and indexing
+into a single operation. These operations are still named
+<code class="docutils literal notranslate"><span class="pre">DataBox::interpToReal</span></code>, but one of the input arguments is an
+integer instead of a floating point number. The location of the
+integer in the function signature indicates which dimension in the
+<code class="docutils literal notranslate"><span class="pre">DataBox</span></code> is indexed. For example:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKi">
+<span id="_CPPv3NK7DataBox12interpToRealEK1TK1TK1TKi"></span><span id="_CPPv2NK7DataBox12interpToRealEK1TK1TK1TKi"></span><span id="DataBox::interpToReal__TC.TC.TC.iCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x3</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">idx</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>interpolates the three slower-moving indices and indexes the fastest
+moving index. On the other hand,</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKiK1T">
+<span id="_CPPv3NK7DataBox12interpToRealEK1TK1TK1TKiK1T"></span><span id="_CPPv2NK7DataBox12interpToRealEK1TK1TK1TKiK1T"></span><span id="DataBox::interpToReal__TC.TC.TC.iC.TCC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpToReal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x4</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x3</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">idx</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox12interpToRealEK1TK1TK1TKiK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>interpolates the fastest moving index, then indexes the
+second-fastest, then interpolates the remaining three slower. The
+above fused operations are the only ones currently supported.</p>
+</section>
+<section id="interpolating-into-another-databox">
+<h2>Interpolating into another <code class="docutils literal notranslate"><span class="pre">DataBox</span></code><a class="headerlink" href="#interpolating-into-another-databox" title="Link to this heading"></a></h2>
+<p>There is limited functionality for filling a <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> with the
+interpolated values of another <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>. For example, the method</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox12interpFromDBERK7DataBoxK1T">
+<span id="_CPPv3N7DataBox12interpFromDBERK7DataBoxK1T"></span><span id="_CPPv2N7DataBox12interpFromDBERK7DataBoxK1T"></span><span id="DataBox::interpFromDB__DataBoxCR.TC"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpFromDB</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox12interpFromDBERK7DataBoxK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>allocates the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to have a rank one lower than <code class="docutils literal notranslate"><span class="pre">src</span></code> and
+fill it with the faster moving elements of <code class="docutils literal notranslate"><span class="pre">src</span></code> interpolated to
+<code class="docutils literal notranslate"><span class="pre">x</span></code> in the slowest-moving direction. Similarly for</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox12interpFromDBERK7DataBoxK1TK1T">
+<span id="_CPPv3N7DataBox12interpFromDBERK7DataBoxK1TK1T"></span><span id="_CPPv2N7DataBox12interpFromDBERK7DataBoxK1TK1T"></span><span id="DataBox::interpFromDB__DataBoxCR.TC.TC"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">interpFromDB</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox12interpFromDBERK7DataBoxK1TK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>The methods</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7Databox10InterpToDBEK1T">
+<span id="_CPPv3NK7Databox10InterpToDBEK1T"></span><span id="_CPPv2NK7Databox10InterpToDBEK1T"></span><span id="Databox::InterpToDB__TCC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">Databox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">InterpToDB</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7Databox10InterpToDBEK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>and</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7Databox10InterpToDBEK1TK1T">
+<span id="_CPPv3N7Databox10InterpToDBEK1TK1T"></span><span id="_CPPv2N7Databox10InterpToDBEK1TK1T"></span><span id="Databox::InterpToDB__TC.TC"></span><span class="n"><span class="pre">DataBox</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">Databox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">InterpToDB</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x2</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x1</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7Databox10InterpToDBEK1TK1T" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>return a new <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> object, rather than setting it from a source <code class="docutils literal notranslate"><span class="pre">DataBox</span></code>.</p>
+</section>
+<section id="file-i-o">
+<h2>File I/O<a class="headerlink" href="#file-i-o" title="Link to this heading"></a></h2>
+<p>If <a class="reference external" href="https://www.hdfgroup.org/solutions/hdf5/">hdf5</a> is enabled, <code class="docutils literal notranslate"><span class="pre">Spiner</span></code> can save an array to or load an
+array from disk. Each array so-saved is also saved with the
+<code class="docutils literal notranslate"><span class="pre">IndexType</span></code> and independent variable ranges bundled with it, so that
+knowledge of how to interpolate the data is automatically
+available.</p>
+<p>The following methods are supported:</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox7saveHDFERKNSt6stringE">
+<span id="_CPPv3NK7DataBox7saveHDFERKNSt6stringE"></span><span id="_CPPv2NK7DataBox7saveHDFERKNSt6stringE"></span><span id="DataBox::saveHDF__ssCRC"></span><span class="n"><span class="pre">herr_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">saveHDF</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">filename</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox7saveHDFERKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>saves the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> to a file with <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox7saveHDFE5hid_tRKNSt6stringE">
+<span id="_CPPv3NK7DataBox7saveHDFE5hid_tRKNSt6stringE"></span><span id="_CPPv2NK7DataBox7saveHDFE5hid_tRKNSt6stringE"></span><span id="DataBox::saveHDF__hid_t.ssCRC"></span><span class="n"><span class="pre">herr_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">saveHDF</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">hid_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">loc</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">groupname</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox7saveHDFE5hid_tRKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>saves the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> as an hdf5 group at the location <code class="docutils literal notranslate"><span class="pre">loc</span></code> in an hdf5 file.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox7loadHDFERKNSt6stringE">
+<span id="_CPPv3N7DataBox7loadHDFERKNSt6stringE"></span><span id="_CPPv2N7DataBox7loadHDFERKNSt6stringE"></span><span id="DataBox::loadHDF__ssCR"></span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">loadHDF</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">filename</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox7loadHDFERKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>fills the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> from information in the root of a file with <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N7DataBox7loadHDFE5hid_tRKNSt6stringE">
+<span id="_CPPv3N7DataBox7loadHDFE5hid_tRKNSt6stringE"></span><span id="_CPPv2N7DataBox7loadHDFE5hid_tRKNSt6stringE"></span><span id="DataBox::loadHDF__hid_t.ssCR"></span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">loadHDF</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">hid_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">loc</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">groupname</span></span><span class="sig-paren">)</span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4N7DataBox7loadHDFE5hid_tRKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>fills the <code class="docutils literal notranslate"><span class="pre">DataBox</span></code> from information in the group with <code class="docutils literal notranslate"><span class="pre">groupname</span></code>
+based at location <code class="docutils literal notranslate"><span class="pre">loc</span></code> in the file.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>HDF5 I/O is only supported for single- and double-precision types at this time.</p>
+</div>
+</section>
+<section id="miscellany">
+<h2>Miscellany<a class="headerlink" href="#miscellany" title="Link to this heading"></a></h2>
+<p>Here we list a few convenience functions available that were not
+covered elsewhere.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox3minEv">
+<span id="_CPPv3NK7DataBox3minEv"></span><span id="_CPPv2NK7DataBox3minEv"></span><span id="DataBox::minC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">min</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox3minEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>and</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK7DataBox3maxEv">
+<span id="_CPPv3NK7DataBox3maxEv"></span><span id="_CPPv2NK7DataBox3maxEv"></span><span id="DataBox::maxC"></span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">DataBox</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">max</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK7DataBox3maxEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>compute and return the minimum and maximum values (respectively) in the array.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4rankEv">
+<span id="_CPPv3NK4rankEv"></span><span id="_CPPv2NK4rankEv"></span><span id="rankC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">rank</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK4rankEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the rank (number of dimensions) of the array.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK4sizeEv">
+<span id="_CPPv3NK4sizeEv"></span><span id="_CPPv2NK4sizeEv"></span><span id="sizeC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK4sizeEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the total number of elements in the underlying array.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9sizeBytesEv">
+<span id="_CPPv3NK9sizeBytesEv"></span><span id="_CPPv2NK9sizeBytesEv"></span><span id="sizeBytesC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sizeBytes</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK9sizeBytesEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the total size of the underlying array in bytes.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK3dimEi">
+<span id="_CPPv3NK3dimEi"></span><span id="_CPPv2NK3dimEi"></span><span id="dim__iC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dim</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">;</span></span><a class="headerlink" href="#_CPPv4NK3dimEi" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p>returns the size in a given dimension/direction, indexed from zero.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting-started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="interpolation.html" class="btn btn-neutral float-right" title="Gridding for Interpolation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Triad National Security.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: bkk_wrapper
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../1.4.0/src/databox.html">1.4.0</a></dd>
+      <dd><a href="../../1.5.0/src/databox.html">1.5.0</a></dd>
+      <dd><a href="../../1.5.1/src/databox.html">1.5.1</a></dd>
+      <dd><a href="../../1.6.0/src/databox.html">1.6.0</a></dd>
+      <dd><a href="../../1.6.1/src/databox.html">1.6.1</a></dd>
+      <dd><a href="../../1.6.2/src/databox.html">1.6.2</a></dd>
+      <dd><a href="../../1.6.3/src/databox.html">1.6.3</a></dd>
+      <dd><a href="../../1.6.4/src/databox.html">1.6.4</a></dd>
+      <dd><a href="../../v1.7.0/src/databox.html">v1.7.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../bkk_config_summary/src/databox.html">bkk_config_summary</a></dd>
+      <dd><a href="../../bkk_interpToReal/src/databox.html">bkk_interpToReal</a></dd>
+      <dd><a href="../../bkk_interp_benchmark/src/databox.html">bkk_interp_benchmark</a></dd>
+      <dd><a href="databox.html">bkk_wrapper</a></dd>
+      <dd><a href="../../dholladay00/hide_attribute/src/databox.html">dholladay00/hide_attribute</a></dd>
+      <dd><a href="../../dholladay00/separate_get_sg_eos/index.html">dholladay00/separate_get_sg_eos</a></dd>
+      <dd><a href="../../jmm/document-indexing/src/databox.html">jmm/document-indexing</a></dd>
+      <dd><a href="../../jmm/no-cmake-package-registry/src/databox.html">jmm/no-cmake-package-registry</a></dd>
+      <dd><a href="../../jmm/test-md-refactor/src/databox.html">jmm/test-md-refactor</a></dd>
+      <dd><a href="../../main/src/databox.html">main</a></dd>
+      <dd><a href="../../mauneyc/fix/macro2function/src/databox.html">mauneyc/fix/macro2function</a></dd>
+      <dd><a href="../../mauneyc/testCI/src/databox.html">mauneyc/testCI</a></dd>
+      <dd><a href="../../rberger/move_to_re-cdash/src/databox.html">rberger/move_to_re-cdash</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
