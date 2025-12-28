@@ -210,6 +210,18 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
+  // Entry point for recursive interpolation.  See interp_core for actual
+  // recursion.  There are multiple versions of interp_core to handle the
+  // different inputs allowed:
+  // * int: an index telling the exact data point to use for that axis
+  // * T  : a coordinate to interpolate to that point on that axis
+  template <typename... Coords>
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interpToScalar(const Coords... coords) const noexcept;
+
+  // TODO: In principle, the logic for interpToScalar and interp_core could be
+  //       extended to work on these routines.  I've not looked at how easy it
+  //       would be, so it may be more work than it's worth?
   // Interpolates SLOWEST indices of databox to a new
   // DataBox, interpolated at that slowest index.
   // WARNING: requires memory to be pre-allocated.
@@ -438,6 +450,43 @@ class DataBox {
       status_ = DataStatus::AllocatedHost;
     }
   }
+
+  // Recursive interpolation: coordinate to interpolate to along this axis
+  template <std::size_t N, typename... Args>
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interp_core(const index_and_weights_t<T> *iwlist, const T coordinate, Args... other_args) const noexcept;
+  // Recursive interpolation: index for exact data point to use along this axis
+  template <std::size_t N, typename... Args>
+  PORTABLE_FORCEINLINE_FUNCTION T
+  interp_core(const index_and_weights_t<T> *iwlist, const int index, Args... other_args) const noexcept;
+
+  template <typename... Args>
+  static PORTABLE_INLINE_FUNCTION void
+  append_index_and_weights(index_and_weights_t<T> *iwlist, const Grid_t *grid, const T x,
+                           Args... other_args) {
+    // Leading argument is a coordinate: Need to compute index and weights.
+    grid->weights(x, iwlist[0]);
+    // Note: grids are in reverse order relative to arguments
+    append_index_and_weights(iwlist + 1, grid - 1, other_args...);
+  }
+  template <typename... Args>
+  static PORTABLE_INLINE_FUNCTION void
+  append_index_and_weights(index_and_weights_t<T> *iwlist, const Grid_t *grid,
+                           const int index, Args... other_args) {
+    // Leading argument is an index: We know the answer so we don't actually
+    // need to store this information for the recursion, but it keeps the
+    // bookkeeping cleaner and allows for some debugging checks to be added in
+    // more easily if necessary.
+    iwlist->index = index;
+    iwlist->w0 = 1;
+    iwlist->w1 = 0;
+    // Note: grids are in reverse order relative to arguments
+    append_index_and_weights(iwlist + 1, grid - 1, other_args...);
+  }
+  template <typename... Args>
+  static PORTABLE_INLINE_FUNCTION void
+  append_index_and_weights(index_and_weights_t<T> *iwlist, const Grid_t *grid) {
+  } // terminate recursion
 };
 
 // Read an array, shallow
@@ -449,29 +498,53 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
 }
 
 template <typename T, typename Grid_t, typename Concept>
+template <typename... Coords>
+PORTABLE_INLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToScalar(
+    const Coords... coords) const noexcept {
+  constexpr std::size_t N = sizeof...(Coords);
+  assert(canInterpToReal_(N));
+  index_and_weights_t<T> iwlist[N];
+  append_index_and_weights(iwlist, &(grids_[N - 1]), coords...);
+  return interp_core<N>(iwlist, coords...);
+}
+
+template <typename T, typename Grid_t, typename Concept>
+template <std::size_t N, typename... Args>
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
+    const index_and_weights_t<T> *iwlist, const T coordinate, Args... other_args) const noexcept {
+  const auto &current = iwlist[0];
+  static_assert(N > 0, "interp_core<0> must have already converted all coordinates to indices");
+  // recursive case
+  const T v0 = interp_core<N-1>(iwlist + 1, other_args..., current.index);
+  const T v1 = interp_core<N-1>(iwlist + 1, other_args..., current.index + 1);
+  return current.w0 * v0 + current.w1 * v1;
+}
+
+template <typename T, typename Grid_t, typename Concept>
+template <std::size_t N, typename... Args>
+PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interp_core(
+    const index_and_weights_t<T> *iwlist, const int index, Args... other_args) const noexcept {
+  if constexpr (N == 0) {
+    // base case
+    return dataView_(index, other_args...);
+  } else {
+    // recursive case
+    // -- Note: We don't actually need to use iwlist[0], but for bookkeeping
+    //    purposes we have to advance to the next entry
+    return interp_core<N-1>(iwlist + 1, other_args..., index);
+  }
+}
+
+template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION T
 DataBox<T, Grid_t, Concept>::interpToReal(const T x) const noexcept {
-  assert(canInterpToReal_(1));
-  int ix;
-  weights_t<T> w;
-  grids_[0].weights(x, ix, w);
-  return w[0] * dataView_(ix) + w[1] * dataView_(ix + 1);
+  return interpToScalar(x);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(2));
-  int ix1, ix2;
-  weights_t<T> w1, w2;
-  grids_[0].weights(x1, ix1, w1);
-  grids_[1].weights(x2, ix2, w2);
-  // TODO: prefectch corners for speed?
-  // TODO: re-order access pattern?
-  return (w2[0] *
-              (w1[0] * dataView_(ix2, ix1) + w1[1] * dataView_(ix2, ix1 + 1)) +
-          w2[1] * (w1[0] * dataView_(ix2 + 1, ix1) +
-                   w1[1] * dataView_(ix2 + 1, ix1 + 1)));
+  return interpToScalar(x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
@@ -499,53 +572,13 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(3));
-  int ix[3];
-  weights_t<T> w[3];
-  grids_[0].weights(x1, ix[0], w[0]);
-  grids_[1].weights(x2, ix[1], w[1]);
-  grids_[2].weights(x3, ix[2], w[2]);
-  // TODO: prefect corners for speed?
-  // TODO: re-order access pattern?
-  return (
-      w[2][0] * (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0]) +
-                            w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1)) +
-                 w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0]) +
-                            w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1))) +
-      w[2][1] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0]) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1)) +
-           w[1][1] * (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0]) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1))));
+  return interpToScalar(x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x3, const T x2, const T x1, const int idx) const noexcept {
-  assert(rank_ == 4);
-  for (int r = 1; r < rank_; ++r) {
-    assert(indices_[r] == IndexType::Interpolated);
-    assert(grids_[r].isWellFormed());
-  }
-  int ix[3];
-  weights_t<T> w[3];
-  grids_[1].weights(x1, ix[0], w[0]);
-  grids_[2].weights(x2, ix[1], w[1]);
-  grids_[3].weights(x3, ix[2], w[2]);
-  // TODO: prefect corners for speed?
-  // TODO: re-order access pattern?
-  return (
-      w[2][0] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2], ix[1], ix[0], idx) +
-                      w[0][1] * dataView_(ix[2], ix[1], ix[0] + 1, idx)) +
-           w[1][1] * (w[0][0] * dataView_(ix[2], ix[1] + 1, ix[0], idx) +
-                      w[0][1] * dataView_(ix[2], ix[1] + 1, ix[0] + 1, idx))) +
-      w[2][1] *
-          (w[1][0] * (w[0][0] * dataView_(ix[2] + 1, ix[1], ix[0], idx) +
-                      w[0][1] * dataView_(ix[2] + 1, ix[1], ix[0] + 1, idx)) +
-           w[1][1] *
-               (w[0][0] * dataView_(ix[2] + 1, ix[1] + 1, ix[0], idx) +
-                w[0][1] * dataView_(ix[2] + 1, ix[1] + 1, ix[0] + 1, idx))));
+  return interpToScalar(x3, x2, x1, idx);
 }
 
 // DH: this is a large function to force an inline, perhaps just make it a
@@ -553,115 +586,14 @@ PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const T x1) const noexcept {
-  assert(canInterpToReal_(4));
-  T x[] = {x1, x2, x3, x4};
-  int ix[4];
-  weights_t<T> w[4];
-  for (int i = 0; i < 4; ++i) {
-    grids_[i].weights(x[i], ix[i], w[i]);
-  }
-  // TODO(JMM): This is getty pretty gross. Should we automate?
-  // Hand-written is probably faster, though.
-  // Breaking line-limit to make this easier to read
-  return (
-      w[3][0] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1] + 1, ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2] + 1, ix[1] + 1, ix[0] + 1)))) +
-      w[3][1] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0]) +
-                     w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1], ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3] + 1, ix[2], ix[1] + 1, ix[0] + 1))) +
-           w[2][1] * (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1], ix[0]) +
-                                 w[0][1] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1], ix[0] + 1)) +
-                      w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1] + 1, ix[0]) +
-                                 w[0][1] * dataView_(ix[3] + 1, ix[2] + 1,
-                                                     ix[1] + 1, ix[0] + 1))))
-
-  );
+  return interpToScalar(x4, x3, x2, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
 PORTABLE_FORCEINLINE_FUNCTION T DataBox<T, Grid_t, Concept>::interpToReal(
     const T x4, const T x3, const T x2, const int idx,
     const T x1) const noexcept {
-  assert(rank_ == 5);
-  assert(indices_[0] == IndexType::Interpolated);
-  assert(grids_[0].isWellFormed());
-  for (int i = 2; i < 5; ++i) {
-    assert(indices_[i] == IndexType::Interpolated);
-    assert(grids_[i].isWellFormed());
-  }
-  T x[] = {x1, x2, x3, x4};
-  int ix[4];
-  weights_t<T> w[4];
-  grids_[0].weights(x[0], ix[0], w[0]);
-  for (int i = 1; i < 4; ++i) {
-    grids_[i + 1].weights(x[i], ix[i], w[i]);
-  }
-  // TODO(JMM): This is getty pretty gross. Should we automate?
-  // Hand-written is probably faster, though.
-  // Breaking line-limit to make this easier to read
-  return (
-      w[3][0] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1], idx, ix[0]) +
-                     w[0][1] * dataView_(ix[3], ix[2], ix[1], idx, ix[0] + 1)) +
-                w[1][1] *
-                    (w[0][0] * dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2], ix[1] + 1, idx, ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3], ix[2] + 1, ix[1], idx, ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3], ix[2] + 1, ix[1] + 1, idx,
-                                               ix[0] + 1)))) +
-      w[3][1] *
-          (w[2][0] *
-               (w[1][0] *
-                    (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0]) +
-                     w[0][1] *
-                         dataView_(ix[3] + 1, ix[2], ix[1], idx, ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2], ix[1] + 1, idx,
-                                               ix[0] + 1))) +
-           w[2][1] *
-               (w[1][0] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx,
-                                               ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1], idx,
-                                               ix[0] + 1)) +
-                w[1][1] * (w[0][0] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1,
-                                               idx, ix[0]) +
-                           w[0][1] * dataView_(ix[3] + 1, ix[2] + 1, ix[1] + 1,
-                                               idx, ix[0] + 1))))
-
-  );
+  return interpToScalar(x4, x3, x2, idx, x1);
 }
 
 template <typename T, typename Grid_t, typename Concept>
@@ -672,16 +604,15 @@ DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
   assert(db.grids_[db.rank_ - 1].isWellFormed());
   assert(size() == (db.size() / db.dim(db.rank_)));
 
-  int ix;
-  weights_t<T> w;
+  index_and_weights_t<T> iw;
   copyShape(db, 1);
 
-  db.grids_[db.rank_ - 1].weights(x, ix, w);
-  DataBox<T, Grid_t, Concept> lower(db.slice(ix)), upper(db.slice(ix + 1));
-  // lower = db.slice(ix);
-  // upper = db.slice(ix+1);
+  db.grids_[db.rank_ - 1].weights(x, iw);
+  DataBox<T, Grid_t, Concept> lower(db.slice(iw.index)), upper(db.slice(iw.index + 1));
+  // lower = db.slice(iw.index);
+  // upper = db.slice(iw.index+1);
   for (int i = 0; i < size(); i++) {
-    dataView_(i) = w[0] * lower(i) + w[1] * upper(i);
+    dataView_(i) = iw.w0 * lower(i) + iw.w1 * upper(i);
   }
 }
 
@@ -696,35 +627,34 @@ DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
   assert(db.grids_[db.rank_ - 2].isWellFormed());
   assert(size() == (db.size() / (db.dim(db.rank_) * db.dim(db.rank_ - 1))));
 
-  int ix2, ix1;
-  weights_t<T> w2, w1;
+  index_and_weights_t<T> iw2, iw1;
   copyShape(db, 2);
 
-  db.grids_[db.rank_ - 2].weights(x1, ix1, w1);
-  db.grids_[db.rank_ - 1].weights(x2, ix2, w2);
+  db.grids_[db.rank_ - 2].weights(x1, iw1);
+  db.grids_[db.rank_ - 1].weights(x2, iw2);
   DataBox<T, Grid_t, Concept> corners[2][2]{
-      {db.slice(ix2, ix1), db.slice(ix2 + 1, ix1)},
-      {db.slice(ix2, ix1 + 1), db.slice(ix2 + 1, ix1 + 1)}};
+      {db.slice(iw2.index, iw1.index), db.slice(iw2.index + 1, iw1.index)},
+      {db.slice(iw2.index, iw1.index + 1), db.slice(iw2.index + 1, iw1.index + 1)}};
   //    copyShape(db,2);
   //
-  //    db.grids_[db.rank_-2].weights(x1, ix1, w1);
-  //    db.grids_[db.rank_-1].weights(x2, ix2, w2);
-  // corners[0][0] = db.slice(ix2,   ix1   );
-  // corners[1][0] = db.slice(ix2,   ix1+1 );
-  // corners[0][1] = db.slice(ix2+1, ix1   );
-  // corners[1][1] = db.slice(ix2+1, ix1+1 );
+  //    db.grids_[db.rank_-2].weights(x1, iw1);
+  //    db.grids_[db.rank_-1].weights(x2, iw2);
+  // corners[0][0] = db.slice(iw2.index,   iw1.index   );
+  // corners[1][0] = db.slice(iw2.index,   iw1.index+1 );
+  // corners[0][1] = db.slice(iw2.index+1, iw1.index   );
+  // corners[1][1] = db.slice(iw2.index+1, iw1.index+1 );
   /*
   for (int i = 0; i < size(); i++) {
-    dataView_(i) = (   w2[0]*w1[0]*corners[0][0](i)
-                     + w2[0]*w1[1]*corners[1][0](i)
-                     + w2[1]*w1[0]*corners[0][1](i)
-                     + w2[1]*w1[1]*corners[1][1](i));
+    dataView_(i) = (   iw2.w0*iw1.w0*corners[0][0](i)
+                     + iw2.w0*iw1.w1*corners[1][0](i)
+                     + iw2.w1*iw1.w0*corners[0][1](i)
+                     + iw2.w1*iw1.w1*corners[1][1](i));
   }
   */
   for (int i = 0; i < size(); i++) {
     dataView_(i) =
-        (w2[0] * (w1[0] * corners[0][0](i) + w1[1] * corners[1][0](i)) +
-         w2[1] * (w1[0] * corners[0][1](i) + w1[1] * corners[1][1](i)));
+        (iw2.w0 * (iw1.w0 * corners[0][0](i) + iw1.w1 * corners[1][0](i)) +
+         iw2.w1 * (iw1.w0 * corners[0][1](i) + iw1.w1 * corners[1][1](i)));
   }
 }
 
