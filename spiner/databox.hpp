@@ -18,6 +18,7 @@
 // Generative AI was used to assist with modifications to this file.
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <cstring>
 #include <limits>
@@ -1014,7 +1015,7 @@ inline DataBox<T, Grid_t, Concept> &DataBox<T, Grid_t, Concept>::operator=(
     } else {
       finalize();
     }
-    
+
     rank_ = src.rank_;
     status_ = src.status_;
     data_ = src.data_;
@@ -1112,13 +1113,19 @@ inline DataBox<T, Grid_t, Concept>
 getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host) {
   return a_host.getOnDevice();
 }
-template <typename T, typename Grid_t, typename Concept>
-inline void free(DataBox<T, Grid_t, Concept> &db) {
-  db.finalize();
+
+template <typename T>
+concept Finalizable = requires(T &value) {
+  { value.finalize() } -> std::same_as<void>;
+};
+
+template <Finalizable T>
+inline void free(T &value) {
+  value.finalize();
 }
 
 struct DBDeleter {
-  template <typename T>
+  template <Finalizable T>
   void operator()(T *ptr) {
     ptr->finalize();
     delete ptr;
