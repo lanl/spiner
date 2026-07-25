@@ -1,7 +1,7 @@
 #ifndef SPINER_REGULAR_GRID_1D_
 #define SPINER_REGULAR_GRID_1D_
 //======================================================================
-// © (or copyright) 2019-2023. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -15,8 +15,12 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
 #include <assert.h>
 #include <cmath>
+#include <cstddef>
+#include <cstring>
 #include <limits>
 #include <type_traits>
 
@@ -114,6 +118,36 @@ class RegularGrid1D {
             std::isnan(idx_) || std::isnan((T)N_));
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
+
+  PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const {
+    return DataStatus::Trivial;
+  }
+
+  // Binary serialization is intended for transient communication between
+  // compatible Spiner builds, not as a persistent or portable file format.
+  std::size_t dynamicMemorySizeInBytes() const { return 0; }
+
+  std::size_t serializedSizeInBytes() const {
+    return sizeof(*this) + dynamicMemorySizeInBytes();
+  }
+
+  std::size_t dumpDynamicMemory(char *) const { return 0; }
+
+  std::size_t serialize(char *dst) const {
+    std::memcpy(dst, this, sizeof(*this));
+    return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
+  }
+
+  std::size_t setPointer(char *) { return 0; }
+
+  std::size_t deSerialize(char *src) {
+    std::memcpy(this, src, sizeof(*this));
+    return sizeof(*this);
+  }
+
+  RegularGrid1D<T> getOnDevice() const { return *this; }
+
+  void finalize() {}
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
