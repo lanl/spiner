@@ -383,6 +383,7 @@ class DataBox {
     return setPointer(reinterpret_cast<char *>(src));
   }
 
+  // This one takes a src pointer, which is assumed to contain a
   // databox and initializes the current databox. Note that the
   // databox becomes unmananged, as the contents of the box are still
   // the externally managed pointer.
