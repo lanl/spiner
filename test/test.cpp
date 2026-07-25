@@ -1,4 +1,4 @@
-// © (or copyright) 2019-2021. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -11,9 +11,13 @@
 // copies to the public, perform publicly and display publicly, and to
 // permit others to do so.
 
+// Generative AI was used to assist with modifications to this file.
+
 #include <algorithm> // std::min, std::max
 #include <array>
 #include <cmath> // sqrt
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,6 +45,7 @@ template <int N>
 using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<Real, N>;
 template <int N>
 using PiecewiseDB = Spiner::DataBox<Real, PiecewiseGrid1D<N>>;
+using Spiner::DataStatus;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -100,9 +105,39 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.nPoints() == N);
     REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
   }
+
+  SECTION("A regular grid can be serialized and deserialized") {
+    RegularGrid1D grid(-1.0, 2.0, 7);
+    std::vector<char> serialized(grid.serializedSizeInBytes());
+
+    const std::size_t written = grid.serialize(serialized.data());
+    REQUIRE(written == serialized.size());
+
+    RegularGrid1D restored;
+    const std::size_t consumed = restored.deSerialize(serialized.data());
+    REQUIRE(consumed == written);
+    REQUIRE(restored == grid);
+    REQUIRE(restored.setPointer(serialized.data()) == 0);
+    REQUIRE(restored.getOnDevice() == grid);
+    restored.finalize();
+    grid.finalize();
+  }
 }
 
 TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
+  SECTION("A default piecewise grid has a valid empty lifecycle") {
+    PiecewiseGrid1D<3> grid;
+    REQUIRE(grid.nGrids() == 0);
+    std::vector<char> serialized(grid.serializedSizeInBytes());
+    REQUIRE(grid.serialize(serialized.data()) == serialized.size());
+
+    PiecewiseGrid1D<3> restored;
+    REQUIRE(restored.deSerialize(serialized.data()) == serialized.size());
+    REQUIRE(restored.nGrids() == 0);
+    restored.finalize();
+    grid.finalize();
+  }
+
   GIVEN("Some regular grid 1Ds") {
     RegularGrid1D g1(0, 0.25, 3);
     RegularGrid1D g2(0.25, 0.75, 11);
@@ -145,6 +180,23 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
         REQUIRE(ix == 17);
         REQUIRE(std::abs(w[1] - 0.0024) < EPSTEST);
         REQUIRE(std::abs(w[0] - (1 - 0.0024)) < EPSTEST);
+      }
+      AND_THEN("We can serialize and deserialize the nested grids") {
+        const std::size_t expected = sizeof(h) + h.dynamicMemorySizeInBytes();
+        REQUIRE(h.serializedSizeInBytes() == expected);
+        std::vector<char> serialized(expected);
+        REQUIRE(h.serialize(serialized.data()) == expected);
+
+        PiecewiseGrid1D<3> restored;
+        REQUIRE(restored.deSerialize(serialized.data()) == expected);
+        REQUIRE(restored == h);
+        REQUIRE(restored.nPoints() == h.nPoints());
+        REQUIRE(restored.index(0.8) == h.index(0.8));
+
+        auto device = h.getOnDevice();
+        REQUIRE(device == h);
+        device.finalize();
+        restored.finalize();
       }
     }
   }
@@ -616,8 +668,7 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
           Real error = 0;
           portableReduce(
               "Interpolate 2D databox", 0, NFINE, 0, NFINE,
-              PORTABLE_LAMBDA(const int iy, const int ix,
-                              Real &accumulate) {
+              PORTABLE_LAMBDA(const int iy, const int ix, Real &accumulate) {
                 RegularGrid1D gfine(xmin, xmax, NFINE);
                 Real x = gfine.x(ix);
                 Real y = gfine.x(iy);
@@ -672,7 +723,8 @@ SCENARIO("Serializing and deserializing a DataBox",
       }
       WHEN("We serialize the DataBox") {
         std::size_t serial_size = dbh.serializedSizeInBytes();
-        REQUIRE(serial_size == (sizeof(dbh) + dbh.sizeBytes()));
+        REQUIRE(serial_size == (sizeof(dbh) + dbh.sizeBytes() +
+                                RANK * g.dynamicMemorySizeInBytes()));
 
         char *db_serial = (char *)malloc(serial_size * sizeof(char));
         std::size_t write_offst = dbh.serialize(db_serial);
@@ -716,6 +768,13 @@ SCENARIO("Serializing and deserializing a DataBox",
               REQUIRE(dbh(i) == dbh2(i));
             }
           }
+
+          AND_THEN("The grid metadata is correct") {
+            for (int i = 0; i < RANK; ++i) {
+              REQUIRE(dbh2.indexType(i) == IndexType::Interpolated);
+              REQUIRE(dbh2.range(i) == dbh.range(i));
+            }
+          }
         }
 
         // cleanup
@@ -726,6 +785,217 @@ SCENARIO("Serializing and deserializing a DataBox",
       free(dbh);
     }
   }
+}
+
+/* A mocked up UniformGrid1D that owns an array of data.
+ * TODO(JMM): Remove/replace this once we have a NonuniformGrid1D.
+ * This is temporary!
+ */
+class OwningTestGrid1D {
+ public:
+  OwningTestGrid1D() = default;
+  OwningTestGrid1D(Real min, Real max, std::size_t n)
+      : n_(n), status_(DataStatus::AllocatedHost) {
+    points_ = static_cast<Real *>(std::malloc(n_ * sizeof(Real)));
+    ++ownedAllocations;
+    const Real dx = (max - min) / static_cast<Real>(n_ - 1);
+    for (std::size_t i = 0; i < n_; ++i) {
+      points_[i] = min + static_cast<Real>(i) * dx;
+    }
+  }
+  PORTABLE_INLINE_FUNCTION OwningTestGrid1D(const OwningTestGrid1D &src)
+      : n_(src.n_), points_(src.points_),
+        status_(src.points_ == nullptr ? DataStatus::Empty
+                                       : DataStatus::Unmanaged) {}
+  PORTABLE_INLINE_FUNCTION OwningTestGrid1D &
+  operator=(const OwningTestGrid1D &src) {
+    if (this != &src) {
+      n_ = src.n_;
+      points_ = src.points_;
+      status_ =
+          src.points_ == nullptr ? DataStatus::Empty : DataStatus::Unmanaged;
+    }
+    return *this;
+  }
+  OwningTestGrid1D(OwningTestGrid1D &&src) noexcept { moveFrom_(src); }
+  OwningTestGrid1D &operator=(OwningTestGrid1D &&src) noexcept {
+    if (this != &src) {
+      finalize();
+      moveFrom_(src);
+    }
+    return *this;
+  }
+  PORTABLE_INLINE_FUNCTION void weights(const Real x, int &ix,
+                                        Spiner::weights_t<Real> &w) const {
+    const Real inverseDx =
+        static_cast<Real>(n_ - 1) / (points_[n_ - 1] - points_[0]);
+    ix = static_cast<int>(inverseDx * (x - points_[0]));
+    if (ix < 0) ix = 0;
+    if (ix >= static_cast<int>(n_) - 1) ix = static_cast<int>(n_) - 2;
+    w[1] = inverseDx * (x - points_[ix]);
+    w[0] = 1.0 - w[1];
+  }
+  PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
+    return points_ != nullptr && n_ > 1;
+  }
+  PORTABLE_INLINE_FUNCTION bool
+  operator==(const OwningTestGrid1D &other) const {
+    if (n_ != other.n_) {
+      return false;
+    }
+    for (std::size_t i = 0; i < n_; ++i) {
+      if (points_[i] != other.points_[i]) return false;
+    }
+    return true;
+  }
+  PORTABLE_INLINE_FUNCTION bool
+  operator!=(const OwningTestGrid1D &other) const {
+    return !(*this == other);
+  }
+  std::size_t dynamicMemorySizeInBytes() const { return n_ * sizeof(Real); }
+  std::size_t serializedSizeInBytes() const {
+    return sizeof(*this) + dynamicMemorySizeInBytes();
+  }
+  std::size_t dumpDynamicMemory(char *dst) const {
+    std::memcpy(dst, points_, dynamicMemorySizeInBytes());
+    return dynamicMemorySizeInBytes();
+  }
+  std::size_t serialize(char *dst) const {
+    std::memcpy(dst, this, sizeof(*this));
+    return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
+  }
+  std::size_t setPointer(char *src) {
+    points_ = reinterpret_cast<Real *>(src);
+    status_ = n_ == 0 ? DataStatus::Empty : DataStatus::Unmanaged;
+    return n_ * sizeof(Real);
+  }
+  std::size_t deSerialize(char *src) {
+    finalize();
+    std::memcpy(this, src, sizeof(*this));
+    return sizeof(*this) + setPointer(src + sizeof(*this));
+  }
+  OwningTestGrid1D getOnDevice() const {
+    OwningTestGrid1D grid;
+    grid.n_ = n_;
+    if (n_ > 0) {
+      grid.points_ = static_cast<Real *>(PORTABLE_MALLOC(n_ * sizeof(Real)));
+      portableCopyToDevice(grid.points_, points_, n_ * sizeof(Real));
+      grid.status_ = DataStatus::AllocatedDevice;
+      ++ownedAllocations;
+    }
+    return grid;
+  }
+  void finalize() {
+    if (status_ == DataStatus::AllocatedHost) {
+      std::free(points_);
+      --ownedAllocations;
+    } else if (status_ == DataStatus::AllocatedDevice) {
+      PORTABLE_FREE(points_);
+      --ownedAllocations;
+    }
+    points_ = nullptr;
+    n_ = 0;
+    status_ = DataStatus::Empty;
+  }
+  PORTABLE_INLINE_FUNCTION Real *data() const { return points_; }
+  PORTABLE_INLINE_FUNCTION std::size_t nPoints() const { return n_; }
+
+  // Track owned allocations to keep track of malloc/free calls. HOST
+  // only!
+  inline static int ownedAllocations = 0;
+
+ private:
+  void moveFrom_(OwningTestGrid1D &src) {
+    n_ = src.n_;
+    points_ = src.points_;
+    status_ = src.status_;
+    if (src.status_ != DataStatus::Unmanaged) {
+      src.points_ = nullptr;
+      src.n_ = 0;
+      src.status_ = DataStatus::Empty;
+    }
+  }
+  std::size_t n_ = 0;
+  Real *points_ = nullptr;
+  DataStatus status_ = DataStatus::Empty;
+};
+
+TEST_CASE("DataBox delegates resource management to every grid",
+          "[DataBox][Serialize][GetOnDevice][OwningGrid]") {
+  using OwningDB = Spiner::DataBox<Real, OwningTestGrid1D>;
+  constexpr int N = 4;
+  constexpr int RANK = 3;
+
+  REQUIRE(OwningTestGrid1D::ownedAllocations == 0);
+  OwningDB db(N, N, N);
+  for (int i = 0; i < RANK; ++i) {
+    db.setRange(i, 0.0, 1.0, N);
+  }
+  REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+
+  for (int k = 0; k < N; ++k) {
+    for (int j = 0; j < N; ++j) {
+      for (int i = 0; i < N; ++i) {
+        db(k, j, i) = static_cast<Real>(i + j + k) / static_cast<Real>(N - 1);
+      }
+    }
+  }
+
+  SECTION("Device copies deeply copy grid-owned data") {
+    OwningDB device;
+    device = db.getOnDevice();
+    REQUIRE(OwningTestGrid1D::ownedAllocations == 2 * RANK);
+    for (int i = 0; i < RANK; ++i) {
+      REQUIRE(device.range(i).data() != db.range(i).data());
+    }
+
+    Real value = 0;
+    portableReduce(
+        "Interpolate with an owning grid", 0, 1,
+        PORTABLE_LAMBDA(const int, Real &result) {
+          result += device.interpToReal(0.5, 0.5, 0.5);
+        },
+        value);
+    REQUIRE(std::abs(value - 1.5) <= EPSTEST);
+
+    free(device);
+    REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+  }
+
+  SECTION("Every grid is serialized regardless of index type") {
+    db.setIndexType(1, IndexType::Indexed);
+    db.setIndexType(2, IndexType::Named);
+
+    std::size_t expected = sizeof(db) + db.sizeBytes();
+    for (int i = 0; i < RANK; ++i) {
+      expected += db.range(i).dynamicMemorySizeInBytes();
+    }
+    REQUIRE(db.serializedSizeInBytes() == expected);
+
+    std::vector<char> serialized(expected);
+    REQUIRE(db.serialize(serialized.data()) == expected);
+
+    OwningDB restored;
+    REQUIRE(restored.deSerialize(serialized.data()) == expected);
+    REQUIRE(restored.indexType(0) == IndexType::Interpolated);
+    REQUIRE(restored.indexType(1) == IndexType::Indexed);
+    REQUIRE(restored.indexType(2) == IndexType::Named);
+
+    const char *begin = serialized.data();
+    const char *end = begin + serialized.size();
+    for (int i = 0; i < RANK; ++i) {
+      const char *gridData =
+          reinterpret_cast<const char *>(restored.range(i).data());
+      REQUIRE(gridData >= begin);
+      REQUIRE(gridData < end);
+      REQUIRE(restored.range(i) == db.range(i));
+      restored.range(i).finalize();
+    }
+    REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+  }
+
+  db.finalize();
+  REQUIRE(OwningTestGrid1D::ownedAllocations == 0);
 }
 
 DataBox MakeFilledDB(int N, int &tot) {
