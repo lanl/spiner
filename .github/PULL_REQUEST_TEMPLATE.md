@@ -16,6 +16,7 @@ detail.  Why is this change required?  What problem does it solve?-->
 - [ ] Code is formatted. (You can use the format_spiner make target.)
 - [ ] Adds a test for any bugs fixed. Adds tests for new features.
 - [ ] Document any new features, update documentation for changes made.
+- [ ] Update the CHANGELOG.md file.
 - [ ] Make sure the copyright notice on any files you modified is up to date.
 - [ ] LANL employees: make sure tests pass both on the github CI and on the Darwin CI
 - [ ] If ML was used, make sure to add a disclaimer at the top of a file indicating ML was used to assist in generating the file.

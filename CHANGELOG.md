@@ -3,6 +3,7 @@
 ## Current develop
 
 ### Added (new features/APIs/variables/...)
+- [[MR 144]](https://github.com/lanl/spiner/pull/144) Add the ability for grid objects to own memory. This extends the public API but the real changes will come later.
 
 ### Fixed (Repair bugs, etc)
 - [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
