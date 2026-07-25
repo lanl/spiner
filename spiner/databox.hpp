@@ -269,7 +269,7 @@ class DataBox {
   }
   PORTABLE_INLINE_FUNCTION Grid_t &range(const int i) { return grids_[i]; }
 
-  // Copy assignment is shallow; move assignment transfers ownership.
+  // Copy assignment is shallow
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
   operator=(const DataBox<T, Grid_t, Concept> &other);
   inline void copy(const DataBox<T, Grid_t, Concept> &src);
