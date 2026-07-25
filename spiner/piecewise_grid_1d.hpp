@@ -139,7 +139,7 @@ class PiecewiseGrid1D {
   }
 
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const {
-    int status = DataStatus::Trivial;
+    int status = static_cast<int>(DataStatus::Trivial);
     for (int i = 0; i < NGRIDS_; ++i) {
       int gs = static_cast<int>(grids_[i].dataStatus());
       PORTABLE_REQUIRE(
