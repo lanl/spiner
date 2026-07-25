@@ -15,5 +15,14 @@ detail.  Why is this change required?  What problem does it solve?-->
 
 - [ ] Code is formatted. (You can use the format_spiner make target.)
 - [ ] Adds a test for any bugs fixed. Adds tests for new features.
-- [ ] If preparing for a new release, update the version in cmake.
+- [ ] Document any new features, update documentation for changes made.
+- [ ] Make sure the copyright notice on any files you modified is up to date.
+- [ ] LANL employees: make sure tests pass both on the github CI and on the Darwin CI
+- [ ] If ML was used, make sure to add a disclaimer at the top of a file indicating ML was used to assist in generating the file.
+- [ ] If Agentic AI was used, have the AI generate a "proposed changes" markdown file and store it in the `plan_histories` folder, with a filename the same as the MR number.
 
+If preparing for a new release, in addition please check the following:
+- [ ] Update the version in cmake.
+- [ ] Maintainers: ensure spackages are up to date:
+  - [ ] LANL-internal team, update XCAP spackages
+  - [ ] Current maintainer of upstream spackages, submit MR to spack
