@@ -788,8 +788,7 @@ SCENARIO("Serializing and deserializing a DataBox",
 }
 
 /* A mocked up UniformGrid1D that owns an array of data.
- * TODO(JMM): Remove/replace this once we have a NonuniformGrid1D.
- * This is temporary!
+ * TODO(JMM): Remove/replace/update this once we have a NonuniformGrid1D.
  */
 class OwningTestGrid1D {
  public:
@@ -804,8 +803,7 @@ class OwningTestGrid1D {
     }
   }
   PORTABLE_INLINE_FUNCTION OwningTestGrid1D(const OwningTestGrid1D &src)
-      : n_(src.n_), points_(src.points_),
-        status_(src.status_) {}
+      : n_(src.n_), points_(src.points_), status_(src.status_) {}
   PORTABLE_INLINE_FUNCTION OwningTestGrid1D &
   operator=(const OwningTestGrid1D &src) {
     n_ = src.n_;
