@@ -88,7 +88,7 @@ class DataBox {
   inline DataBox(Args... args) noexcept
       : DataBox(AllocationTarget::Host, std::forward<Args>(args)...) {}
 
-  // Copies are shallow. Moves transfer ownership.
+  // Copies are shallow.
   inline DataBox(PortableMDArray<T> A) noexcept
       : rank_(A.GetRank()), status_(DataStatus::Unmanaged), data_(A.data()),
         dataView_(A) {
@@ -235,10 +235,10 @@ class DataBox {
   }
   inline void setRange(int i, Grid_t g) {
     PORTABLE_REQUIRE(0 <= i && i < rank_, "Grid must be in index range");
-    grids_[i].finalize(); // TODO(JMM): Do we want this? Probably.
+    grids_[i].finalize(); // TODO(JMM): Do we want this?
     setIndexType(i, IndexType::Interpolated);
-    // TODO(JMM): Should this be a move? (Yes probably)
-    grids_[i] = std::move(g);
+    // TODO(JMM): Should this be a move?
+    grids_[i] = g;
   }
   template <typename... Args>
   inline void setRange(int i, Args &&...args) {
