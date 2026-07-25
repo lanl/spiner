@@ -797,7 +797,7 @@ class OwningTestGrid1D {
   OwningTestGrid1D(Real min, Real max, std::size_t n)
       : n_(n), status_(DataStatus::AllocatedHost) {
     points_ = static_cast<Real *>(std::malloc(n_ * sizeof(Real)));
-    ++ownedAllocations;
+    ++owned_allocations;
     const Real dx = (max - min) / static_cast<Real>(n_ - 1);
     for (std::size_t i = 0; i < n_; ++i) {
       points_[i] = min + static_cast<Real>(i) * dx;
@@ -813,14 +813,6 @@ class OwningTestGrid1D {
     status_ = src.status_;
     return *this;
   }
-  //OwningTestGrid1D(OwningTestGrid1D &&src) noexcept { moveFrom_(src); }
-  //OwningTestGrid1D &operator=(OwningTestGrid1D &&src) noexcept {
-  //  if (this != &src) {
-  //    finalize();
-  //    moveFrom_(src);
-  //  }
-  //  return *this;
-  //}
   PORTABLE_INLINE_FUNCTION void weights(const Real x, int &ix,
                                         Spiner::weights_t<Real> &w) const {
     const Real inverseDx =
@@ -877,17 +869,17 @@ class OwningTestGrid1D {
       grid.points_ = static_cast<Real *>(PORTABLE_MALLOC(n_ * sizeof(Real)));
       portableCopyToDevice(grid.points_, points_, n_ * sizeof(Real));
       grid.status_ = DataStatus::AllocatedDevice;
-      ++ownedAllocations;
+      ++owned_allocations;
     }
     return grid;
   }
   void finalize() {
     if (status_ == DataStatus::AllocatedHost) {
       std::free(points_);
-      --ownedAllocations;
+      --owned_allocations;
     } else if (status_ == DataStatus::AllocatedDevice) {
       PORTABLE_FREE(points_);
-      --ownedAllocations;
+      --owned_allocations;
     }
     points_ = nullptr;
     n_ = 0;
@@ -898,19 +890,9 @@ class OwningTestGrid1D {
 
   // Track owned allocations to keep track of malloc/free calls. HOST
   // only!
-  inline static int ownedAllocations = 0;
+  inline static int owned_allocations = 0;
 
  private:
-  void moveFrom_(OwningTestGrid1D &src) {
-    n_ = src.n_;
-    points_ = src.points_;
-    status_ = src.status_;
-    if (src.status_ != DataStatus::Unmanaged) {
-      src.points_ = nullptr;
-      src.n_ = 0;
-      src.status_ = DataStatus::Empty;
-    }
-  }
   std::size_t n_ = 0;
   Real *points_ = nullptr;
   DataStatus status_ = DataStatus::Empty;
@@ -922,12 +904,12 @@ TEST_CASE("DataBox delegates resource management to every grid",
   constexpr int N = 4;
   constexpr int RANK = 3;
 
-  REQUIRE(OwningTestGrid1D::ownedAllocations == 0);
+  REQUIRE(OwningTestGrid1D::owned_allocations == 0);
   OwningDB db(N, N, N);
   for (int i = 0; i < RANK; ++i) {
     db.setRange(i, 0.0, 1.0, N);
   }
-  REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+  REQUIRE(OwningTestGrid1D::owned_allocations == RANK);
 
   for (int k = 0; k < N; ++k) {
     for (int j = 0; j < N; ++j) {
@@ -940,7 +922,7 @@ TEST_CASE("DataBox delegates resource management to every grid",
   SECTION("Device copies deeply copy grid-owned data") {
     OwningDB device;
     device = db.getOnDevice();
-    REQUIRE(OwningTestGrid1D::ownedAllocations == 2 * RANK);
+    REQUIRE(OwningTestGrid1D::owned_allocations == 2 * RANK);
     for (int i = 0; i < RANK; ++i) {
       REQUIRE(device.range(i).data() != db.range(i).data());
     }
@@ -955,7 +937,7 @@ TEST_CASE("DataBox delegates resource management to every grid",
     REQUIRE(std::abs(value - 1.5) <= EPSTEST);
 
     free(device);
-    REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+    REQUIRE(OwningTestGrid1D::owned_allocations == RANK);
   }
 
   SECTION("Every grid is serialized regardless of index type") {
@@ -987,11 +969,11 @@ TEST_CASE("DataBox delegates resource management to every grid",
       REQUIRE(restored.range(i) == db.range(i));
       restored.range(i).finalize();
     }
-    REQUIRE(OwningTestGrid1D::ownedAllocations == RANK);
+    REQUIRE(OwningTestGrid1D::owned_allocations == RANK);
   }
 
   db.finalize();
-  REQUIRE(OwningTestGrid1D::ownedAllocations == 0);
+  REQUIRE(OwningTestGrid1D::owned_allocations == 0);
 }
 
 DataBox MakeFilledDB(int N, int &tot) {
