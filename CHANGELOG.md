@@ -5,10 +5,12 @@
 ### Added (new features/APIs/variables/...)
 
 ### Fixed (Repair bugs, etc)
+- [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
 
 ### Changed (changing behavior/API/variables/...)
 
 ### Infrastructure (changes irrelevant to downstream codes)
+- [[MR 141]](https://github.com/lanl/spiner/pull/142) update contribution rules
 
 ### Deprecated (soon to be removed behavior/API/variables/...)
 
