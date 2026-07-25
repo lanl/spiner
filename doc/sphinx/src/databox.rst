@@ -222,6 +222,12 @@ which returns ``true`` if a given databox is managing memory and
 returns ``false`` if the databox is managing memory and ``true``
 otherwise.
 
+.. warning::
+
+  A move operator and move constructor are each provided. However,
+  this is not the intended mechanism for interacting with
+  databoxes. Use with caution.
+
 Using ``DataBox`` with smart pointers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -274,6 +280,16 @@ function
 reports how much memory a ``DataBox`` object requires to be externally
 allocated. The function
 
+.. cpp:function:: std::size_t DataBox::dynamicMemorySizeInBytes() const;
+
+reports the size of the value buffer and grid-owned dynamic memory,
+excluding the inline ``DataBox`` object representation. The function
+
+.. cpp:function:: std::size_t DataBox::dumpDynamicMemory(char *dst) const;
+
+writes only that dynamic memory. It is used internally by ``serialize``
+after the inline object bytes have been copied.
+
 .. cpp:function:: std::size_t serialize(char *dst) const;
 
 takes a ``char*`` pointer, assumed to contain enough space for a
@@ -289,10 +305,10 @@ with the overload
 .. cpp:function:: std::size_t DataBox::setPointer(char *src);
 
 sets the underlying tabulated data from the src pointer, which is
-assumed to be the right size and shape. This is useful for the
-deSerialize function (described below) and for building your own
-serialization/de-serialization routines in composite objects. The
-function
+assumed to be the right size and shape, and relocates the trailing
+grid-owned dynamic memory. This is useful for the deSerialize
+function (described below) and for building your own
+serialization/de-serialization routines in composite objects. The function
 
 .. cpp:function:: std::size_t DataBox::deSerialize(char *src);
 
@@ -307,6 +323,16 @@ contained in the ``src`` pointer.
   everything you want to do with the de-serialized ``DataBox`` is
   over.
 
+The serialized memory is laid out as the inline ``DataBox`` metadata,
+followed by the tabulated values and grid-owned dynamic memory. The
+inline grid objects are already part of the ``DataBox`` metadata, so
+their static bytes are not emitted a second time. Dynamic memory is
+dumped for every dimension, including indexed and named dimensions, so
+resource management does not depend on mutable interpolation metadata.
+
+The source buffer must remain alive and suitably aligned for the
+entire lifetime of every ``DataBox`` de-serialized from it.
+
 Putting this all together, an application of
 serialization/de-serialization probably looks like this:
 
@@ -317,7 +343,7 @@ serialization/de-serialization probably looks like this:
   db.loadHDF(filename);
   
   // get size of databox
-  std::size_t allocate_size = db.serialSizeInBytes();
+  std::size_t allocate_size = db.serializedSizeInBytes();
   
   // Allocate the memory for the new databox.
   // In practice this would be an API call for, e.g., shared memory
@@ -335,13 +361,17 @@ serialization/de-serialization probably looks like this:
 
 .. warning::
 
-  The serialization routines described here are **not** architecture
-  aware. Serializing and de-serializing on a single architecture
-  inside a single executable will work fine. However, do not use
-  serialization as a file I/O strategy, as there is no guarantee that
-  the serialized format for a ``DataBox`` on one architecture will be
-  the same as on another. This is due to, for example,
-  architecture-specific differences in endianness and padding.
+  ``DataBox`` serialization is intended for transient communication
+  between processes using the same Spiner version and a compatible
+  architecture. The binary representation is not guaranteed to be
+  compatible across Spiner versions, architectures, compilers, or
+  build configurations. This is due to, for example, differences in
+  endianness, alignment, and padding.
+
+  Do not use serialization as a persistent-storage or web-interchange
+  format. Use HDF5 for persistent, portable storage. Size calculation,
+  serialization, and de-serialization must all use a compatible Spiner
+  build.
 
 .. _`MPI Windows`: https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node311.htm
 
@@ -589,3 +619,5 @@ returns the total size of the underlying array in bytes.
 .. cpp:function:: int dim(int i) const;
 
 returns the size in a given dimension/direction, indexed from zero.
+
+Generative AI was used to assist with modifications to this page.

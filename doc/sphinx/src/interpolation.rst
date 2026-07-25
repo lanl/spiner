@@ -174,5 +174,31 @@ returns the number of points in the independent variable grid.
 Developer functionality
 ------------------------
 
-For developers, additional functionality is available. Please consult
-the code.
+All grid types implement the resource-management interface used by
+``DataBox``:
+
+.. cpp:function:: std::size_t Grid::serializedSizeInBytes() const;
+.. cpp:function:: std::size_t Grid::dynamicMemorySizeInBytes() const;
+.. cpp:function:: std::size_t Grid::dumpDynamicMemory(char *dst) const;
+.. cpp:function:: std::size_t Grid::serialize(char *dst) const;
+.. cpp:function:: std::size_t Grid::deSerialize(char *src);
+.. cpp:function:: std::size_t Grid::setPointer(char *src);
+.. cpp:function:: Grid Grid::getOnDevice() const;
+.. cpp:function:: void Grid::finalize();
+
+These operations are currently trivial for ``RegularGrid1D`` because
+it contains only inline data. ``PiecewiseGrid1D`` applies them
+recursively to its component grids. This interface allows future grid
+types to own dynamically allocated host or device data without
+requiring grid-specific resource handling in ``DataBox``.
+
+``serialize`` writes the inline grid object followed by its dynamic
+memory. ``dumpDynamicMemory`` writes only the latter, allowing a grid
+embedded in a ``DataBox`` to avoid serializing its inline bytes twice.
+
+The binary serialization methods have the same transient,
+build-dependent compatibility limitations as ``DataBox``
+serialization. See :ref:`the DataBox serialization documentation
+<serialization-and-de-serialization>` for details.
+
+Generative AI was used to assist with modifications to this page.
