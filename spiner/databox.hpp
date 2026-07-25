@@ -262,8 +262,10 @@ class DataBox {
 #endif
 
   // Reference accessors
-  inline IndexType &indexType(const int i) { return indices_[i]; }
-  inline Grid_t &range(const int i) { return grids_[i]; }
+  PORTABLE_INLINE_FUNCTION IndexType &indexType(const int i) {
+    return indices_[i];
+  }
+  PORTABLE_INLINE_FUNCTION Grid_t &range(const int i) { return grids_[i]; }
 
   // Assignment and move, both perform shallow copy
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
@@ -271,9 +273,9 @@ class DataBox {
   inline void copy(const DataBox<T, Grid_t, Concept> &src);
 
   // utility info
-  inline DataStatus dataStatus() const { return status_; }
-  inline bool isReference() { return status_ == DataStatus::Unmanaged; }
-  inline bool ownsAllocatedMemory() {
+  PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
+  PORTABLE_INLINE_FUNCTION bool isReference() { return status_ == DataStatus::Unmanaged; }
+  PORTABLE_INLINE_FUNCTION bool ownsAllocatedMemory() {
     return (status_ != DataStatus::Unmanaged);
   }
   inline bool operator==(const DataBox<T, Grid_t, Concept> &other) const;
