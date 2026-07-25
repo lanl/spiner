@@ -65,26 +65,6 @@ Spiner is available through `Spack`_. If you have spack installed, simply call:
 
   spack install spiner
 
-We also provide a spackage for ``Spiner`` within the
-the source repository. If you would like to use the source spackage:
-
-.. _Spack: https://spack.io/
-
-.. code-block:: bash
-
-  spack repo add spiner/spack-repo
-  spack install spiner
-
-The spack repo supports a few variants:
-
-* ``+kokkos`` enables the Kokkos backend
-* ``+cuda`` enables the cuda backend. A ``cuda_arch`` must be specified.
-* ``+hdf5`` enables HDF5 file support.
-* ``+mpi`` enables parallel hdf5 support
-* ``+python`` installs python, numpy, and matplotlib support
-* ``+doc`` adds tooling for building the docs
-* ``+format`` adds support for clang-format
-
 Including Spiner in your Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

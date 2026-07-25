@@ -3,28 +3,33 @@ stages:
 
 variables:
   PROJECT_NAME: spiner
-  ENABLE_CDASH: false
+  PROJECT_GROUP: oss
+  ENABLE_CDASH: true
 
 include:
  - .gitlab/common.yml
 
 
-########
-# Jobs #
-########
+# Spack environments are defined in
+# https://re-git.lanl.gov/xcap/deployment/-/tree/develop/environments
+# for each system and for each XCAP project.
+#
+# Each environment is uniquely identified by
+# ${SYSTEM_NAME}/${PROJECT_GROUP}/${PROJECT_NAME}/${SPACK_ENV_NAME}
+#
+
 
 prereq_offline_deps:
   stage: build_n_test
-  extends: [.ascgit_job]
+  extends: [.ascgit_job, .darwin_job]
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs: []
   script:
-    - mkdir extern
-    - git clone --bare https://gitlab-ci-token:${CI_JOB_TOKEN}@re-git.lanl.gov/xcap/oss/ports-of-call.git extern/ports-of-call.git
+   - source .gitlab/download_prereqs.sh
   artifacts:
     expire_in: 2 days
     paths:
@@ -32,31 +37,63 @@ prereq_offline_deps:
 
 openmpi_gcc:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
   variables:
     SPACK_ENV_NAME: openmpi-gcc
+    SUBMIT_TO_CDASH: "${ENABLE_CDASH}"
 
 openmpi_cuda_gcc_volta:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
   variables:
     SPACK_ENV_NAME: openmpi-cuda-gcc-volta
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p volta-x86 -C cpu_family:haswell --time=02:00:00"
+    SUBMIT_TO_CDASH: "${ENABLE_CDASH}"
 
 openmpi_cuda_gcc_ampere:
   extends: [.ascgit_job, .darwin_job, .darwin_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
   variables:
     SPACK_ENV_NAME: openmpi-cuda-gcc-ampere
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p shared-gpu-ampere"
+    SUBMIT_TO_CDASH: "${ENABLE_CDASH}"
 
-rzvernal_craympich_rocm_mi250_gcc:
-  extends: [.ascgit_job, .rzadams_job, .rzvernal_regular_job, .build_and_test]
-  needs:
-   - prereq_offline_deps
+venado_craympich_cuda_gracehopper_gcc:
+  extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
   variables:
-    SPACK_ENV_NAME: craympich-rocm-gfx90a-gcc
+    SPACK_ENV_NAME: craympich-cuda-gracehopper-gcc
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # Venado nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system
 
-rzadams_craympich_rocm_mi300_gcc:
+venado_craympich_cuda_gracehopper_nvhpc:
+  extends: [.ascgit_job, .venado_job, .venado_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
+  variables:
+    SPACK_ENV_NAME: craympich-cuda-gracehopper-nvhpc
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # Venado nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system
+
+rzvernal_craympich_rocm_mi250_cce:
+  extends: [.ascgit_job, .rzvernal_job, .rzvernal_regular_job, .build_and_test]
+  needs: [prereq_offline_deps]
+  variables:
+    SPACK_ENV_NAME: craympich-rocm-gfx90a-cce
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # RZvernal nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system
+
+rzadams_craympich_rocm_mi300_cce:
   extends: [.ascgit_job, .rzadams_job, .rzadams_regular_job, .build_and_test]
-  needs:
-   - prereq_offline_deps
+  needs: [prereq_offline_deps]
   variables:
-    SPACK_ENV_NAME: craympich-rocm-gfx942-gcc
+    SPACK_ENV_NAME: craympich-rocm-gfx942-cce
+    SUBMIT_TO_CDASH: false
+    BUILD_WITH_CTEST: "${ENABLE_CDASH}"
+    SUBMIT_ON_ERROR: false          # RZadams nodes don't have network access, don't try to send from compute node
+    SUBMIT_AFTER: "${ENABLE_CDASH}" # after_script runs on a network connected system

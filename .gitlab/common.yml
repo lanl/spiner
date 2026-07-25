@@ -1,6 +1,7 @@
 default:
   interruptible: true
   before_script:
+   - source .gitlab/mr.sh
    - unset CI_MERGE_REQUEST_DESCRIPTION
    - unset CI_MERGE_REQUEST_TITLE
 
@@ -10,7 +11,6 @@ default:
       aud: https://asc-git.lanl.gov
 
 .darwin_job:
-  allow_failure: true
   variables:
     CLUSTER: darwin
     SCHEDULER_PARAMETERS: "-N 1 --qos=debug -p general,skylake-gold,skylake-platinum --constraint=\"(cpu_family:skylake)&ib:edr\""
@@ -25,7 +25,7 @@ default:
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "pipeline"
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .darwin_regular_mr_only_job:
   variables:
@@ -40,7 +40,6 @@ default:
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "pipeline"
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_PIPELINE_SOURCE == "push"
 
 .darwin_regular_default_branch_only_job:
   variables:
@@ -59,7 +58,6 @@ default:
     - if: $ENABLED_CLUSTERS =~ /darwin/ && $CI_MERGE_REQUEST_LABELS =~ /nightly/
 
 .rocinante_job:
-  allow_failure: true
   variables:
     CLUSTER: rocinante
     SCHEDULER_PARAMETERS: "-N 1 -A asc-ci -p ci --reservation ci --time=02:00:00"
@@ -74,13 +72,12 @@ default:
     - if: $ENABLED_CLUSTERS =~ /rocinante/ && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /rocinante/ && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /rocinante/ && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /rocinante/ && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /rocinante/ && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .venado_job:
-  allow_failure: true
   variables:
     CLUSTER: venado
-    SCHEDULER_PARAMETERS: "-N 1 -p standard --time=02:00:00"
+    SCHEDULER_PARAMETERS: "-N 1 -A asc-ci_g -p ci_g --qos ci_g --reservation ci_g --time=02:00:00"
   tags:
     - venado
     - batch
@@ -100,16 +97,16 @@ default:
     - if: $ENABLED_CLUSTERS =~ /venado/ && $GITLAB_USER_LOGIN =~ $VENADO_USERS && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /venado/ && $GITLAB_USER_LOGIN =~ $VENADO_USERS && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /venado/ && $GITLAB_USER_LOGIN =~ $VENADO_USERS && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /venado/ && $GITLAB_USER_LOGIN =~ $VENADO_USERS && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /venado/ && $GITLAB_USER_LOGIN =~ $VENADO_USERS && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .rzansel_job:
-  allow_failure: true
   tags:
    - rzansel
    - batch
   variables:
     CLUSTER: rzansel
     LLNL_LSF_SCHEDULER_PARAMETERS: "--nnodes=1"
+    CUSTOM_CI_BUILDS_DIR: "/usr/workspace/$$USER/xcap-gitlab-ci"
 
 .rzansel_regular_job:
   variables:
@@ -118,10 +115,9 @@ default:
     - if: $ENABLED_CLUSTERS =~ /rzansel/ && $GITLAB_USER_LOGIN =~ $RZANSEL_USERS && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /rzansel/ && $GITLAB_USER_LOGIN =~ $RZANSEL_USERS && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /rzansel/ && $GITLAB_USER_LOGIN =~ $RZANSEL_USERS && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /rzansel/ && $GITLAB_USER_LOGIN =~ $RZANSEL_USERS && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /rzansel/ && $GITLAB_USER_LOGIN =~ $RZANSEL_USERS && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .rzvernal_job:
-  allow_failure: true
   tags:
    - rzvernal
    - batch
@@ -129,6 +125,7 @@ default:
   variables:
     CLUSTER: rzvernal
     LLNL_FLUX_SCHEDULER_PARAMETERS: "-N=1 --time-limit=2h"
+    CUSTOM_CI_BUILDS_DIR: "/usr/workspace/$$USER/xcap-gitlab-ci"
 
 .rzvernal_regular_job:
   variables:
@@ -137,10 +134,9 @@ default:
     - if: $ENABLED_CLUSTERS =~ /rzvernal/ && $GITLAB_USER_LOGIN =~ $RZVERNAL_USERS && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /rzvernal/ && $GITLAB_USER_LOGIN =~ $RZVERNAL_USERS && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /rzvernal/ && $GITLAB_USER_LOGIN =~ $RZVERNAL_USERS && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /rzvernal/ && $GITLAB_USER_LOGIN =~ $RZVERNAL_USERS && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /rzvernal/ && $GITLAB_USER_LOGIN =~ $RZVERNAL_USERS && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .rzadams_job:
-  allow_failure: true
   tags:
    - rzadams
    - batch
@@ -148,6 +144,7 @@ default:
   variables:
     CLUSTER: rzadams
     LLNL_FLUX_SCHEDULER_PARAMETERS: "-N=1 --time-limit=2h"
+    CUSTOM_CI_BUILDS_DIR: "/usr/workspace/$$USER/xcap-gitlab-ci"
 
 .rzadams_regular_job:
   variables:
@@ -156,84 +153,43 @@ default:
     - if: $ENABLED_CLUSTERS =~ /rzadams/ && $GITLAB_USER_LOGIN =~ $RZADAMS_USERS && $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $ENABLED_CLUSTERS =~ /rzadams/ && $GITLAB_USER_LOGIN =~ $RZADAMS_USERS && $CI_PIPELINE_SOURCE == "schedule"
     - if: $ENABLED_CLUSTERS =~ /rzadams/ && $GITLAB_USER_LOGIN =~ $RZADAMS_USERS && $CI_PIPELINE_SOURCE == "web"
-    - if: $ENABLED_CLUSTERS =~ /rzadams/ && $GITLAB_USER_LOGIN =~ $RZADAMS_USERS && $CI_PIPELINE_SOURCE == "push"
+    - if: $ENABLED_CLUSTERS =~ /rzadams/ && $GITLAB_USER_LOGIN =~ $RZADAMS_USERS && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 .build_and_test:
   stage: build_n_test
   variables:
     SUBMIT_TO_CDASH: false
     SUBMIT_AFTER: false
-    CREATE_SUBMIT_ARTIFACT: false
-    TEST_TARFILE: "${CLUSTER}-${CTEST_MODE}-${SPACK_ENV_NAME}.tar.gz"
+    CTEST_BUILD_NAME: "$SPACK_ENV_NAME"
   script:
-    - source .gitlab/build_and_test.sh ${CLUSTER} ${SPACK_ENV_NAME}
+    - source .gitlab/kessel.sh
+    - export BUILD_WITH_CTEST=${BUILD_WITH_CTEST:-${SUBMIT_TO_CDASH}}
+    - export CTEST_SUBMIT_ON_ERROR=${SUBMIT_ON_ERROR:-${SUBMIT_TO_CDASH}}
+    - |
+      if ${BUILD_WITH_CDASH}; then
+        rm -f .kessel/workflows/default.py
+        ln -s cdash.py .kessel/workflows/default.py
+      fi
+    - |
+      if ${SUBMIT_TO_CDASH}; then
+        kessel run --env ${PROJECT_GROUP}/${PROJECT_NAME}/${SPACK_ENV_NAME}
+      else
+        kessel run --until install --env ${PROJECT_GROUP}/${PROJECT_NAME}/${SPACK_ENV_NAME}
+      fi
   after_script:
-    - touch ${TEST_TARFILE}
     - |
       if ${SUBMIT_AFTER}; then
-        export SOURCE_DIR=$PWD
-        export BUILD_DIR=build
-        export SYSTEM_NAME=${CLUSTER}
-        ctest -V -S .gitlab/build_and_test.cmake,Submit
-      elif ${CREATE_SUBMIT_ARTIFACT}; then
-        rm -f ${TEST_TARFILE}
-        cd build
-        tar cvzf ../${TEST_TARFILE} DartConfiguration.tcl Testing
+        unset KESSEL_DEPLOYMENT
+        export KESSEL_WORKFLOW_DEPLOYMENT="upstream"
+        source .gitlab/kessel.sh
+        kessel step submit
       fi
   artifacts:
     when: always
     expire_in: 2 weeks
     paths:
       - ${CI_PROJECT_DIR}/build/tests.xml
-      - ${CI_PROJECT_DIR}/${TEST_TARFILE}
     reports:
       junit: ${CI_PROJECT_DIR}/build/tests.xml
 
-.build_docs:
-  stage: static_analysis
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  script:
-   - git fetch --prune --prune-tags
-   - git fetch --tags
-   - if [[ ${CI_JOB_NAME%%:*} =~ "pages_check" ]]; then git tag ${CI_JOB_NAME%%:*}; fi
-   - source .gitlab/build_docs.sh ${CLUSTER}
-   - rm -rf public
-   - mv build/doc/html public
-   - if [[ ${CI_JOB_NAME%%:*} =~ "pages_check" ]]; then git tag -d ${CI_JOB_NAME%%:*}; fi
 
-.clang_format:
-  stage: static_analysis
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  script:
-    - source .gitlab/check_format.sh ${CLUSTER}
-
-.post_results_to_cdash:
-  stage: build_n_test
-  id_tokens:
-    SITE_ID_TOKEN:
-      aud: https://asc-git.lanl.gov
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  script:
-    - cmake --version
-    - ls *.tar.gz
-    - export SOURCE_DIR=$PWD
-    - export BUILD_DIR=build
-    - |
-      for t in $(ls *.tar.gz); do
-        export SYSTEM_NAME=$(echo $t | cut -d - -f 1)
-        export CTEST_MODE=$(echo $t | cut -d - -f 2)
-        FULL_NAME=${t%%.*}
-        export SPACK_ENV_NAME=${FULL_NAME/${SYSTEM_NAME}-${CTEST_MODE}-/}
-        mkdir -p ${BUILD_DIR}
-        cd ${BUILD_DIR}
-        echo "#############################################################################"
-        echo "Submitting result for ${CTEST_MODE} with ${SPACK_ENV_NAME} on ${SYSTEM_NAME}"
-        echo "#############################################################################"
-        tar xvzf ../$t
-        cd ${CI_PROJECT_DIR}
-        ctest -V -S .gitlab/build_and_test.cmake,Submit
-        rm -rf ${BUILD_DIR}
-      done

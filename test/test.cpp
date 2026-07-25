@@ -418,6 +418,24 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     REQUIRE(error <= EPSTEST);
   }
 
+  SECTION("interpToReal in 3D with one non-interpolated index") {
+    Real error = 0;
+    for (int iz = 0; iz < NFINE; iz++) {
+      Real z = fine_grids[2].x(iz);
+      for (int iy = 0; iy < NFINE; iy++) {
+        Real y = fine_grids[1].x(iy);
+        for (int ix = 0; ix < NX; ix++) {
+          Real x = grids[0].x(ix);
+          Real f_true = linearFunction(z, y, x);
+          Real difference = db.interpToReal(z, y, ix) - f_true;
+          error += (difference * difference);
+        }
+      }
+    }
+    error = sqrt(error);
+    REQUIRE(error <= EPSTEST);
+  }
+
   SECTION("interpFromDB 3D->2D") {
     constexpr Real z = (zmax + zmin) / 2.;
 
@@ -566,6 +584,51 @@ TEST_CASE("DataBox Interpolation with piecewise grids",
       }
 
       // cleanup
+      free(db);
+      free(dbh);
+    }
+
+    WHEN("We construct a 3D databox based on this grid, where the slowest "
+         "moving index is not interpolatable") {
+      constexpr int NSLOW = 3;
+      constexpr int RANK = 3;
+      PiecewiseDB<NGRIDS> dbh(Spiner::AllocationTarget::Host, NSLOW, NCOARSE,
+                              NCOARSE);
+      for (int i = 0; i < RANK - 1; ++i) {
+        dbh.setRange(i, g);
+      }
+      dbh.setIndexType(RANK - 1, Spiner::IndexType::Indexed);
+      for (int iz = 0; iz < NSLOW; ++iz) {
+        for (int iy = 0; iy < NCOARSE; ++iy) {
+          for (int ix = 0; ix < NCOARSE; ++ix) {
+            Real x = g.x(ix);
+            Real y = g.x(iy);
+            dbh(iz, iy, ix) = linearFunction(static_cast<Real>(iz), y, x);
+          }
+        }
+      }
+      auto db = dbh.getOnDevice();
+
+      THEN("We can do mixed slice interpolation operations") {
+        constexpr int NFINE = 21;
+        for (int iz = 0; iz < NSLOW; ++iz) {
+          auto slc = db.slice(iz);
+          Real error = 0;
+          portableReduce(
+              "Interpolate 2D databox", 0, NFINE, 0, NFINE,
+              PORTABLE_LAMBDA(const int iy, const int ix,
+                              Real &accumulate) {
+                RegularGrid1D gfine(xmin, xmax, NFINE);
+                Real x = gfine.x(ix);
+                Real y = gfine.x(iy);
+                Real f_true = linearFunction(iz, y, x);
+                Real difference = slc.interpToReal(y, x) - f_true;
+                accumulate += (difference * difference);
+              },
+              error);
+          REQUIRE(error <= EPSTEST);
+        }
+      }
       free(db);
       free(dbh);
     }
@@ -774,12 +837,13 @@ SCENARIO("Copying a DataBox to device", "[DataBox][GetOnDevice]") {
     printf("free db_host\n");
     free(db_host);
   }
-  GIVEN("An empty databox");
-  DataBox db;
-  WHEN("We copy it to device") {
-    DataBox db2 = db.getOnDevice();
-    THEN("The new object is still empty") {
-      REQUIRE(db.dataStatus() == Spiner::DataStatus::Empty);
+  GIVEN("An empty databox") {
+    DataBox db;
+    WHEN("We copy it to device") {
+      DataBox db2 = db.getOnDevice();
+      THEN("The new object is still empty") {
+        REQUIRE(db.dataStatus() == Spiner::DataStatus::Empty);
+      }
     }
   }
 }
@@ -988,7 +1052,9 @@ int main(int argc, char *argv[]) {
   Kokkos::initialize();
 #endif
   int result;
-  { result = Catch::Session().run(argc, argv); }
+  {
+    result = Catch::Session().run(argc, argv);
+  }
 #ifdef PORTABILITY_STRATEGY_KOKKOS
   Kokkos::finalize();
 #endif
