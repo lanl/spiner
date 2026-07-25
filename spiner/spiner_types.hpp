@@ -21,13 +21,13 @@
 
 namespace Spiner {
 enum class DataStatus {
+  // indicates there is no management to do because all memory is
+  // static
+  Trivial = -1,
   Empty = 0,
   Unmanaged = 1,
   AllocatedHost = 2,
-  AllocatedDevice = 3,
-  // indicates there is no management to do because all memory is
-  // static
-  Trivial = 4 
+  AllocatedDevice = 3
 };
 enum class AllocationTarget { Host, Device };
 } // namespace Spiner

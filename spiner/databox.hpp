@@ -1,7 +1,7 @@
 #ifndef _SPINER_DATABOX_HPP_
 #define _SPINER_DATABOX_HPP_
 //======================================================================
-// © (or copyright) 2019-2021. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -15,7 +15,11 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
 #include <algorithm>
+#include <cstddef>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <string>
@@ -33,6 +37,7 @@
 #include "interpolation.hpp"
 #include "ports-of-call/portability.hpp"
 #include "ports-of-call/portable_arrays.hpp"
+#include "ports-of-call/portable_errors.hpp"
 #include "sp5.hpp"
 #include "spiner_types.hpp"
 
@@ -42,13 +47,6 @@
 namespace Spiner {
 
 enum class IndexType { Interpolated = 0, Named = 1, Indexed = 2 };
-enum class DataStatus {
-  Empty = 0,
-  Unmanaged = 1,
-  AllocatedHost = 2,
-  AllocatedDevice = 3
-};
-enum class AllocationTarget { Host, Device };
 
 template <typename T = Real, typename Grid_t = RegularGrid1D<T>,
           typename Concept =
@@ -89,7 +87,7 @@ class DataBox {
   inline DataBox(Args... args) noexcept
       : DataBox(AllocationTarget::Host, std::forward<Args>(args)...) {}
 
-  // Copy and move constructors. All shallow.
+  // Copies are shallow. Moves transfer ownership.
   inline DataBox(PortableMDArray<T> A) noexcept
       : rank_(A.GetRank()), status_(DataStatus::Unmanaged), data_(A.data()),
         dataView_(A) {
@@ -108,6 +106,30 @@ class DataBox {
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
       grids_[i] = src.grids_[i];
+    }
+  }
+  // TODO(JMM): Do we really want to expose a move constructor? I
+  // think we do...
+  inline DataBox(DataBox<T, Grid_t, Concept> &&src) noexcept
+      : rank_(src.rank_), status_(src.status_), data_(src.data_) {
+    setAllIndexed_();
+    dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
+    for (int i = 0; i < rank_; ++i) {
+      indices_[i] = src.indices_[i];
+    }
+    // Only ACTUALLY move the data if we're managing it!
+    if (src.status_ != DataStatus::Unmanaged) {
+      for (int i = 0; i < rank_; ++i) {
+        // TODO(JMM): Should this be a move? (Yes probably)
+        grids_[i] = std::move(src.grids_[i]);
+      }
+      src.data_ = nullptr;
+      src.status_ = DataStatus::Empty;
+      src.rank_ = 0;
+    } else {
+      for (int i = 0; i < rank_; ++i) {
+        grids_[i] = src.grids_[i];
+      }
     }
   }
 
@@ -231,12 +253,15 @@ class DataBox {
   // index, and N-1 is the slowest
   // TODO: is this intuitive?
   inline void setIndexType(int i, IndexType t) {
-    assert(0 <= i && i < rank_);
+    PORTABLE_REQUIRE(0 <= i && i < rank_, "Grid must be in index range");
     indices_[i] = t;
   }
   inline void setRange(int i, Grid_t g) {
+    PORTABLE_REQUIRE(0 <= i && i < rank_, "Grid must be in index range");
+    grids_[i].finalize(); // TODO(JMM): Do we want this? Probably.
     setIndexType(i, IndexType::Interpolated);
-    grids_[i] = g;
+    // TODO(JMM): Should this be a move? (Yes probably)
+    grids_[i] = std::move(g);
   }
   template <typename... Args>
   inline void setRange(int i, Args &&...args) {
@@ -267,14 +292,18 @@ class DataBox {
   }
   PORTABLE_INLINE_FUNCTION Grid_t &range(const int i) { return grids_[i]; }
 
-  // Assignment and move, both perform shallow copy
+  // Copy assignment is shallow; move assignment transfers ownership.
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
   operator=(const DataBox<T, Grid_t, Concept> &other);
+  inline DataBox<T, Grid_t, Concept> &
+  operator=(DataBox<T, Grid_t, Concept> &&other) noexcept;
   inline void copy(const DataBox<T, Grid_t, Concept> &src);
 
   // utility info
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
-  PORTABLE_INLINE_FUNCTION bool isReference() { return status_ == DataStatus::Unmanaged; }
+  PORTABLE_INLINE_FUNCTION bool isReference() {
+    return status_ == DataStatus::Unmanaged;
+  }
   PORTABLE_INLINE_FUNCTION bool ownsAllocatedMemory() {
     return (status_ != DataStatus::Unmanaged);
   }
@@ -309,11 +338,41 @@ class DataBox {
     return indices_[i];
   }
 
+  // Binary serialization is intended only for transient communication between
+  // compatible Spiner builds. It is not a version-stable, architecture-stable,
+  // or persistent format; use HDF5 for persistent storage.
+  //
+  // Layout:
+  // [DataBox bytes][value data][grid dynamic memory 0]...
+  // [grid dynamic memory rank-1]
+  //
   // serialization routines
   // ------------------------------------
   // this one reports size for serialize/deserialize
+  std::size_t dynamicMemorySizeInBytes() const {
+    std::size_t size = sizeBytes();
+    for (int i = 0; i < rank_; ++i) {
+      size += grids_[i].dynamicMemorySizeInBytes();
+    }
+    return size;
+  }
+
   std::size_t serializedSizeInBytes() const {
-    return sizeBytes() + sizeof(*this);
+    return sizeof(*this) + dynamicMemorySizeInBytes();
+  }
+
+  std::size_t dumpDynamicMemory(char *dst) const {
+    PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
+                     "Dynamic memory cannot be dumped from device memory");
+    std::size_t offst = 0;
+    if (sizeBytes() > 0) { // could also do data_ != nullptr
+      std::memcpy(dst, data_, sizeBytes());
+      offst += sizeBytes();
+    }
+    for (int i = 0; i < rank_; ++i) {
+      offst += grids_[i].dumpDynamicMemory(dst + offst);
+    }
+    return offst;
   }
   // this one takes the pointer `dst`, which is assumed to have
   // sufficient memory allocated, and fills it with the
@@ -321,33 +380,34 @@ class DataBox {
   std::size_t serialize(char *dst) const {
     PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
                      "Serialization cannot be performed on device memory");
-    memcpy(dst, this, sizeof(*this));
-    std::size_t offst = sizeof(*this);
-    if (sizeBytes() > 0) { // could also do data_ != nullptr
-      memcpy(dst + offst, data_, sizeBytes());
-      offst += sizeBytes();
-    }
-    return offst;
+    std::memcpy(dst, this, sizeof(*this));
+    return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
   }
 
   // This sets the internal pointer based on a passed in src pointer,
   // which is assumed to be the right size. Used below in deSerialize
   // and may be used for serialization routines. Returns amount of src
   // pointer used.
-  std::size_t setPointer(T *src) {
+  std::size_t setPointer(char *src) {
+    std::size_t offst = 0;
     if (sizeBytes() > 0) { // could also do data_ != nullptr
-      data_ = src;
+      data_ = reinterpret_cast<T *>(src);
       // TODO(JMM): If portable arrays ever change maximum rank, this
       // line needs to change.
       dataView_.NewPortableMDArray(data_, dim(6), dim(5), dim(4), dim(3),
                                    dim(2), dim(1));
       makeShallow();
+      offst += sizeBytes();
     }
-    return sizeBytes();
+    for (int i = 0; i < rank_; ++i) {
+      offst += grids_[i].setPointer(src + offst);
+    }
+    return offst;
   }
-  std::size_t setPointer(char *src) { return setPointer((T *)src); }
+  std::size_t setPointer(T *src) {
+    return setPointer(reinterpret_cast<char *>(src));
+  }
 
-  // This one takes a src pointer, which is assumed to contain a
   // databox and initializes the current databox. Note that the
   // databox becomes unmananged, as the contents of the box are still
   // the externally managed pointer.
@@ -355,7 +415,12 @@ class DataBox {
     PORTABLE_REQUIRE(
         (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
         "Must not de-serialize into an active databox.");
-    memcpy(this, src, sizeof(*this));
+    // TODO(JMM): This could be replaced by a per-grid warning as we
+    // do for databox data if we want.
+    for (int i = 0; i < rank_; ++i) {
+      grids_[i].finalize();
+    }
+    std::memcpy(this, src, sizeof(*this));
 
     // sanity check that de-serialization of trivially-copyable memory
     // was reasonable
@@ -389,6 +454,9 @@ class DataBox {
     DataBox<T, Grid_t, Concept> a{device_data, dim(6), dim(5), dim(4),
                                   dim(3),      dim(2), dim(1)};
     a.copyShape(*this);
+    for (int i = 0; i < rank_; ++i) {
+      a.grids_[i] = grids_[i].getOnDevice();
+    }
     // set correct allocation status of the new databox
     // note this is ALWAYS device, even if host==device.
     a.status_ = DataStatus::AllocatedDevice;
@@ -397,12 +465,18 @@ class DataBox {
 
   // TODO(JMM): Potentially use this for device-free
   void finalize() {
-    assert(ownsAllocatedMemory());
+    PORTABLE_REQUIRE(ownsAllocatedMemory(),
+                     "Must only finalize databox that owns its own data.");
+    // TODO(JMM): This may eventually need to be more complex
+    for (int i = 0; i < rank_; ++i) {
+      grids_[i].finalize();
+    }
     if (status_ == DataStatus::AllocatedDevice) {
       PORTABLE_FREE(data_);
     } else if (status_ == DataStatus::AllocatedHost) {
       free(data_);
     }
+    data_ = nullptr;
     status_ = DataStatus::Empty;
   }
 
@@ -920,6 +994,46 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
       grids_[i] = src.grids_[i];
+    }
+  }
+  return *this;
+}
+
+// Move assignment transfers ownership of data and grid allocations.
+template <typename T, typename Grid_t, typename Concept>
+inline DataBox<T, Grid_t, Concept> &DataBox<T, Grid_t, Concept>::operator=(
+    DataBox<T, Grid_t, Concept> &&src) noexcept {
+  if (this != &src) {
+    // TODO(JMM): This worries me a little bit. Since databoxes and
+    // grids aren't reference counted, we have to be REALLY careful
+    // about move/copy semantics.
+    if (status_ == DataStatus::Unmanaged) {
+      for (int i = 0; i < rank_; ++i) {
+        grids_[i].finalize();
+      }
+    } else {
+      finalize();
+    }
+    
+    rank_ = src.rank_;
+    status_ = src.status_;
+    data_ = src.data_;
+    dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
+    for (int i = 0; i < rank_; ++i) {
+      indices_[i] = src.indices_[i];
+    }
+
+    if (src.status_ != DataStatus::Unmanaged) {
+      for (int i = 0; i < rank_; ++i) {
+        grids_[i] = std::move(src.grids_[i]);
+      }
+      src.data_ = nullptr;
+      src.status_ = DataStatus::Empty;
+      src.rank_ = 0;
+    } else {
+      for (int i = 0; i < rank_; ++i) {
+        grids_[i] = src.grids_[i];
+      }
     }
   }
   return *this;
