@@ -109,30 +109,6 @@ class DataBox {
       grids_[i] = src.grids_[i];
     }
   }
-  // TODO(JMM): Do we really want to expose a move constructor? I
-  // think we do...
-  inline DataBox(DataBox<T, Grid_t, Concept> &&src) noexcept
-      : rank_(src.rank_), status_(src.status_), data_(src.data_) {
-    setAllIndexed_();
-    dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
-    for (int i = 0; i < rank_; ++i) {
-      indices_[i] = src.indices_[i];
-    }
-    // Only ACTUALLY move the data if we're managing it!
-    if (src.status_ != DataStatus::Unmanaged) {
-      for (int i = 0; i < rank_; ++i) {
-        // TODO(JMM): Should this be a move? (Yes probably)
-        grids_[i] = std::move(src.grids_[i]);
-      }
-      src.data_ = nullptr;
-      src.status_ = DataStatus::Empty;
-      src.rank_ = 0;
-    } else {
-      for (int i = 0; i < rank_; ++i) {
-        grids_[i] = src.grids_[i];
-      }
-    }
-  }
 
   // Slice constructor
   PORTABLE_INLINE_FUNCTION
@@ -296,8 +272,6 @@ class DataBox {
   // Copy assignment is shallow; move assignment transfers ownership.
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
   operator=(const DataBox<T, Grid_t, Concept> &other);
-  inline DataBox<T, Grid_t, Concept> &
-  operator=(DataBox<T, Grid_t, Concept> &&other) noexcept;
   inline void copy(const DataBox<T, Grid_t, Concept> &src);
 
   // utility info
@@ -995,46 +969,6 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
       grids_[i] = src.grids_[i];
-    }
-  }
-  return *this;
-}
-
-// Move assignment transfers ownership of data and grid allocations.
-template <typename T, typename Grid_t, typename Concept>
-inline DataBox<T, Grid_t, Concept> &DataBox<T, Grid_t, Concept>::operator=(
-    DataBox<T, Grid_t, Concept> &&src) noexcept {
-  if (this != &src) {
-    // TODO(JMM): This worries me a little bit. Since databoxes and
-    // grids aren't reference counted, we have to be REALLY careful
-    // about move/copy semantics.
-    if (status_ == DataStatus::Unmanaged) {
-      for (int i = 0; i < rank_; ++i) {
-        grids_[i].finalize();
-      }
-    } else {
-      finalize();
-    }
-
-    rank_ = src.rank_;
-    status_ = src.status_;
-    data_ = src.data_;
-    dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
-    for (int i = 0; i < rank_; ++i) {
-      indices_[i] = src.indices_[i];
-    }
-
-    if (src.status_ != DataStatus::Unmanaged) {
-      for (int i = 0; i < rank_; ++i) {
-        grids_[i] = std::move(src.grids_[i]);
-      }
-      src.data_ = nullptr;
-      src.status_ = DataStatus::Empty;
-      src.rank_ = 0;
-    } else {
-      for (int i = 0; i < rank_; ++i) {
-        grids_[i] = src.grids_[i];
-      }
     }
   }
   return *this;

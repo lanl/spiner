@@ -222,12 +222,6 @@ which returns ``true`` if a given databox is managing memory and
 returns ``false`` if the databox is managing memory and ``true``
 otherwise.
 
-.. warning::
-
-  A move operator and move constructor are each provided. However,
-  this is not the intended mechanism for interacting with
-  databoxes. Use with caution.
-
 Using ``DataBox`` with smart pointers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -54,29 +54,6 @@ class PiecewiseGrid1D {
   PiecewiseGrid1D(const PiecewiseGrid1D &) = default;
   PORTABLE_INLINE_FUNCTION PiecewiseGrid1D &
   operator=(const PiecewiseGrid1D &) = default;
-  PiecewiseGrid1D(PiecewiseGrid1D &&other) noexcept : NGRIDS_(other.NGRIDS_) {
-    for (int i = 0; i < NGRIDS_; ++i) {
-      grids_[i] = std::move(other.grids_[i]);
-      pointTotals_[i] = other.pointTotals_[i];
-    }
-    if (other.dataStatus() != DataStatus::Unmanaged) {
-      other.NGRIDS_ = 0;
-    }
-  }
-  PiecewiseGrid1D &operator=(PiecewiseGrid1D &&other) noexcept {
-    if (this != &other) {
-      finalize();
-      NGRIDS_ = other.NGRIDS_;
-      for (int i = 0; i < NGRIDS_; ++i) {
-        grids_[i] = std::move(other.grids_[i]);
-        pointTotals_[i] = other.pointTotals_[i];
-      }
-      if (other.dataStatus() != DataStatus::Unmanaged) {
-        other.NGRIDS_ = 0;
-      }
-    }
-    return *this;
-  }
   PiecewiseGrid1D(const std::vector<RegularGrid1D<T>> grids) {
     NGRIDS_ = grids.size();
     PORTABLE_ALWAYS_REQUIRE(

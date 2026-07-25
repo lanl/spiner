@@ -805,26 +805,22 @@ class OwningTestGrid1D {
   }
   PORTABLE_INLINE_FUNCTION OwningTestGrid1D(const OwningTestGrid1D &src)
       : n_(src.n_), points_(src.points_),
-        status_(src.points_ == nullptr ? DataStatus::Empty
-                                       : DataStatus::Unmanaged) {}
+        status_(src.status_) {}
   PORTABLE_INLINE_FUNCTION OwningTestGrid1D &
   operator=(const OwningTestGrid1D &src) {
-    if (this != &src) {
-      n_ = src.n_;
-      points_ = src.points_;
-      status_ =
-          src.points_ == nullptr ? DataStatus::Empty : DataStatus::Unmanaged;
-    }
+    n_ = src.n_;
+    points_ = src.points_;
+    status_ = src.status_;
     return *this;
   }
-  OwningTestGrid1D(OwningTestGrid1D &&src) noexcept { moveFrom_(src); }
-  OwningTestGrid1D &operator=(OwningTestGrid1D &&src) noexcept {
-    if (this != &src) {
-      finalize();
-      moveFrom_(src);
-    }
-    return *this;
-  }
+  //OwningTestGrid1D(OwningTestGrid1D &&src) noexcept { moveFrom_(src); }
+  //OwningTestGrid1D &operator=(OwningTestGrid1D &&src) noexcept {
+  //  if (this != &src) {
+  //    finalize();
+  //    moveFrom_(src);
+  //  }
+  //  return *this;
+  //}
   PORTABLE_INLINE_FUNCTION void weights(const Real x, int &ix,
                                         Spiner::weights_t<Real> &w) const {
     const Real inverseDx =
