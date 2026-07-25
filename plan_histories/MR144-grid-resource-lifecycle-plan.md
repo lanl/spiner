@@ -340,3 +340,5 @@ implementation.
 - Device tests demonstrate that no grid retains a host-only pointer.
 - The documentation clearly disclaims cross-version and cross-architecture
   compatibility and recommends HDF5 for persistent storage.
+
+Generative AI (OpenAI Codex) was used to assist with modifications to this plan.
