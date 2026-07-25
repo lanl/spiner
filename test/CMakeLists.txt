@@ -42,7 +42,7 @@ if(SPINER_TEST_USE_KOKKOS)
     FetchContent_Declare(
       Kokkos
       GIT_REPOSITORY https://github.com/kokkos/kokkos.git
-      GIT_TAG 61d7db55fceac3318c987a291f77b844fd94c165 # TODO: make sure this is correct
+      GIT_TAG 5.1.0 # TODO: make sure this is correct
     )
 
     foreach(ext_opt ${_spiner_content_opts})
