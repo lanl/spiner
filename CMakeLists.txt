@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------#
-# © 2025. Triad National Security, LLC. All rights reserved.  This program was
+# © 2025-2026. Triad National Security, LLC. All rights reserved.  This program was
 # produced under U.S. Government contract 89233218CNA000001 for Los Alamos
 # National Laboratory (LANL), which is operated by Triad National Security, LLC
 # for the U.S.  Department of Energy/National Nuclear Security Administration.
@@ -220,3 +220,5 @@ config_summary_option("SPINER_TEST_USE_KOKKOS")
 config_summary_option("SPINER_TEST_USE_KOKKOS_CUDA")
 
 config_summary_print()
+
+message(STATUS "Missing dependencies will be filled in via cmake fetchcontent or submodules")
