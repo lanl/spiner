@@ -1,0 +1,32 @@
+# Changelog
+
+## Current develop
+
+### Added (new features/APIs/variables/...)
+
+### Fixed (Repair bugs, etc)
+- [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
+
+### Changed (changing behavior/API/variables/...)
+
+### Infrastructure (changes irrelevant to downstream codes)
+- [[MR 141]](https://github.com/lanl/spiner/pull/142) update contribution rules
+
+### Deprecated (soon to be removed behavior/API/variables/...)
+
+## Release 1.7.0
+Date: 12/15/2026
+
+This is the start of changelog
+
+© 2021-2026. Triad National Security, LLC. All rights reserved.  This
+program was produced under U.S. Government contract 89233218CNA000001
+for Los Alamos National Laboratory (LANL), which is operated by Triad
+National Security, LLC for the U.S.  Department of Energy/National
+Nuclear Security Administration. All rights in the program are
+reserved by Triad National Security, LLC, and the U.S. Department of
+Energy/National Nuclear Security Administration. The Government is
+granted for itself and others acting on its behalf a nonexclusive,
+paid-up, irrevocable worldwide license in this material to reproduce,
+prepare derivative works, distribute copies to the public, perform
+publicly and display publicly, and to permit others to do so.

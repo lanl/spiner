@@ -44,8 +44,8 @@ Contributing
 
 If you use Spiner and need help, submit an issue to the Spiner
 repository. If you'd like to contribute, just fork and submit a pull
-request. There's a check list in the PR template, and one of the main
-Spiner developers will review your PR.
+request. See our contributing page for more details on the
+contribution guidance.
 
 .. toctree::
    :maxdepth: 1
@@ -56,6 +56,7 @@ Spiner developers will review your PR.
    src/getting-started
    src/databox
    src/interpolation
+   src/contributing
    src/sphinx-howto
 
 Indices and tables
