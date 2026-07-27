@@ -3,6 +3,7 @@
 ## Current develop
 
 ### Added (new features/APIs/variables/...)
+- [[MR 103]](https://github.com/lanl/spiner/pull/103) Add config_summary to cmake
 
 ### Fixed (Repair bugs, etc)
 - [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
