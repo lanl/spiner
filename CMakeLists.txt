@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------#
-# © 2025. Triad National Security, LLC. All rights reserved.  This program was
+# © 2025-2026. Triad National Security, LLC. All rights reserved.  This program was
 # produced under U.S. Government contract 89233218CNA000001 for Los Alamos
 # National Laboratory (LANL), which is operated by Triad National Security, LLC
 # for the U.S.  Department of Energy/National Nuclear Security Administration.
@@ -193,3 +193,32 @@ export(
   TARGETS spiner
   NAMESPACE spiner::
   FILE "${CMAKE_CURRENT_BINARY_DIR}/spinerTargets.cmake")
+
+# Configuration summary ---------------------------------------------------------------------------
+
+include(config_summary)
+
+config_summary_header("Spiner" "spiner" 27) # longest option name is 26 characters
+
+config_summary_block("CMake Options")
+config_summary_variable("CMAKE_BUILD_TYPE")
+config_summary_variable("CMAKE_CXX_COMPILER")
+config_summary_variable("CMAKE_CXX_COMPILER_VERSION")
+config_summary_variable("CMAKE_CXX_FLAGS")
+config_summary_variable("CLANG_FORMAT_VERSION")
+
+config_summary_block("Dependencies")
+config_summary_dependency("Catch2" "Catch2")
+config_summary_dependency("HDF5" "hdf5")
+config_summary_dependency("Kokkos" "Kokkos" "${SPINER_TEST_USE_KOKKOS}")
+config_summary_dependency("Ports-of-Call" "ports-of-call")
+
+config_summary_block("User Options")
+config_summary_option("SPINER_USE_HDF")
+config_summary_option("SPINER_BUILD_TESTS")
+config_summary_option("SPINER_TEST_USE_KOKKOS")
+config_summary_option("SPINER_TEST_USE_KOKKOS_CUDA")
+
+config_summary_print()
+
+message(STATUS "Missing dependencies will be filled in via cmake fetchcontent or submodules")
