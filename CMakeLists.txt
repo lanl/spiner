@@ -72,7 +72,7 @@ include(cmake/Format.cmake)
 # Add a library
 add_library(spiner INTERFACE)
 add_library(spiner::spiner ALIAS spiner)
-target_compile_features(spiner INTERFACE cxx_std_17)
+target_compile_features(spiner INTERFACE cxx_std_20)
 
 # ##############################################################################
 # Dependencies           #
@@ -220,3 +220,5 @@ config_summary_option("SPINER_TEST_USE_KOKKOS")
 config_summary_option("SPINER_TEST_USE_KOKKOS_CUDA")
 
 config_summary_print()
+
+message(STATUS "Missing dependencies will be filled in via cmake fetchcontent or submodules")
