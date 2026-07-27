@@ -62,7 +62,7 @@ macro(config_summary_header display_name cmake_name)
         "${color_boldcyan}"
         "${display_name} configuration summary (version ${${cmake_name}_VERSION})\n"
         "${color_reset}"
-        )
+    )
     # pretty-print a header bar
     string(APPEND _summary "${_bar}\n")
     # Set the width for variable names
@@ -136,6 +136,12 @@ macro(config_summary_option varname)
         set(_color "${color_boldgreen}")
     else()
         set(_color "${color_boldgrey}")
+        foreach(arg ${ARGN})
+            if (arg STREQUAL value)
+                set(_color "${color_boldgreen}")
+                break()
+            endif()
+        endforeach()
     endif()
     config_summary_kvc("${varname}" "${value}" "${_color}")
 endmacro()
