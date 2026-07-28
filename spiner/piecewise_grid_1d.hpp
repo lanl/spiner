@@ -122,7 +122,7 @@ class PiecewiseGrid1D {
       PORTABLE_REQUIRE(
           !((status == static_cast<int>(DataStatus::AllocatedHost)) &&
             (gs == static_cast<int>(DataStatus::AllocatedDevice))),
-          "Can't mix allocatedhost/allocated device!");
+          "Can't mix allocated host/allocated device!");
       status = std::max(gs, status);
     }
     return static_cast<DataStatus>(status);
