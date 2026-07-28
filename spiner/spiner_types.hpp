@@ -1,4 +1,4 @@
-// © (or copyright) 2019-2021. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -18,5 +18,18 @@
 #define H5T_REAL H5T_NATIVE_DOUBLE
 #define H5_SUCCESS 0
 #endif
+
+namespace Spiner {
+enum class DataStatus {
+  // indicates there is no management to do because all memory is
+  // static
+  Trivial = -1,
+  Empty = 0,
+  Unmanaged = 1,
+  AllocatedHost = 2,
+  AllocatedDevice = 3
+};
+enum class AllocationTarget { Host, Device };
+} // namespace Spiner
 
 #endif // _SPINER_TYPES_HPP_

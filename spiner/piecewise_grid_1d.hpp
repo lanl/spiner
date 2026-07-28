@@ -1,7 +1,7 @@
 #ifndef SPINER_HIERARCHICAL_GRID_1D_
 #define SPINER_HIERARCHICAL_GRID_1D_
 //======================================================================
-// © (or copyright) 2019-2023. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -15,7 +15,11 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
 #include <array>
+#include <cstddef>
+#include <cstring>
 #include <initializer_list>
 #include <limits>
 #include <utility>
@@ -46,6 +50,10 @@ class PiecewiseGrid1D {
   // This is functionally equivalent because grids_ will
   // be initialized to default values
   PORTABLE_INLINE_FUNCTION PiecewiseGrid1D() {}
+  PORTABLE_INLINE_FUNCTION
+  PiecewiseGrid1D(const PiecewiseGrid1D &) = default;
+  PORTABLE_INLINE_FUNCTION PiecewiseGrid1D &
+  operator=(const PiecewiseGrid1D &) = default;
   PiecewiseGrid1D(const std::vector<RegularGrid1D<T>> grids) {
     NGRIDS_ = grids.size();
     PORTABLE_ALWAYS_REQUIRE(
@@ -107,6 +115,19 @@ class PiecewiseGrid1D {
     return ig;
   }
 
+  PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const {
+    int status = static_cast<int>(DataStatus::Trivial);
+    for (int i = 0; i < NGRIDS_; ++i) {
+      int gs = static_cast<int>(grids_[i].dataStatus());
+      PORTABLE_REQUIRE(
+          !((status == static_cast<int>(DataStatus::AllocatedHost)) &&
+            (gs == static_cast<int>(DataStatus::AllocatedDevice))),
+          "Can't mix allocated host/allocated device!");
+      status = std::max(gs, status);
+    }
+    return static_cast<DataStatus>(status);
+  }
+
   PORTABLE_INLINE_FUNCTION T x(const int i) const {
     int ig = findGridFromGlobalIdx(i);
     return grids_[ig].x(i - pointTotals_[ig]);
@@ -151,8 +172,68 @@ class PiecewiseGrid1D {
     }
     return false;
   }
-  PORTABLE_INLINE_FUNCTION bool isWellFormed() const { return !isnan(); }
+  PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
+    return NGRIDS_ > 0 && !isnan();
+  }
   PORTABLE_INLINE_FUNCTION int nGrids() const { return NGRIDS_; }
+
+  // Binary serialization is intended for transient communication between
+  // compatible Spiner builds, not as a persistent or portable file format.
+  std::size_t dynamicMemorySizeInBytes() const {
+    std::size_t size = 0;
+    for (int i = 0; i < NGRIDS_; ++i) {
+      size += grids_[i].dynamicMemorySizeInBytes();
+    }
+    return size;
+  }
+
+  std::size_t serializedSizeInBytes() const {
+    return sizeof(*this) + dynamicMemorySizeInBytes();
+  }
+
+  std::size_t dumpDynamicMemory(std::byte *dst) const {
+    std::size_t offset = 0;
+    for (int i = 0; i < NGRIDS_; ++i) {
+      offset += grids_[i].dumpDynamicMemory(dst + offset);
+    }
+    return offset;
+  }
+
+  std::size_t serialize(std::byte *dst) const {
+    std::memcpy(dst, this, sizeof(*this));
+    return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
+  }
+
+  std::size_t setPointer(std::byte *src) {
+    std::size_t offset = 0;
+    for (int i = 0; i < NGRIDS_; ++i) {
+      offset += grids_[i].setPointer(src + offset);
+    }
+    return offset;
+  }
+
+  std::size_t deSerialize(std::byte *src) {
+    finalize(); // TODO(JMM): Maybe guard this finalize
+    std::memcpy(this, src, sizeof(*this));
+    PORTABLE_REQUIRE(0 <= NGRIDS_ && NGRIDS_ <= NGRIDSMAX,
+                     "Invalid number of piecewise grids");
+    return sizeof(*this) + setPointer(src + sizeof(*this));
+  }
+
+  PiecewiseGrid1D<T, NGRIDSMAX> getOnDevice() const {
+    PiecewiseGrid1D<T, NGRIDSMAX> grid(*this);
+    for (int i = 0; i < NGRIDS_; ++i) {
+      grid.grids_[i] = grids_[i].getOnDevice();
+    }
+    return grid;
+  }
+
+  void finalize() {
+    for (int i = 0; i < NGRIDS_; ++i) {
+      grids_[i].finalize(); // TODO(JMM): Maybe guard this finalize
+    }
+    NGRIDS_ = 0;
+  }
 
 #ifdef SPINER_USE_HDF
   inline herr_t saveHDF(hid_t loc, const std::string &name) const {
@@ -228,8 +309,8 @@ class PiecewiseGrid1D {
   }
 
   RegularGrid1D<T> grids_[NGRIDSMAX];
-  int pointTotals_[NGRIDSMAX];
-  int NGRIDS_;
+  int pointTotals_[NGRIDSMAX]{};
+  int NGRIDS_ = 0;
 };
 
 } // namespace Spiner
