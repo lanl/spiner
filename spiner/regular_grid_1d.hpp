@@ -131,16 +131,16 @@ class RegularGrid1D {
     return sizeof(*this) + dynamicMemorySizeInBytes();
   }
 
-  std::size_t dumpDynamicMemory(char *) const { return 0; }
+  std::size_t dumpDynamicMemory(std::byte *) const { return 0; }
 
-  std::size_t serialize(char *dst) const {
+  std::size_t serialize(std::byte *dst) const {
     std::memcpy(dst, this, sizeof(*this));
     return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
   }
 
-  std::size_t setPointer(char *) { return 0; }
+  std::size_t setPointer(std::byte *) { return 0; }
 
-  std::size_t deSerialize(char *src) {
+  std::size_t deSerialize(std::byte *src) {
     std::memcpy(this, src, sizeof(*this));
     return sizeof(*this);
   }

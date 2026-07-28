@@ -1,7 +1,7 @@
 #ifndef SPINER_HIERARCHICAL_GRID_1D_
 #define SPINER_HIERARCHICAL_GRID_1D_
 //======================================================================
-// © (or copyright) 2019-2023. Triad National Security, LLC. All rights
+// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC for the U.S.  Department of
@@ -191,7 +191,7 @@ class PiecewiseGrid1D {
     return sizeof(*this) + dynamicMemorySizeInBytes();
   }
 
-  std::size_t dumpDynamicMemory(char *dst) const {
+  std::size_t dumpDynamicMemory(std::byte *dst) const {
     std::size_t offset = 0;
     for (int i = 0; i < NGRIDS_; ++i) {
       offset += grids_[i].dumpDynamicMemory(dst + offset);
@@ -199,12 +199,12 @@ class PiecewiseGrid1D {
     return offset;
   }
 
-  std::size_t serialize(char *dst) const {
+  std::size_t serialize(std::byte *dst) const {
     std::memcpy(dst, this, sizeof(*this));
     return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
   }
 
-  std::size_t setPointer(char *src) {
+  std::size_t setPointer(std::byte *src) {
     std::size_t offset = 0;
     for (int i = 0; i < NGRIDS_; ++i) {
       offset += grids_[i].setPointer(src + offset);
@@ -212,7 +212,7 @@ class PiecewiseGrid1D {
     return offset;
   }
 
-  std::size_t deSerialize(char *src) {
+  std::size_t deSerialize(std::byte *src) {
     finalize(); // TODO(JMM): Maybe guard this finalize
     std::memcpy(this, src, sizeof(*this));
     PORTABLE_REQUIRE(0 <= NGRIDS_ && NGRIDS_ <= NGRIDSMAX,
