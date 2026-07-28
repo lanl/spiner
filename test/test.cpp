@@ -108,7 +108,7 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
 
   SECTION("A regular grid can be serialized and deserialized") {
     RegularGrid1D grid(-1.0, 2.0, 7);
-    std::vector<char> serialized(grid.serializedSizeInBytes());
+    std::vector<std::byte> serialized(grid.serializedSizeInBytes());
 
     const std::size_t written = grid.serialize(serialized.data());
     REQUIRE(written == serialized.size());
@@ -128,7 +128,7 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
   SECTION("A default piecewise grid has a valid empty lifecycle") {
     PiecewiseGrid1D<3> grid;
     REQUIRE(grid.nGrids() == 0);
-    std::vector<char> serialized(grid.serializedSizeInBytes());
+    std::vector<std::byte> serialized(grid.serializedSizeInBytes());
     REQUIRE(grid.serialize(serialized.data()) == serialized.size());
 
     PiecewiseGrid1D<3> restored;
@@ -184,7 +184,7 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
       AND_THEN("We can serialize and deserialize the nested grids") {
         const std::size_t expected = sizeof(h) + h.dynamicMemorySizeInBytes();
         REQUIRE(h.serializedSizeInBytes() == expected);
-        std::vector<char> serialized(expected);
+        std::vector<std::byte> serialized(expected);
         REQUIRE(h.serialize(serialized.data()) == expected);
 
         PiecewiseGrid1D<3> restored;
@@ -726,7 +726,7 @@ SCENARIO("Serializing and deserializing a DataBox",
         REQUIRE(serial_size == (sizeof(dbh) + dbh.sizeBytes() +
                                 RANK * g.dynamicMemorySizeInBytes()));
 
-        char *db_serial = (char *)malloc(serial_size * sizeof(char));
+        std::byte *db_serial = (std::byte *)malloc(serial_size * sizeof(char));
         std::size_t write_offst = dbh.serialize(db_serial);
         REQUIRE(write_offst == serial_size);
 
@@ -842,20 +842,20 @@ class OwningTestGrid1D {
   std::size_t serializedSizeInBytes() const {
     return sizeof(*this) + dynamicMemorySizeInBytes();
   }
-  std::size_t dumpDynamicMemory(char *dst) const {
+  std::size_t dumpDynamicMemory(std::byte *dst) const {
     std::memcpy(dst, points_, dynamicMemorySizeInBytes());
     return dynamicMemorySizeInBytes();
   }
-  std::size_t serialize(char *dst) const {
+  std::size_t serialize(std::byte *dst) const {
     std::memcpy(dst, this, sizeof(*this));
     return sizeof(*this) + dumpDynamicMemory(dst + sizeof(*this));
   }
-  std::size_t setPointer(char *src) {
+  std::size_t setPointer(std::byte *src) {
     points_ = reinterpret_cast<Real *>(src);
     status_ = n_ == 0 ? DataStatus::Empty : DataStatus::Unmanaged;
     return n_ * sizeof(Real);
   }
-  std::size_t deSerialize(char *src) {
+  std::size_t deSerialize(std::byte *src) {
     finalize();
     std::memcpy(this, src, sizeof(*this));
     return sizeof(*this) + setPointer(src + sizeof(*this));
@@ -948,7 +948,7 @@ TEST_CASE("DataBox delegates resource management to every grid",
     }
     REQUIRE(db.serializedSizeInBytes() == expected);
 
-    std::vector<char> serialized(expected);
+    std::vector<std::byte> serialized(expected);
     REQUIRE(db.serialize(serialized.data()) == expected);
 
     OwningDB restored;
@@ -957,11 +957,11 @@ TEST_CASE("DataBox delegates resource management to every grid",
     REQUIRE(restored.indexType(1) == IndexType::Indexed);
     REQUIRE(restored.indexType(2) == IndexType::Named);
 
-    const char *begin = serialized.data();
-    const char *end = begin + serialized.size();
+    const std::byte *begin = serialized.data();
+    const std::byte *end = begin + serialized.size();
     for (int i = 0; i < RANK; ++i) {
-      const char *gridData =
-          reinterpret_cast<const char *>(restored.range(i).data());
+      const std::byte *gridData =
+          reinterpret_cast<const std::byte *>(restored.range(i).data());
       REQUIRE(gridData >= begin);
       REQUIRE(gridData < end);
       REQUIRE(restored.range(i) == db.range(i));

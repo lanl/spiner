@@ -279,14 +279,14 @@ allocated. The function
 reports the size of the value buffer and grid-owned dynamic memory,
 excluding the inline ``DataBox`` object representation. The function
 
-.. cpp:function:: std::size_t DataBox::dumpDynamicMemory(char *dst) const;
+.. cpp:function:: std::size_t DataBox::dumpDynamicMemory(std::byte *dst) const;
 
 writes only that dynamic memory. It is used internally by ``serialize``
 after the inline object bytes have been copied.
 
-.. cpp:function:: std::size_t serialize(char *dst) const;
+.. cpp:function:: std::size_t serialize(std::byte *dst) const;
 
-takes a ``char*`` pointer, assumed to contain enough space for a
+takes a ``std::byte*`` pointer, assumed to contain enough space for a
 ``DataBox``, and stores all information needed for the ``DataBox`` to
 reconstruct itself. The return value is the amount of memory in bytes
 used in the array by the serialized ``DataBox`` object. This method is
@@ -296,7 +296,7 @@ non-destructive; the original ``DataBox`` is unchanged. The function
 
 with the overload
 
-.. cpp:function:: std::size_t DataBox::setPointer(char *src);
+.. cpp:function:: std::size_t DataBox::setPointer(std::byte *src);
 
 sets the underlying tabulated data from the src pointer, which is
 assumed to be the right size and shape, and relocates the trailing
@@ -304,7 +304,7 @@ grid-owned dynamic memory. This is useful for the deSerialize
 function (described below) and for building your own
 serialization/de-serialization routines in composite objects. The function
 
-.. cpp:function:: std::size_t DataBox::deSerialize(char *src);
+.. cpp:function:: std::size_t DataBox::deSerialize(std::byte *src);
 
 initializes a ``DataBox`` to match the serialized ``DataBox``
 contained in the ``src`` pointer.
@@ -327,6 +327,13 @@ resource management does not depend on mutable interpolation metadata.
 The source buffer must remain alive and suitably aligned for the
 entire lifetime of every ``DataBox`` de-serialized from it.
 
+.. warning::
+
+  ``DataBox`` previously exposed the serialize and deserialize
+  routines using the C-style ``char*`` pointer. ``spiner`` now prefers
+  the more ``std::byte*`` pointer. The former is still supported via
+  overloads but should be considered deprecated.
+
 Putting this all together, an application of
 serialization/de-serialization probably looks like this:
 
@@ -341,7 +348,7 @@ serialization/de-serialization probably looks like this:
   
   // Allocate the memory for the new databox.
   // In practice this would be an API call for, e.g., shared memory
-  char *memory = (char*)malloc(allocate_size);
+  std::byte *memory = (std::byte*)malloc(allocate_size);
   
   // serialize the old databox
   std::size_t write_size = db.serialize(memory);
