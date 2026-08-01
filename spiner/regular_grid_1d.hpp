@@ -100,18 +100,8 @@ class RegularGrid1D {
   }
 
   // utitilies
-  PORTABLE_INLINE_FUNCTION bool
-  operator==(const RegularGrid1D<T> &other) const {
-    return (min_ == other.min_ && max_ == other.max_ && dx_ == other.dx_ &&
-            idx_ == other.idx_ && N_ == other.N_);
-  }
-  PORTABLE_INLINE_FUNCTION bool
-  operator!=(const RegularGrid1D<T> &other) const {
-    return !(*this == other);
-  }
   PORTABLE_INLINE_FUNCTION T min() const { return min_; }
   PORTABLE_INLINE_FUNCTION T max() const { return max_; }
-  PORTABLE_INLINE_FUNCTION T dx() const { return dx_; }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const { return N_; }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
     return (std::isnan(min_) || std::isnan(max_) || std::isnan(dx_) ||
