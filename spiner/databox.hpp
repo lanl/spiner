@@ -395,8 +395,6 @@ class DataBox {
     PORTABLE_REQUIRE(
         (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
         "Must not de-serialize into an active databox.");
-    // TODO(JMM): This could be replaced by a per-grid warning as we
-    // do for databox data if we want.
     for (int i = 0; i < rank_; ++i) {
       auto gstat = grids_[i].dataStatus();
       PORTABLE_REQUIRE((gstat == DataStatus::Empty ||
