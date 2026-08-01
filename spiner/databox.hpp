@@ -235,9 +235,7 @@ class DataBox {
   }
   inline void setRange(int i, Grid_t g) {
     PORTABLE_REQUIRE(0 <= i && i < rank_, "Grid must be in index range");
-    grids_[i].finalize(); // TODO(JMM): Do we want this?
     setIndexType(i, IndexType::Interpolated);
-    // TODO(JMM): Should this be a move?
     grids_[i] = g;
   }
   template <typename... Args>
@@ -400,7 +398,11 @@ class DataBox {
     // TODO(JMM): This could be replaced by a per-grid warning as we
     // do for databox data if we want.
     for (int i = 0; i < rank_; ++i) {
-      grids_[i].finalize();
+      auto gstat = grids_[i].dataStatus();
+      PORTABLE_REQUIRE((gstat == DataStatus::Empty ||
+                        gstat == DataStatus::Unmanaged ||
+                        gstat == DataStatus::Trivial),
+                       "Must not de-serialize into an active grid.");
     }
     std::memcpy(this, src, sizeof(*this));
 
@@ -978,7 +980,8 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
-      grids_[i] = src.grids_[i];
+      // TODO(JMM): Add a way to shallow copy metadata automatically
+      grids_[i].copy(src.grids_[i]); // must also be a deep copy
     }
   }
   return *this;
