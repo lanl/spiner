@@ -126,7 +126,9 @@ class NonUniformGrid1D {
     return dynamicMemorySizeInBytes();
   }
   std::size_t deSerialize(std::byte *src) {
-    finalize();
+    PORTABLE_REQUIRE((status_ == DataStatus::Empty ||
+                      status_ == DataStatus::Unmanaged),
+                     "Must not de-serialize into an active grid.");
     std::memcpy(this, src, sizeof(*this));
     PORTABLE_REQUIRE(n_ == 0 || n_ >= 2, "Invalid nonuniform grid size");
     return sizeof(*this) + setPointer(src + sizeof(*this));
@@ -159,7 +161,9 @@ class NonUniformGrid1D {
       PORTABLE_ALWAYS_REQUIRE(data != nullptr, "Grid allocation failed");
       std::memcpy(data, other.data_, other.dynamicMemorySizeInBytes());
     }
-    finalize();
+    PORTABLE_REQUIRE((status_ == DataStatus::Empty ||
+                      status_ == DataStatus::Unmanaged),
+                     "Must not copy into an active grid.");
     n_ = other.n_;
     data_ = data;
     status_ = (n_ == 0) ? DataStatus::Empty : DataStatus::AllocatedHost;
