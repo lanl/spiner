@@ -37,33 +37,28 @@ namespace Spiner {
 template <typename T = Real,
           typename std::enable_if<std::is_arithmetic<T>::value, bool>::type =
               true>
-class NonuniformGrid1D {
+class NonUniformGrid1D {
  public:
   using ValueType = T;
 
-  NonuniformGrid1D() = default;
+  NonUniformGrid1D() = default;
 
-  explicit NonuniformGrid1D(const std::vector<T> &points)
-      : NonuniformGrid1D(AllocationTarget::Host, points) {}
-  NonuniformGrid1D(const AllocationTarget target,
-                   const std::vector<T> &points) {
-    allocate_(target, points.data(), points.size());
+  explicit NonUniformGrid1D(const std::vector<T> &points) {
+    allocate_(points.data(), points.size());
   }
-  NonuniformGrid1D(std::initializer_list<T> points)
-      : NonuniformGrid1D(std::vector<T>(points)) {}
-  NonuniformGrid1D(const AllocationTarget target,
-                   std::initializer_list<T> points)
-      : NonuniformGrid1D(target, std::vector<T>(points)) {}
+  NonUniformGrid1D(std::initializer_list<T> points)
+      : NonUniformGrid1D(std::vector<T>(points)) {}
 
-  // This constructor borrows caller-owned host memory. The caller
-  // must keep it alive and unchanged for this grid's lifetime.
-  PORTABLE_INLINE_FUNCTION
-  NonuniformGrid1D(T *points, const std::size_t n) {
+  // This constructor borrows caller-owned memory. The caller must keep it
+  // alive and unchanged for this grid's lifetime, and is responsible for
+  // ensuring that its coordinates are finite and strictly increasing.
+  // Validation is not possible here because the borrowed memory may be on a
+  // device.
+  NonUniformGrid1D(T *points, const std::size_t n) {
     if (n > 0) {
       n_ = n;
       data_ = points;
       status_ = DataStatus::Unmanaged;
-      validate_();
     }
   }
 
@@ -137,10 +132,10 @@ class NonuniformGrid1D {
     return sizeof(*this) + setPointer(src + sizeof(*this));
   }
 
-  NonuniformGrid1D getOnDevice() const {
+  NonUniformGrid1D getOnDevice() const {
     PORTABLE_REQUIRE(status_ != DataStatus::AllocatedDevice,
                      "Cannot copy a device grid to device");
-    NonuniformGrid1D grid;
+    NonUniformGrid1D grid;
     grid.n_ = n_;
     if (n_ > 0) {
       grid.data_ =
@@ -205,29 +200,17 @@ class NonuniformGrid1D {
 #endif
 
  private:
-  void allocate_(const AllocationTarget target, const T *src,
-                        const std::size_t n) {
+  void allocate_(const T *src, const std::size_t n) {
     validatePoints_(src, n);
     n_ = n;
-    if (target == AllocationTarget::Device) {
-      data_ = static_cast<T *>(PORTABLE_MALLOC(dynamicMemorySizeInBytes()));
-    } else {
-      data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
-    }
+    data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
     PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
-    if (target == AllocationTarget::Device) {
-      portableCopyToDevice(data_, src, dynamicMemorySizeInBytes());
-      status_ = DataStatus::AllocatedDevice;
-    } else {
-      std::memcpy(data_, src, dynamicMemorySizeInBytes());
-      status_ = DataStatus::AllocatedHost;
-    }
+    std::memcpy(data_, src, dynamicMemorySizeInBytes());
+    status_ = DataStatus::AllocatedHost;
   }
 
-  PORTABLE_FORCEINLINE_FUNCTION
   void validate_() const { validatePoints_(data_, n_); }
 
-  PORTABLE_FORCEINLINE_FUNCTION
   static void validatePoints_(const T *points, const std::size_t n) {
     PORTABLE_ALWAYS_REQUIRE(
         points != nullptr && n >= 2,
