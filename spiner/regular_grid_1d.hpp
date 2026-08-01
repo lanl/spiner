@@ -135,9 +135,7 @@ class RegularGrid1D {
     return sizeof(*this);
   }
 
-  void copy(const RegularGrid1D<T> &other) {
-    *this = other;
-  }
+  void copy(const RegularGrid1D<T> &other) { *this = other; }
 
   RegularGrid1D<T> getOnDevice() const { return *this; }
 
