@@ -8,6 +8,7 @@ grids. There are two lower-level objects:
 
 * ``RegularGrid1D``
 * ``PiecewiseGrid1D``
+* ``NonuniformGrid1D``
 
 These objects contain the metadata required for interpolation
 operations and have a few useful userspace functions, which are
@@ -22,6 +23,7 @@ a type alias such as:
 
    using RegularGrid1D = Spiner::RegularGrid1D<double>;
    using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<double>;
+   using NonuniformGrid1D = Spiner::NonuniformGrid1D<double>;
 
 .. note::
    In the function signature below we refer to ``T`` and ``Real`` as
@@ -77,15 +79,57 @@ returns the maximum value on the independent variable grid.
 
 The function
 
-.. cpp:function:: T RegularGrid1D::dx() const;
-
-returns the grid spacing for the independent variable.
-
-The function
-
 .. cpp:function:: int RegularGrid1D::nPoints() const;
 
 returns the number of points in the independent variable grid.
+
+``NonuniformGrid1D``
+----------------------
+
+``NonuniformGrid1D`` stores one explicitly supplied coordinate for each grid
+point. It is appropriate when spacing cannot be represented efficiently as
+regular or piecewise-regular intervals. Each grid has independent coordinate
+storage, so a ``DataBox<double, NonuniformGrid1D>`` can use a different
+non-uniform coordinate sequence for every axis.
+
+Construction
+^^^^^^^^^^^^^
+
+Constructing from a ``std::vector`` or initializer list makes an owning host
+copy of the points:
+
+.. code-block:: cpp
+
+   NonuniformGrid1D grid({-1.0, -0.5, 0.25, 2.0});
+
+Like ``DataBox``, an ``AllocationTarget`` overload can allocate and populate
+the coordinates directly on a device:
+
+.. code-block:: cpp
+
+   NonuniformGrid1D device_grid(
+       Spiner::AllocationTarget::Device, {-1.0, -0.5, 0.25, 2.0});
+
+The coordinates must contain at least two finite, strictly increasing values.
+The pointer constructor borrows caller-owned host memory instead:
+
+.. code-block:: cpp
+
+   std::vector<double> points = {-1.0, -0.5, 0.25, 2.0};
+   NonuniformGrid1D view(points.data(), points.size());
+
+Borrowed points must remain alive and unchanged for the grid's lifetime.
+Like ``DataBox``, grid copies are shallow reference-style copies; finalize an
+owned grid exactly once. Use ``getOnDevice()`` to make a deep device copy.
+
+Mapping and interpolation
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``x(i)`` returns the stored coordinate. ``index(x)`` finds its lower
+bracketing point with a portable binary search, and ``weights(x, ix, w)`` uses
+the spacing of that local interval. Lookup is ``O(log N)``. Values below or
+above the coordinate range use the first or last interval respectively, just
+as ``RegularGrid1D`` does, so interpolation extrapolates linearly.
 
 The ``PiecewiseGrid1D``
 ------------------------
@@ -160,12 +204,6 @@ returns the maximum value on the independent variable grid.
 
 The function
 
-.. cpp:function:: T PiecewiseGrid1D::dx() const;
-
-returns the grid spacing for the independent variable.
-
-The function
-
 .. cpp:function:: int PiecewiseGrid1D::nPoints() const;
 
 returns the number of points in the independent variable grid.
@@ -188,9 +226,10 @@ All grid types implement the resource-management interface used by
 
 These operations are currently trivial for ``RegularGrid1D`` because
 it contains only inline data. ``PiecewiseGrid1D`` applies them
-recursively to its component grids. This interface allows future grid
-types to own dynamically allocated host or device data without
-requiring grid-specific resource handling in ``DataBox``.
+recursively to its component grids. ``NonuniformGrid1D`` uses them to
+manage its coordinate array. This interface allows grid types to own
+dynamically allocated host or device data without requiring grid-specific
+resource handling in ``DataBox``.
 
 ``serialize`` writes the inline grid object followed by its dynamic
 memory. ``dumpDynamicMemory`` writes only the latter, allowing a grid
