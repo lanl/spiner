@@ -66,4 +66,6 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-This documentation is approved for unlimited release, LA-UR-22-20363.
+This documentation is approved for unlimited release,
+LA-UR-22-20363. Generative AI was used to assist in modifying this
+file.
