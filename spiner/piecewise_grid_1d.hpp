@@ -205,6 +205,10 @@ class PiecewiseGrid1D {
     return sizeof(*this) + setPointer(src + sizeof(*this));
   }
 
+  void copy(const PiecewiseGrid1D<T, NGRIDSMAX> &other) {
+    *this = other;
+  }
+
   PiecewiseGrid1D<T, NGRIDSMAX> getOnDevice() const {
     PiecewiseGrid1D<T, NGRIDSMAX> grid(*this);
     for (int i = 0; i < NGRIDS_; ++i) {
