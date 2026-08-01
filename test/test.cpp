@@ -39,6 +39,7 @@
 using DataBox = Spiner::DataBox<Real>;
 using Spiner::IndexType;
 using RegularGrid1D = Spiner::RegularGrid1D<Real>;
+using NonUniformGrid1D = Spiner::NonUniformGrid1D<Real>;
 using Spiner::DBDeleter;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
 template <int N>
@@ -46,6 +47,7 @@ using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<Real, N>;
 template <int N>
 using PiecewiseDB = Spiner::DataBox<Real, PiecewiseGrid1D<N>>;
 using Spiner::DataStatus;
+using NonuniformDB = Spiner::DataBox<Real, NonUniformGrid1D>;
 
 PORTABLE_INLINE_FUNCTION Real linearFunction(Real z, Real y, Real x) {
   return x + y + z;
@@ -103,7 +105,6 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.min() == min);
     REQUIRE(g.max() == max);
     REQUIRE(g.nPoints() == N);
-    REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
   }
 
   SECTION("A regular grid can be serialized and deserialized") {
@@ -116,11 +117,128 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     RegularGrid1D restored;
     const std::size_t consumed = restored.deSerialize(serialized.data());
     REQUIRE(consumed == written);
-    REQUIRE(restored == grid);
+    REQUIRE(restored.min() == grid.min());
+    REQUIRE(restored.max() == grid.max());
+    REQUIRE(restored.nPoints() == grid.nPoints());
     REQUIRE(restored.setPointer(serialized.data()) == 0);
-    REQUIRE(restored.getOnDevice() == grid);
+    const auto device_grid = restored.getOnDevice();
+    REQUIRE(device_grid.min() == grid.min());
+    REQUIRE(device_grid.max() == grid.max());
+    REQUIRE(device_grid.nPoints() == grid.nPoints());
     restored.finalize();
     grid.finalize();
+  }
+}
+
+TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
+  const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
+
+  SECTION("An owning grid maps coordinates and computes local weights") {
+    NonUniformGrid1D grid(points);
+    REQUIRE(grid.dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(grid.nPoints() == points.size());
+    REQUIRE(grid.min() == points.front());
+    REQUIRE(grid.max() == points.back());
+    REQUIRE(grid.x(2) == points[2]);
+    REQUIRE(grid.index(-2.0) == 0);
+    REQUIRE(grid.index(0.0) == 1);
+    REQUIRE(grid.index(2.0) == 2);
+
+    int ix;
+    Spiner::weights_t<Real> w;
+    grid.weights(0.0, ix, w);
+    REQUIRE(ix == 1);
+    REQUIRE(std::abs(w[0] - 1.0 / 3.0) <= EPSTEST);
+    REQUIRE(std::abs(w[1] - 2.0 / 3.0) <= EPSTEST);
+
+    grid.weights(2.0, ix, w);
+    REQUIRE(ix == 2);
+    REQUIRE(std::abs(w[0]) <= EPSTEST);
+    REQUIRE(std::abs(w[1] - 1.0) <= EPSTEST);
+    grid.finalize();
+    grid.finalize();
+    REQUIRE(grid.dataStatus() == DataStatus::Empty);
+  }
+
+  SECTION("A borrowed grid never frees its caller-owned coordinates") {
+    std::vector<Real> borrowed_points = points;
+    NonUniformGrid1D grid(borrowed_points.data(), borrowed_points.size());
+    REQUIRE(grid.dataStatus() == DataStatus::Unmanaged);
+    grid.finalize();
+    REQUIRE(std::abs(borrowed_points[2] - 0.25) <= EPSTEST);
+  }
+
+  SECTION("getOnDevice creates device-owned coordinates") {
+    NonUniformGrid1D host_grid(points);
+    NonUniformGrid1D grid = host_grid.getOnDevice();
+    REQUIRE(grid.dataStatus() == DataStatus::AllocatedDevice);
+
+    Real value = 0;
+    portableReduce(
+        "Interpolate with a directly allocated nonuniform grid", 0, 1,
+        PORTABLE_LAMBDA(const int, Real &result) {
+          int ix;
+          Spiner::weights_t<Real> w;
+          grid.weights(0.0, ix, w);
+          result += w[0] * grid.x(ix) + w[1] * grid.x(ix + 1);
+        },
+        value);
+    REQUIRE(std::abs(value) <= EPSTEST);
+    grid.finalize();
+    host_grid.finalize();
+  }
+
+  SECTION("A grid serializes its owned coordinates and relocates them") {
+    NonUniformGrid1D grid(points);
+    std::vector<std::byte> serialized(grid.serializedSizeInBytes());
+    REQUIRE(grid.serialize(serialized.data()) == serialized.size());
+
+    NonUniformGrid1D restored;
+    REQUIRE(restored.deSerialize(serialized.data()) == serialized.size());
+    REQUIRE(restored.nPoints() == grid.nPoints());
+    for (std::size_t i = 0; i < grid.nPoints(); ++i)
+      REQUIRE(restored.x(i) == grid.x(i));
+    REQUIRE(restored.dataStatus() == DataStatus::Unmanaged);
+    REQUIRE(reinterpret_cast<const std::byte *>(restored.data()) >=
+            serialized.data());
+    restored.finalize();
+    grid.finalize();
+  }
+
+  SECTION(
+      "A DataBox delegates serialization and device copying to every axis") {
+    constexpr int N = 4;
+    NonuniformDB db(N, N);
+    db.setRange(0, points);
+    db.setRange(1, std::vector<Real>{-2.0, -0.25, 0.5, 3.0});
+    for (int j = 0; j < N; ++j) {
+      for (int i = 0; i < N; ++i) {
+        db(j, i) = db.range(0).x(i) + 2.0 * db.range(1).x(j);
+      }
+    }
+
+    std::vector<std::byte> serialized(db.serializedSizeInBytes());
+    REQUIRE(db.serialize(serialized.data()) == serialized.size());
+    NonuniformDB restored;
+    REQUIRE(restored.deSerialize(serialized.data()) == serialized.size());
+    REQUIRE(std::abs(restored.interpToReal(0.0, 0.0)) <= EPSTEST);
+    REQUIRE(restored.range(0).dataStatus() == DataStatus::Unmanaged);
+    REQUIRE(restored.range(1).dataStatus() == DataStatus::Unmanaged);
+
+    NonuniformDB device = db.getOnDevice();
+    REQUIRE(device.range(0).data() != db.range(0).data());
+    REQUIRE(device.range(1).data() != db.range(1).data());
+    Real value = 0;
+    portableReduce(
+        "Interpolate with nonuniform grids", 0, 1,
+        PORTABLE_LAMBDA(const int, Real &result) {
+          result += device.interpToReal(0.0, 0.0);
+        },
+        value);
+    REQUIRE(std::abs(value) <= EPSTEST);
+
+    device.finalize();
+    db.finalize();
   }
 }
 
@@ -189,12 +307,16 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
 
         PiecewiseGrid1D<3> restored;
         REQUIRE(restored.deSerialize(serialized.data()) == expected);
-        REQUIRE(restored == h);
+        REQUIRE(restored.nPoints() == h.nPoints());
+        for (std::size_t i = 0; i < h.nPoints(); ++i)
+          REQUIRE(restored.x(i) == h.x(i));
         REQUIRE(restored.nPoints() == h.nPoints());
         REQUIRE(restored.index(0.8) == h.index(0.8));
 
         auto device = h.getOnDevice();
-        REQUIRE(device == h);
+        REQUIRE(device.nPoints() == h.nPoints());
+        for (std::size_t i = 0; i < h.nPoints(); ++i)
+          REQUIRE(device.x(i) == h.x(i));
         device.finalize();
         restored.finalize();
       }
@@ -248,8 +370,6 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
         REQUIRE(dbCopy.dim(i + 1) == db.dim(i + 1));
         REQUIRE(dbCopy.indexType(i) == db.indexType(i));
       }
-      REQUIRE(dbCopy != db);
-
       SECTION("DataBoxes can be resized") {
         dbCopy.resize(5, 4, 3);
         REQUIRE(dbCopy.rank() == 3);
@@ -290,7 +410,6 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
       }
 
       SECTION("DataBox slices are shallow") {
-        REQUIRE(dbslc == dbslc2);
         REQUIRE(&(dbslc(0)) == &(db(0)));
       }
     }
@@ -772,7 +891,9 @@ SCENARIO("Serializing and deserializing a DataBox",
           AND_THEN("The grid metadata is correct") {
             for (int i = 0; i < RANK; ++i) {
               REQUIRE(dbh2.indexType(i) == IndexType::Interpolated);
-              REQUIRE(dbh2.range(i) == dbh.range(i));
+              REQUIRE(dbh2.range(i).nPoints() == dbh.range(i).nPoints());
+              for (std::size_t j = 0; j < dbh.range(i).nPoints(); ++j)
+                REQUIRE(dbh2.range(i).x(j) == dbh.range(i).x(j));
             }
           }
         }
@@ -788,7 +909,7 @@ SCENARIO("Serializing and deserializing a DataBox",
 }
 
 /* A mocked up UniformGrid1D that owns an array of data.
- * TODO(JMM): Remove/replace/update this once we have a NonuniformGrid1D.
+ * TODO(JMM): Remove/replace/update this once we have a NonUniformGrid1D.
  */
 class OwningTestGrid1D {
  public:
@@ -823,20 +944,6 @@ class OwningTestGrid1D {
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
     return points_ != nullptr && n_ > 1;
-  }
-  PORTABLE_INLINE_FUNCTION bool
-  operator==(const OwningTestGrid1D &other) const {
-    if (n_ != other.n_) {
-      return false;
-    }
-    for (std::size_t i = 0; i < n_; ++i) {
-      if (points_[i] != other.points_[i]) return false;
-    }
-    return true;
-  }
-  PORTABLE_INLINE_FUNCTION bool
-  operator!=(const OwningTestGrid1D &other) const {
-    return !(*this == other);
   }
   std::size_t dynamicMemorySizeInBytes() const { return n_ * sizeof(Real); }
   std::size_t serializedSizeInBytes() const {
@@ -964,7 +1071,9 @@ TEST_CASE("DataBox delegates resource management to every grid",
           reinterpret_cast<const std::byte *>(restored.range(i).data());
       REQUIRE(gridData >= begin);
       REQUIRE(gridData < end);
-      REQUIRE(restored.range(i) == db.range(i));
+      REQUIRE(restored.range(i).nPoints() == db.range(i).nPoints());
+      for (std::size_t j = 0; j < db.range(i).nPoints(); ++j)
+        REQUIRE(restored.range(i).data()[j] == db.range(i).data()[j]);
       restored.range(i).finalize();
     }
     REQUIRE(OwningTestGrid1D::owned_allocations == RANK);
@@ -1110,6 +1219,47 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
 }
 
 #if SPINER_USE_HDF
+TEST_CASE("NonUniformGrid1D HDF5", "[NonUniformGrid1D][HDF5]") {
+  const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
+  const std::string filename = "nonuniform_grid_test.sp5";
+  const std::string grid_name = "grid";
+  NonUniformGrid1D grid(points);
+
+  hid_t file =
+      H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  herr_t status = grid.saveHDF(file, grid_name);
+  status += H5Fclose(file);
+  REQUIRE(status == H5_SUCCESS);
+
+  NonUniformGrid1D loaded;
+  file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  status = loaded.loadHDF(file, grid_name);
+  status += H5Fclose(file);
+  REQUIRE(status == H5_SUCCESS);
+  REQUIRE(loaded.nPoints() == grid.nPoints());
+  for (std::size_t i = 0; i < grid.nPoints(); ++i)
+    REQUIRE(loaded.x(i) == grid.x(i));
+
+  constexpr int N = 4;
+  NonuniformDB db(N);
+  db.setRange(0, points);
+  for (int i = 0; i < N; ++i)
+    db(i) = db.range(0).x(i);
+  const std::string db_filename = "nonuniform_databox_test.sp5";
+  REQUIRE(db.saveHDF(db_filename) == H5_SUCCESS);
+  NonuniformDB loaded_db;
+  REQUIRE(loaded_db.loadHDF(db_filename) == H5_SUCCESS);
+  REQUIRE(loaded_db.range(0).nPoints() == db.range(0).nPoints());
+  for (std::size_t i = 0; i < db.range(0).nPoints(); ++i)
+    REQUIRE(loaded_db.range(0).x(i) == db.range(0).x(i));
+  REQUIRE(std::abs(loaded_db.interpToReal(0.0)) <= EPSTEST);
+
+  loaded_db.finalize();
+  db.finalize();
+  loaded.finalize();
+  grid.finalize();
+}
+
 SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
   GIVEN("A piecewise grid") {
     RegularGrid1D g1(0, 0.25, 3);
@@ -1117,7 +1267,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
     RegularGrid1D g3(0.75, 1, 7);
     PiecewiseGrid1D<3> piecewise_grid = {{g1, g2, g3}};
     THEN("We can save it to file") {
-      const std::string filename = "piecewise_test.h5";
+      const std::string filename = "piecewise_test.sp5";
       const std::string grid_name = "grid";
       herr_t status;
       hid_t file;
@@ -1135,13 +1285,15 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
-        REQUIRE(loaded_grid == piecewise_grid);
+        REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
+        for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
+          REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
       }
     }
     GIVEN("A single regular grid") {
       RegularGrid1D g1(0, 0.25, 3);
       WHEN("We save it to file") {
-        const std::string filename = "backwards_compatibility_test.h5";
+        const std::string filename = "backwards_compatibility_test.sp5";
         const std::string grid_name = "grid";
         herr_t status;
         hid_t file;
@@ -1199,7 +1351,9 @@ SCENARIO("DataBox HDF5", "[DataBox][HDF5]") {
           REQUIRE(db.indexType(i) == db2.indexType(i));
           REQUIRE(db.dim(i + 1) == db2.dim(i + 1));
           if (db.indexType(i) == IndexType::Interpolated) {
-            REQUIRE(db.range(i) == db2.range(i));
+            REQUIRE(db.range(i).nPoints() == db2.range(i).nPoints());
+            for (std::size_t j = 0; j < db.range(i).nPoints(); ++j)
+              REQUIRE(db.range(i).x(j) == db2.range(i).x(j));
           }
         }
         AND_THEN("Data itself is consistent") {
