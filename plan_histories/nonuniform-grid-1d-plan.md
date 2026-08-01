@@ -4,7 +4,7 @@ Generative AI was used to assist with this document.
 
 ## Summary
 
-Introduce `NonuniformGrid1D<T>`, storing an ordered coordinate array and using binary search for interpolation. Each `DataBox<T, NonuniformGrid1D<T>>` axis owns or references its own coordinates. Existing regular and piecewise grids remain unchanged, and mixed grid classes within one `DataBox` remain out of scope.
+Introduce `NonUniformGrid1D<T>`, storing an ordered coordinate array and using binary search for interpolation. Each `DataBox<T, NonUniformGrid1D<T>>` axis owns or references its own coordinates. Existing regular and piecewise grids remain unchanged, and mixed grid classes within one `DataBox` remain out of scope.
 
 ## Public Interface and Behavior
 
@@ -15,8 +15,8 @@ Introduce `NonuniformGrid1D<T>`, storing an ordered coordinate array and using b
 ## Ownership and Integration
 
 - Store point count, pointer, and `DataStatus`. Vector/list construction owns host memory; pointer construction is unmanaged; `getOnDevice()` deep-copies coordinates; and idempotent `finalize()` releases only owned host/device storage.
-- Serialize `[NonuniformGrid1D header][coordinate values]`; relocation makes the coordinate pointer unmanaged.
-- Use `DataBox<T, NonuniformGrid1D<T>>` without `DataBox` special cases: its existing lifecycle delegation applies independently to every axis.
+- Serialize `[NonUniformGrid1D header][coordinate values]`; relocation makes the coordinate pointer unmanaged.
+- Use `DataBox<T, NonUniformGrid1D<T>>` without `DataBox` special cases: its existing lifecycle delegation applies independently to every axis.
 - Persist coordinates as a one-dimensional HDF5 dataset and document ownership, search, and extrapolation behavior.
 
 ## Test Plan
@@ -27,9 +27,8 @@ Introduce `NonuniformGrid1D<T>`, storing an ordered coordinate array and using b
 
 ## Assumptions
 
-- The public type is `Spiner::NonuniformGrid1D<T>`.
+- The public type is `Spiner::NonUniformGrid1D<T>`.
 - Borrowed coordinates remain valid and unchanged for the grid lifetime.
-- Owning construction defaults to host storage and also supports an
-  `AllocationTarget::Device` overload; `getOnDevice()` remains available for
-  host-to-device copies.
+- Owning construction uses host storage; `getOnDevice()` provides host-to-device
+  copies.
 - Mixing regular, piecewise, and non-uniform classes in one `DataBox` is deferred.
