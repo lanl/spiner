@@ -3,6 +3,7 @@
 ## Current develop
 
 ### Added (new features/APIs/variables/...)
+- [[MR 146]](https://github.com/lanl/spiner/pull/146) Add UnstructuredGrid1D
 - [[MR 144]](https://github.com/lanl/spiner/pull/144) Add the ability for grid objects to own memory. This extends the public API but the real changes will come later.
 - [[MR 103]](https://github.com/lanl/spiner/pull/103) Add config_summary to cmake
 
