@@ -140,23 +140,45 @@ class NonUniformGrid1D {
     if (n_ > 0) {
       grid.data_ =
           static_cast<T *>(PORTABLE_MALLOC(dynamicMemorySizeInBytes()));
-      PORTABLE_ALWAYS_REQUIRE(grid.data_ != nullptr,
-                              "Grid allocation failed");
+      PORTABLE_ALWAYS_REQUIRE(grid.data_ != nullptr, "Grid allocation failed");
       portableCopyToDevice(grid.data_, data_, dynamicMemorySizeInBytes());
       grid.status_ = DataStatus::AllocatedDevice;
     }
     return grid;
   }
 
-  void finalize() {
-    if (status_ == DataStatus::AllocatedHost) {
-      std::free(data_);
-    } else if (status_ == DataStatus::AllocatedDevice) {
-      PORTABLE_FREE(data_);
+  // Explicitly make an independent host-owned copy. Normal copy construction
+  // and assignment remain shallow.
+  void copy(const NonUniformGrid1D &other) {
+    if (this == &other) return;
+    PORTABLE_REQUIRE(other.status_ != DataStatus::AllocatedDevice,
+                     "Cannot deep copy a device-resident grid to host");
+    T *data = nullptr;
+    if (other.n_ > 0) {
+      data = static_cast<T *>(std::malloc(other.dynamicMemorySizeInBytes()));
+      PORTABLE_ALWAYS_REQUIRE(data != nullptr, "Grid allocation failed");
+      std::memcpy(data, other.data_, other.dynamicMemorySizeInBytes());
     }
-    data_ = nullptr;
-    n_ = 0;
-    status_ = DataStatus::Empty;
+    finalize();
+    n_ = other.n_;
+    data_ = data;
+    status_ = (n_ == 0) ? DataStatus::Empty : DataStatus::AllocatedHost;
+  }
+
+  void finalize() {
+    // Note that finalizes are projections for Grid objects (unlike
+    // databoxes) which prevents double-frees and means we can freely
+    // call finalize whenever we need to set state.
+    if (status_ != DataStatus::Unmanaged) {
+      if (status_ == DataStatus::AllocatedHost) {
+        std::free(data_);
+      } else if (status_ == DataStatus::AllocatedDevice) {
+        PORTABLE_FREE(data_);
+      }
+      data_ = nullptr;
+      n_ = 0;
+      status_ = DataStatus::Empty;
+    }
   }
 
 #ifdef SPINER_USE_HDF
@@ -219,9 +241,8 @@ class NonUniformGrid1D {
       // TODO(JMM): This is trivial for fast math
       PORTABLE_ALWAYS_REQUIRE(std::isfinite(points[i]),
                               "Grid points must be finite");
-      PORTABLE_ALWAYS_REQUIRE(
-          i == 0 || points[i - 1] < points[i],
-          "Grid points must be strictly increasing");
+      PORTABLE_ALWAYS_REQUIRE(i == 0 || points[i - 1] < points[i],
+                              "Grid points must be strictly increasing");
     }
   }
 

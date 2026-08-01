@@ -168,6 +168,32 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
     REQUIRE(std::abs(borrowed_points[2] - 0.25) <= EPSTEST);
   }
 
+  SECTION("copy creates independent host-owned coordinates") {
+    NonUniformGrid1D source(points);
+    NonUniformGrid1D copy;
+    copy.copy(source);
+    REQUIRE(copy.dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(copy.data() != source.data());
+    REQUIRE(copy.nPoints() == source.nPoints());
+    for (std::size_t i = 0; i < source.nPoints(); ++i)
+      REQUIRE(copy.x(i) == source.x(i));
+
+    source.data()[1] = -0.25;
+    REQUIRE(copy.x(1) == -0.5);
+    copy.finalize();
+    source.finalize();
+  }
+
+  SECTION("copy detaches a shallow alias without freeing its source") {
+    NonUniformGrid1D source(points);
+    NonUniformGrid1D copy = source;
+    copy.copy(source);
+    REQUIRE(copy.data() != source.data());
+    REQUIRE(source.x(1) == -0.5);
+    copy.finalize();
+    source.finalize();
+  }
+
   SECTION("getOnDevice creates device-owned coordinates") {
     NonUniformGrid1D host_grid(points);
     NonUniformGrid1D grid = host_grid.getOnDevice();

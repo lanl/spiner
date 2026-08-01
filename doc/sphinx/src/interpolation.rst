@@ -122,7 +122,9 @@ Borrowed points must remain alive and unchanged for the grid's lifetime.
 They are not validated, because they may reside on a device; callers must
 ensure that they contain at least two finite, strictly increasing coordinates.
 Like ``DataBox``, grid copies are shallow reference-style copies; finalize an
-owned grid exactly once. Use ``getOnDevice()`` to make a deep device copy.
+owned grid exactly once. ``copy(other)`` explicitly creates independent
+host-owned coordinates from a host-resident grid. Use ``getOnDevice()`` to make
+a deep device copy.
 
 Mapping and interpolation
 ^^^^^^^^^^^^^^^^^^^^^^^^^
