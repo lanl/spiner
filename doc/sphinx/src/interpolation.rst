@@ -121,10 +121,18 @@ The pointer constructor borrows caller-owned host memory instead:
 Borrowed points must remain alive and unchanged for the grid's lifetime.
 They are not validated, because they may reside on a device; callers must
 ensure that they contain at least two finite, strictly increasing coordinates.
-Like ``DataBox``, grid copies are shallow reference-style copies; finalize an
-owned grid exactly once. ``copy(other)`` explicitly creates independent
-host-owned coordinates from a host-resident grid. Use ``getOnDevice()`` to make
-a deep device copy.
+
+Like ``DataBox``, ordinary grid copies are shallow reference-style copies;
+finalize an owned grid exactly once. Every grid type also provides an explicit
+``copy(other)`` method. For ``NonUniformGrid1D``, it is a deep copy that:
+
+.. cpp:function:: void NonUniformGrid1D::copy(const NonUniformGrid1D& other)
+
+allocates independent host-owned coordinate storage and copies the coordinates
+from a host-resident ``other`` grid. It must not be used with a device-resident
+source; use ``getOnDevice()`` to make a deep device copy. For
+``RegularGrid1D`` and ``PiecewiseGrid1D``, which do not own non-trivial dynamic
+memory, ``copy(other)`` is correspondingly a trivial metadata copy.
 
 Mapping and interpolation
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,6 +233,7 @@ All grid types implement the resource-management interface used by
 .. cpp:function:: std::size_t Grid::serialize(char *dst) const;
 .. cpp:function:: std::size_t Grid::deSerialize(char *src);
 .. cpp:function:: std::size_t Grid::setPointer(char *src);
+.. cpp:function:: void Grid::copy(const Grid& other);
 .. cpp:function:: Grid Grid::getOnDevice() const;
 .. cpp:function:: void Grid::finalize();
 
