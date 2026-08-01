@@ -98,7 +98,8 @@ int main(int argc, char *argv[]) {
     for (int ifine = 0; ifine < nfine.size(); ++ifine) {
       auto n = nfine[ifine];
       auto g = gfine[ifine];
-      Real d3x = g.dx() * g.dx() * g.dx();
+      const Real dx = g.x(1) - g.x(0);
+      Real d3x = dx * dx * dx;
       Real L2_error;
 #ifdef PORTABILITY_STRATEGY_KOKKOS
       Kokkos::fence();

@@ -10,6 +10,7 @@ convergence.bin
 *.hpp.gch
 convergence.dat
 .markdown-preview.html
+*.h5
 *.sp5
 *.lst
 *.s
