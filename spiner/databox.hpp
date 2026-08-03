@@ -424,8 +424,8 @@ class DataBox {
   }
   // ------------------------------------
 
-  DataBox<T, Grid_t, Concept>
-  getOnDevice() const { // getOnDevice is always a deep copy
+  // getOnDevice is always a deep copy
+  DataBox<T, Grid_t, Concept> getOnDevice(bool include_grids = true) const {
     if (size() == 0 ||
         status_ == DataStatus::Empty) { // edge case for unallocated
       DataBox<T, Grid_t, Concept> a;
@@ -439,8 +439,12 @@ class DataBox {
     DataBox<T, Grid_t, Concept> a{device_data, dim(6), dim(5), dim(4),
                                   dim(3),      dim(2), dim(1)};
     a.copyShape(*this);
-    for (int i = 0; i < rank_; ++i) {
-      a.grids_[i] = grids_[i].getOnDevice();
+    // JMM: We may wish to manually manage memory-owning grid objects
+    // to minimize the memory footprint.
+    if (include_grids) {
+      for (int i = 0; i < rank_; ++i) {
+        a.grids_[i] = grids_[i].getOnDevice();
+      }
     }
     // set correct allocation status of the new databox
     // note this is ALWAYS device, even if host==device.
@@ -1041,8 +1045,9 @@ DataBox<T, Grid_t, Concept>::canInterpToReal_(const int interpOrder) const {
 
 template <typename T, typename Grid_t, typename Concept>
 inline DataBox<T, Grid_t, Concept>
-getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host) {
-  return a_host.getOnDevice();
+getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host,
+                   bool include_grids = true) {
+  return a_host.getOnDevice(include_grids);
 }
 
 template <typename T>

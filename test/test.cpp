@@ -296,6 +296,32 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
     for (int i = 0; i < RANK; ++i)
       REQUIRE(db.range(i).dataStatus() == DataStatus::Empty);
   }
+
+  SECTION("A DataBox can copy values without deep-copying grids") {
+    constexpr int N = 4;
+    NonUniformDB db(N);
+    db.setRange(0, points);
+    for (int i = 0; i < N; ++i)
+      db(i) = static_cast<Real>(i);
+
+    NonUniformDB device = db.getOnDevice(false);
+    REQUIRE(device.dataStatus() == DataStatus::AllocatedDevice);
+    REQUIRE(&device.range(0) != &db.range(0));
+    REQUIRE(device.range(0).data() == db.range(0).data());
+    REQUIRE(device.range(0).dataStatus() == DataStatus::AllocatedHost);
+
+    Real sum = 0;
+    portableReduce(
+        "Read a DataBox copied without grids", 0, N,
+        PORTABLE_LAMBDA(const int i, Real &result) { result += device(i); },
+        sum);
+    REQUIRE(sum == 6.0);
+
+    // The shallow grid alias must not finalize the host-owned coordinates.
+    device.range(0) = NonUniformGrid1D{};
+    device.finalize();
+    db.finalize();
+  }
 }
 
 TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
