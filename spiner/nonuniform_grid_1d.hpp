@@ -1,7 +1,7 @@
 #ifndef SPINER_NONUNIFORM_GRID_1D_
 #define SPINER_NONUNIFORM_GRID_1D_
 //======================================================================
-// © (or copyright) 2019-2026. Triad National Security, LLC. All rights
+// © (or copyright) 2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 // operated by Triad National Security, LLC, and the U.S. Department of
