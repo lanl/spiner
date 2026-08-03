@@ -64,7 +64,7 @@ class NonUniformGrid1D {
       data_ = points;
       status_ = DataStatus::Unmanaged;
     }
-    validate_(exec_space);
+    validate(exec_space);
   }
 
   PORTABLE_INLINE_FUNCTION T x(const int i) const { return data_[i]; }
@@ -126,7 +126,7 @@ class NonUniformGrid1D {
   std::size_t setPointer(std::byte *src) {
     data_ = n_ == 0 ? nullptr : reinterpret_cast<T *>(src);
     status_ = n_ == 0 ? DataStatus::Empty : DataStatus::Unmanaged;
-    if (n_ > 0) validate_(PortsOfCall::Exec::Host{});
+    if (n_ > 0) validate(PortsOfCall::Exec::Host{});
     return dynamicMemorySizeInBytes();
   }
   std::size_t deSerialize(std::byte *src) {
@@ -224,7 +224,7 @@ class NonUniformGrid1D {
     const auto h5_type =
         std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     status += H5LTread_dataset(loc, name.c_str(), h5_type, data_);
-    validate_(PortsOfCall::Exec::Host{});
+    validate(PortsOfCall::Exec::Host{});
     return status;
   }
 #endif
@@ -242,18 +242,8 @@ class NonUniformGrid1D {
     return true;
   }
 
- private:
-  void allocate_(const T *src, const std::size_t n) {
-    pointsWellFormed(src, n);
-    n_ = n;
-    data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
-    PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
-    std::memcpy(data_, src, dynamicMemorySizeInBytes());
-    status_ = DataStatus::AllocatedHost;
-  }
-
   template <typename ExecutionSpace>
-  void validate_(const ExecutionSpace &E) const {
+  void validate(const ExecutionSpace &E) const {
     bool valid = false;
     T *points = data_; // TODO(JMM): Expose PORTABLE_CLASS_LAMBDA
     std::size_t n = n_;
@@ -264,6 +254,16 @@ class NonUniformGrid1D {
         },
         valid);
     PORTABLE_ALWAYS_REQUIRE(valid, "Dataset is well formed");
+  }
+
+ private:
+  void allocate_(const T *src, const std::size_t n) {
+    pointsWellFormed(src, n);
+    n_ = n;
+    data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
+    PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
+    std::memcpy(data_, src, dynamicMemorySizeInBytes());
+    status_ = DataStatus::AllocatedHost;
   }
 
   std::size_t n_ = 0;
