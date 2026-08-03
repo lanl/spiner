@@ -102,7 +102,7 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION T max() const { return data_[n_ - 1]; }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const { return n_; }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
-    return pointsWellFormed_(data_, n_);
+    return pointsWellFormed(data_, n_);
   }
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
@@ -229,9 +229,22 @@ class NonUniformGrid1D {
   }
 #endif
 
+  // JMM: Public because otherwise Cuda complains. Not part of the
+  // public grid API, but since it's a static helper function, doesn't
+  // hurt.
+  PORTABLE_INLINE_FUNCTION
+  static bool pointsWellFormed(const T *points, const std::size_t n) {
+    if (points == nullptr || n < 2) return false;
+    for (std::size_t i = 0; i < n; ++i) {
+      if (!std::isfinite(points[i])) return false;
+      if (i > 0 && !(points[i - 1] < points[i])) return false;
+    }
+    return true;
+  }
+
  private:
   void allocate_(const T *src, const std::size_t n) {
-    pointsWellFormed_(src, n);
+    pointsWellFormed(src, n);
     n_ = n;
     data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
     PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
@@ -247,20 +260,10 @@ class NonUniformGrid1D {
     portableReduce(
         "Validate UnstructuredGrid1D", E, 0, 1,
         PORTABLE_LAMBDA(const int, bool &b) {
-          b = pointsWellFormed_(points, n);
+          b = pointsWellFormed(points, n);
         },
         valid);
     PORTABLE_ALWAYS_REQUIRE(valid, "Dataset is well formed");
-  }
-
-  PORTABLE_INLINE_FUNCTION
-  static bool pointsWellFormed_(const T *points, const std::size_t n) {
-    if (points == nullptr || n < 2) return false;
-    for (std::size_t i = 0; i < n; ++i) {
-      if (!std::isfinite(points[i])) return false;
-      if (i > 0 && !(points[i - 1] < points[i])) return false;
-    }
-    return true;
   }
 
   std::size_t n_ = 0;
