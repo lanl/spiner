@@ -90,7 +90,7 @@ if(NOT TARGET ports-of-call::ports-of-call)
   FetchContent_Declare(
     ports-of-call
     GIT_REPOSITORY https://github.com/lanl/ports-of-call
-    GIT_TAG v2.0.0 # TODO: update if needed
+    GIT_TAG v3.0.0 # TODO: update if needed
   )
 set(SPINER_DEP_LIST "ports-of-call")
 endif()
