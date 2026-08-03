@@ -111,16 +111,19 @@ device copy is needed:
    NonUniformGrid1D device_grid = host_grid.getOnDevice();
 
 The coordinates must contain at least two finite, strictly increasing values.
-The pointer constructor borrows caller-owned host memory instead:
+The pointer constructor borrows caller-owned memory instead and validates those
+requirements in the supplied execution space (the host by default):
 
 .. code-block:: cpp
 
    std::vector<double> points = {-1.0, -0.5, 0.25, 2.0};
    NonUniformGrid1D view(points.data(), points.size());
 
-Borrowed points must remain alive and unchanged for the grid's lifetime.
-They are not validated, because they may reside on a device; callers must
-ensure that they contain at least two finite, strictly increasing coordinates.
+For device-resident points, pass the execution space that can access them to
+the pointer constructor. The supplied execution space must match the memory
+space of the borrowed points; using an inaccessible pointer can cause a
+segmentation fault. Borrowed points must remain alive and unchanged for the
+grid's lifetime.
 
 Like ``DataBox``, ordinary grid copies are shallow reference-style copies;
 finalize an owned grid exactly once. Every grid type also provides an explicit
