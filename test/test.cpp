@@ -103,7 +103,6 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     REQUIRE(g.min() == min);
     REQUIRE(g.max() == max);
     REQUIRE(g.nPoints() == N);
-    REQUIRE(g.dx() == (max - min) / ((Real)(N - 1)));
   }
 
   SECTION("A regular grid can be serialized and deserialized") {
@@ -116,9 +115,14 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     RegularGrid1D restored;
     const std::size_t consumed = restored.deSerialize(serialized.data());
     REQUIRE(consumed == written);
-    REQUIRE(restored == grid);
+    REQUIRE(restored.min() == grid.min());
+    REQUIRE(restored.max() == grid.max());
+    REQUIRE(restored.nPoints() == grid.nPoints());
     REQUIRE(restored.setPointer(serialized.data()) == 0);
-    REQUIRE(restored.getOnDevice() == grid);
+    const auto device_grid = restored.getOnDevice();
+    REQUIRE(device_grid.min() == grid.min());
+    REQUIRE(device_grid.max() == grid.max());
+    REQUIRE(device_grid.nPoints() == grid.nPoints());
     restored.finalize();
     grid.finalize();
   }
@@ -189,12 +193,16 @@ TEST_CASE("PiecewiseGrid1D", "[PiecewiseGrid1D]") {
 
         PiecewiseGrid1D<3> restored;
         REQUIRE(restored.deSerialize(serialized.data()) == expected);
-        REQUIRE(restored == h);
+        REQUIRE(restored.nPoints() == h.nPoints());
+        for (std::size_t i = 0; i < h.nPoints(); ++i)
+          REQUIRE(restored.x(i) == h.x(i));
         REQUIRE(restored.nPoints() == h.nPoints());
         REQUIRE(restored.index(0.8) == h.index(0.8));
 
         auto device = h.getOnDevice();
-        REQUIRE(device == h);
+        REQUIRE(device.nPoints() == h.nPoints());
+        for (std::size_t i = 0; i < h.nPoints(); ++i)
+          REQUIRE(device.x(i) == h.x(i));
         device.finalize();
         restored.finalize();
       }
@@ -248,8 +256,6 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
         REQUIRE(dbCopy.dim(i + 1) == db.dim(i + 1));
         REQUIRE(dbCopy.indexType(i) == db.indexType(i));
       }
-      REQUIRE(dbCopy != db);
-
       SECTION("DataBoxes can be resized") {
         dbCopy.resize(5, 4, 3);
         REQUIRE(dbCopy.rank() == 3);
@@ -290,7 +296,6 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
       }
 
       SECTION("DataBox slices are shallow") {
-        REQUIRE(dbslc == dbslc2);
         REQUIRE(&(dbslc(0)) == &(db(0)));
       }
     }
@@ -772,7 +777,9 @@ SCENARIO("Serializing and deserializing a DataBox",
           AND_THEN("The grid metadata is correct") {
             for (int i = 0; i < RANK; ++i) {
               REQUIRE(dbh2.indexType(i) == IndexType::Interpolated);
-              REQUIRE(dbh2.range(i) == dbh.range(i));
+              REQUIRE(dbh2.range(i).nPoints() == dbh.range(i).nPoints());
+              for (std::size_t j = 0; j < dbh.range(i).nPoints(); ++j)
+                REQUIRE(dbh2.range(i).x(j) == dbh.range(i).x(j));
             }
           }
         }
@@ -788,7 +795,7 @@ SCENARIO("Serializing and deserializing a DataBox",
 }
 
 /* A mocked up UniformGrid1D that owns an array of data.
- * TODO(JMM): Remove/replace/update this once we have a NonuniformGrid1D.
+ * TODO(JMM): Remove/replace/update this once we have a NonUniformGrid1D.
  */
 class OwningTestGrid1D {
  public:
@@ -823,20 +830,6 @@ class OwningTestGrid1D {
   }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
     return points_ != nullptr && n_ > 1;
-  }
-  PORTABLE_INLINE_FUNCTION bool
-  operator==(const OwningTestGrid1D &other) const {
-    if (n_ != other.n_) {
-      return false;
-    }
-    for (std::size_t i = 0; i < n_; ++i) {
-      if (points_[i] != other.points_[i]) return false;
-    }
-    return true;
-  }
-  PORTABLE_INLINE_FUNCTION bool
-  operator!=(const OwningTestGrid1D &other) const {
-    return !(*this == other);
   }
   std::size_t dynamicMemorySizeInBytes() const { return n_ * sizeof(Real); }
   std::size_t serializedSizeInBytes() const {
@@ -964,7 +957,9 @@ TEST_CASE("DataBox delegates resource management to every grid",
           reinterpret_cast<const std::byte *>(restored.range(i).data());
       REQUIRE(gridData >= begin);
       REQUIRE(gridData < end);
-      REQUIRE(restored.range(i) == db.range(i));
+      REQUIRE(restored.range(i).nPoints() == db.range(i).nPoints());
+      for (std::size_t j = 0; j < db.range(i).nPoints(); ++j)
+        REQUIRE(restored.range(i).data()[j] == db.range(i).data()[j]);
       restored.range(i).finalize();
     }
     REQUIRE(OwningTestGrid1D::owned_allocations == RANK);
@@ -1117,7 +1112,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
     RegularGrid1D g3(0.75, 1, 7);
     PiecewiseGrid1D<3> piecewise_grid = {{g1, g2, g3}};
     THEN("We can save it to file") {
-      const std::string filename = "piecewise_test.h5";
+      const std::string filename = "piecewise_test.sp5";
       const std::string grid_name = "grid";
       herr_t status;
       hid_t file;
@@ -1135,13 +1130,15 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
-        REQUIRE(loaded_grid == piecewise_grid);
+        REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
+        for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
+          REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
       }
     }
     GIVEN("A single regular grid") {
       RegularGrid1D g1(0, 0.25, 3);
       WHEN("We save it to file") {
-        const std::string filename = "backwards_compatibility_test.h5";
+        const std::string filename = "backwards_compatibility_test.sp5";
         const std::string grid_name = "grid";
         herr_t status;
         hid_t file;
@@ -1199,7 +1196,9 @@ SCENARIO("DataBox HDF5", "[DataBox][HDF5]") {
           REQUIRE(db.indexType(i) == db2.indexType(i));
           REQUIRE(db.dim(i + 1) == db2.dim(i + 1));
           if (db.indexType(i) == IndexType::Interpolated) {
-            REQUIRE(db.range(i) == db2.range(i));
+            REQUIRE(db.range(i).nPoints() == db2.range(i).nPoints());
+            for (std::size_t j = 0; j < db.range(i).nPoints(); ++j)
+              REQUIRE(db.range(i).x(j) == db2.range(i).x(j));
           }
         }
         AND_THEN("Data itself is consistent") {

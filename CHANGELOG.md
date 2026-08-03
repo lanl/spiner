@@ -10,6 +10,7 @@
 - [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
 
 ### Changed (changing behavior/API/variables/...)
+- [[MR 145]](https://github.com/lanl/spiner/pull/145) Remove comparator and dx methods from public API
 
 ### Infrastructure (changes irrelevant to downstream codes)
 - [[MR 141]](https://github.com/lanl/spiner/pull/142) update contribution rules

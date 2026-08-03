@@ -282,10 +282,6 @@ class DataBox {
   PORTABLE_INLINE_FUNCTION bool ownsAllocatedMemory() {
     return (status_ != DataStatus::Unmanaged);
   }
-  inline bool operator==(const DataBox<T, Grid_t, Concept> &other) const;
-  inline bool operator!=(const DataBox<T, Grid_t, Concept> &other) const {
-    return !(*this == other);
-  }
 
   // call this to tell a databox it no longer owns its memory
   PORTABLE_INLINE_FUNCTION void makeShallow() {
@@ -995,20 +991,6 @@ DataBox<T, Grid_t, Concept>::copy(const DataBox<T, Grid_t, Concept> &src) {
   copyMetadata(src);
   for (int i = 0; i < src.size(); i++)
     dataView_(i) = src(i);
-}
-
-template <typename T, typename Grid_t, typename Concept>
-inline bool DataBox<T, Grid_t, Concept>::operator==(
-    const DataBox<T, Grid_t, Concept> &other) const {
-  if (rank_ != other.rank_) return false;
-  for (int i = 0; i < rank_; i++) {
-    if (indices_[i] != other.indices_[i]) return false;
-    if (indices_[i] == IndexType::Interpolated &&
-        grids_[i] != other.grids_[i]) {
-      return false;
-    }
-  }
-  return dataView_ == other.dataView_;
 }
 
 // TODO: should this be std::reduce?

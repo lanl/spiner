@@ -146,25 +146,10 @@ class PiecewiseGrid1D {
     ix += pointTotals_[ig];
   }
 
-  PORTABLE_INLINE_FUNCTION
-  bool operator==(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
-    for (int ig = 0; ig < NGRIDS_; ++ig) {
-      if (grids_[ig] != other.grids_[ig]) return false;
-    }
-    return true;
-  }
-  PORTABLE_INLINE_FUNCTION
-  bool operator!=(const PiecewiseGrid1D<T, NGRIDSMAX> &other) const {
-    return !(*this == other);
-  }
   PORTABLE_INLINE_FUNCTION T min() const { return grids_[0].min(); }
   PORTABLE_INLINE_FUNCTION T max() const { return grids_[NGRIDS_ - 1].max(); }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const {
     return pointTotals_[NGRIDS_ - 1] + grids_[NGRIDS_ - 1].nPoints();
-  }
-  PORTABLE_INLINE_FUNCTION T dx(const int ig) const {
-    assert(ig < NGRIDS_);
-    return grids_[ig].dx();
   }
   PORTABLE_INLINE_FUNCTION bool isnan() const {
     for (int ig = 0; ig < NGRIDS_; ++ig) {

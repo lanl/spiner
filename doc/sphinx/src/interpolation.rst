@@ -77,12 +77,6 @@ returns the maximum value on the independent variable grid.
 
 The function
 
-.. cpp:function:: T RegularGrid1D::dx() const;
-
-returns the grid spacing for the independent variable.
-
-The function
-
 .. cpp:function:: int RegularGrid1D::nPoints() const;
 
 returns the number of points in the independent variable grid.
