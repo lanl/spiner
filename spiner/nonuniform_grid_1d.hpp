@@ -49,17 +49,22 @@ class NonUniformGrid1D {
   NonUniformGrid1D(std::initializer_list<T> points)
       : NonUniformGrid1D(std::vector<T>(points)) {}
 
-  // This constructor borrows caller-owned memory. The caller must keep it
-  // alive and unchanged for this grid's lifetime, and is responsible for
-  // ensuring that its coordinates are finite and strictly increasing.
-  // Validation is not possible here because the borrowed memory may be on a
-  // device.
-  NonUniformGrid1D(T *points, const std::size_t n) {
+  // This constructor borrows caller-owned memory. The caller must
+  // keep it alive and unchanged for this grid's lifetime, and is
+  // responsible for ensuring that its coordinates are finite and
+  // strictly increasing.  Validation is performed on the specified
+  // PortsOfCall Execution Space. Code will segfault if the incorrect
+  // space is specified.
+  template <typename ExecutionSpace = PortsOfCall::Exec::Host>
+  NonUniformGrid1D(
+      T *points, const std::size_t n,
+      const ExecutionSpace &exec_space = PortsOfCall::Exec::Host()) {
     if (n > 0) {
       n_ = n;
       data_ = points;
       status_ = DataStatus::Unmanaged;
     }
+    validate_(exec_space);
   }
 
   PORTABLE_INLINE_FUNCTION T x(const int i) const { return data_[i]; }
@@ -68,17 +73,21 @@ class NonUniformGrid1D {
     if (value <= data_[0]) return 0;
     if (value >= data_[n_ - 1]) return static_cast<int>(n_) - 2;
 
-    std::size_t lo = 0;
-    std::size_t hi = n_ - 1;
+    int lo = 0;
+    int hi = n_ - 1;
+    int iter = 0;
     while (hi - lo > 1) {
-      const std::size_t mid = lo + (hi - lo) / 2;
+      // no-op if NDEBUG not set
+      PORTABLE_REQUIRE(iter++ < n_ + 1,
+                       "This binary search failed to converge/terminate.");
+      const int mid = lo + (hi - lo) / 2;
       if (data_[mid] <= value) {
         lo = mid;
       } else {
         hi = mid;
       }
     }
-    return static_cast<int>(lo);
+    return lo;
   }
 
   PORTABLE_INLINE_FUNCTION void weights(const T &value, int &ix,
@@ -93,12 +102,7 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION T max() const { return data_[n_ - 1]; }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const { return n_; }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
-    if (data_ == nullptr || n_ < 2) return false;
-    for (std::size_t i = 0; i < n_; ++i) {
-      if (!std::isfinite(data_[i])) return false;
-      if (i > 0 && !(data_[i - 1] < data_[i])) return false;
-    }
-    return true;
+    return pointsWellFormed_(data_, n_);
   }
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
@@ -122,7 +126,7 @@ class NonUniformGrid1D {
   std::size_t setPointer(std::byte *src) {
     data_ = n_ == 0 ? nullptr : reinterpret_cast<T *>(src);
     status_ = n_ == 0 ? DataStatus::Empty : DataStatus::Unmanaged;
-    if (n_ > 0) validate_();
+    if (n_ > 0) validate_(PortsOfCall::Exec::Host{});
     return dynamicMemorySizeInBytes();
   }
   std::size_t deSerialize(std::byte *src) {
@@ -220,14 +224,14 @@ class NonUniformGrid1D {
     const auto h5_type =
         std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     status += H5LTread_dataset(loc, name.c_str(), h5_type, data_);
-    validate_();
+    validate_(PortsOfCall::Exec::Host{});
     return status;
   }
 #endif
 
  private:
   void allocate_(const T *src, const std::size_t n) {
-    validatePoints_(src, n);
+    pointsWellFormed_(src, n);
     n_ = n;
     data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
     PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
@@ -235,19 +239,28 @@ class NonUniformGrid1D {
     status_ = DataStatus::AllocatedHost;
   }
 
-  void validate_() const { validatePoints_(data_, n_); }
+  template <typename ExecutionSpace>
+  void validate_(const ExecutionSpace &E) const {
+    bool valid = false;
+    T *points = data_; // TODO(JMM): Expose PORTABLE_CLASS_LAMBDA
+    std::size_t n = n_;
+    portableReduce(
+        "Validate UnstructuredGrid1D", E, 0, 1,
+        PORTABLE_LAMBDA(const int, bool &b) {
+          b = pointsWellFormed_(points, n);
+        },
+        valid);
+    PORTABLE_ALWAYS_REQUIRE(valid, "Dataset is well formed");
+  }
 
-  static void validatePoints_(const T *points, const std::size_t n) {
-    PORTABLE_ALWAYS_REQUIRE(
-        points != nullptr && n >= 2,
-        "Points array mut exist and contain at least two elements");
+  PORTABLE_INLINE_FUNCTION
+  static bool pointsWellFormed_(const T *points, const std::size_t n) {
+    if (points == nullptr || n < 2) return false;
     for (std::size_t i = 0; i < n; ++i) {
-      // TODO(JMM): This is trivial for fast math
-      PORTABLE_ALWAYS_REQUIRE(std::isfinite(points[i]),
-                              "Grid points must be finite");
-      PORTABLE_ALWAYS_REQUIRE(i == 0 || points[i - 1] < points[i],
-                              "Grid points must be strictly increasing");
+      if (!std::isfinite(points[i])) return false;
+      if (i > 0 && !(points[i - 1] < points[i])) return false;
     }
+    return true;
   }
 
   std::size_t n_ = 0;
