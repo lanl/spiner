@@ -235,9 +235,7 @@ class DataBox {
   }
   inline void setRange(int i, Grid_t g) {
     PORTABLE_REQUIRE(0 <= i && i < rank_, "Grid must be in index range");
-    grids_[i].finalize(); // TODO(JMM): Do we want this?
     setIndexType(i, IndexType::Interpolated);
-    // TODO(JMM): Should this be a move?
     grids_[i] = g;
   }
   template <typename... Args>
@@ -397,10 +395,12 @@ class DataBox {
     PORTABLE_REQUIRE(
         (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
         "Must not de-serialize into an active databox.");
-    // TODO(JMM): This could be replaced by a per-grid warning as we
-    // do for databox data if we want.
     for (int i = 0; i < rank_; ++i) {
-      grids_[i].finalize();
+      auto gstat = grids_[i].dataStatus();
+      PORTABLE_REQUIRE((gstat == DataStatus::Empty ||
+                        gstat == DataStatus::Unmanaged ||
+                        gstat == DataStatus::Trivial),
+                       "Must not de-serialize into an active grid.");
     }
     std::memcpy(this, src, sizeof(*this));
 
@@ -424,8 +424,8 @@ class DataBox {
   }
   // ------------------------------------
 
-  DataBox<T, Grid_t, Concept>
-  getOnDevice() const { // getOnDevice is always a deep copy
+  // getOnDevice is always a deep copy
+  DataBox<T, Grid_t, Concept> getOnDevice(bool include_grids = true) const {
     if (size() == 0 ||
         status_ == DataStatus::Empty) { // edge case for unallocated
       DataBox<T, Grid_t, Concept> a;
@@ -439,8 +439,12 @@ class DataBox {
     DataBox<T, Grid_t, Concept> a{device_data, dim(6), dim(5), dim(4),
                                   dim(3),      dim(2), dim(1)};
     a.copyShape(*this);
-    for (int i = 0; i < rank_; ++i) {
-      a.grids_[i] = grids_[i].getOnDevice();
+    // JMM: We may wish to manually manage memory-owning grid objects
+    // to minimize the memory footprint.
+    if (include_grids) {
+      for (int i = 0; i < rank_; ++i) {
+        a.grids_[i] = grids_[i].getOnDevice();
+      }
     }
     // set correct allocation status of the new databox
     // note this is ALWAYS device, even if host==device.
@@ -978,7 +982,8 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
-      grids_[i] = src.grids_[i];
+      // TODO(JMM): Add a way to shallow copy metadata automatically
+      grids_[i].copy(src.grids_[i]); // must also be a deep copy
     }
   }
   return *this;
@@ -1040,8 +1045,9 @@ DataBox<T, Grid_t, Concept>::canInterpToReal_(const int interpOrder) const {
 
 template <typename T, typename Grid_t, typename Concept>
 inline DataBox<T, Grid_t, Concept>
-getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host) {
-  return a_host.getOnDevice();
+getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host,
+                   bool include_grids = true) {
+  return a_host.getOnDevice(include_grids);
 }
 
 template <typename T>

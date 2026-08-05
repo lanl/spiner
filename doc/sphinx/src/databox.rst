@@ -147,18 +147,24 @@ sets the ``DataBox`` to be empty with zero rank.
 Copying a ``DataBox`` to device
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If GPU support is enabled, you can deep-copy a ``DataBox`` and any
-data contained in it from host to device with the function
+If GPU support is enabled, you can deep-copy a ``DataBox``, its tabulated
+values, and (by default) its grids from host to device with the function
 
-.. cpp:function:: DataBox getOnDeviceDataBox(DataBox &db_host);
+.. cpp:function:: DataBox getOnDeviceDataBox(const DataBox &db_host, bool include_grids = true);
 
 which returns a new databox with the data in ``db_host`` copied to
 GPU. An object-oriented method
 
-.. cpp:function:: DataBox Databox::getOnDevice() const;
+.. cpp:function:: DataBox DataBox::getOnDevice(bool include_grids = true) const;
 
 exists as well, which returns a new object with the underlying data
 copied to GPU.
+
+Set ``include_grids`` to ``false`` to skip the deep copy of the grid
+objects. This permits manual management of grid memory when reducing the
+device-memory footprint is important. The result still has the source's
+shallow grid metadata, so its grids must be made device-accessible before
+they are used for device-side interpolation.
 
 .. note::
   If GPU support is not enabled, ``getOnDevice`` and friends are

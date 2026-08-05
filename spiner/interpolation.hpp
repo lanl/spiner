@@ -15,6 +15,9 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
+#include "nonuniform_grid_1d.hpp"
 #include "piecewise_grid_1d.hpp"
 #include "regular_grid_1d.hpp"
 
