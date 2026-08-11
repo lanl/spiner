@@ -625,6 +625,6 @@ returns the total size of the underlying array in bytes.
 
 .. cpp:function:: int dim(int i) const;
 
-returns the size in a given dimension/direction, indexed from zero.
+returns the size in a given dimension/direction, indexed from one.
 
 Generative AI was used to assist with modifications to this page.
