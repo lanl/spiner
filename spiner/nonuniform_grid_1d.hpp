@@ -258,7 +258,8 @@ class NonUniformGrid1D {
 
  private:
   void allocate_(const T *src, const std::size_t n) {
-    pointsWellFormed(src, n);
+    PORTABLE_ALWAYS_REQUIRE(pointsWellFormed(src, n),
+                            "Input dataset must be well-formed.");
     n_ = n;
     data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
     PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");

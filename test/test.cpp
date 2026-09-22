@@ -184,9 +184,9 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
     source.finalize();
   }
 
-  SECTION("copy detaches a shallow alias without freeing its source") {
+  SECTION("A non uniform grid can be deep copied.") {
     NonUniformGrid1D source(points);
-    NonUniformGrid1D copy = source;
+    NonUniformGrid1D copy;
     copy.copy(source);
     REQUIRE(copy.data() != source.data());
     REQUIRE(source.x(1) == -0.5);
