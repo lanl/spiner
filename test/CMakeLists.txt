@@ -9,6 +9,8 @@
 # reproduce, prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
+# Generative AI was used to assist with modifications to this file.
+
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git

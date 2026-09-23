@@ -15,6 +15,8 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
 // This file contains strings defined for use accross the SP5 data
 // format
 

@@ -1,5 +1,7 @@
 .. _building:
 
+.. Generative AI was used to assist with modifications to this file.
+
 Building and Installation
 ==========================
 

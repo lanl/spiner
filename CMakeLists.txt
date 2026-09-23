@@ -11,6 +11,8 @@
 # publicly and display publicly, and to permit others to do so.
 # ------------------------------------------------------------------------------#
 
+# Generative AI was used to assist with modifications to this file.
+
 cmake_minimum_required(VERSION 3.24)
 
 set(SPINER_VERSION 1.7.0)
