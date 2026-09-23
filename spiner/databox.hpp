@@ -771,22 +771,6 @@ DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
   DataBox<T, Grid_t, Concept> corners[2][2]{
       {db.slice(ix2, ix1), db.slice(ix2 + 1, ix1)},
       {db.slice(ix2, ix1 + 1), db.slice(ix2 + 1, ix1 + 1)}};
-  //    copyShape(db,2);
-  //
-  //    db.grids_[db.rank_-2].weights(x1, ix1, w1);
-  //    db.grids_[db.rank_-1].weights(x2, ix2, w2);
-  // corners[0][0] = db.slice(ix2,   ix1   );
-  // corners[1][0] = db.slice(ix2,   ix1+1 );
-  // corners[0][1] = db.slice(ix2+1, ix1   );
-  // corners[1][1] = db.slice(ix2+1, ix1+1 );
-  /*
-  for (int i = 0; i < size(); i++) {
-    dataView_(i) = (   w2[0]*w1[0]*corners[0][0](i)
-                     + w2[0]*w1[1]*corners[1][0](i)
-                     + w2[1]*w1[0]*corners[0][1](i)
-                     + w2[1]*w1[1]*corners[1][1](i));
-  }
-  */
   for (int i = 0; i < size(); i++) {
     dataView_(i) =
         (w2[0] * (w1[0] * corners[0][0](i) + w1[1] * corners[1][0](i)) +
