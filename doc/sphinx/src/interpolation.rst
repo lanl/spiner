@@ -167,7 +167,7 @@ available through ``scale()`` and is stored in HDF5:
 
    FastNonUniformGrid1D grid(points);
 
-By default, the lookup table may contain at most eight times as many entries as
+By default, the lookup table may contain at most 32 times as many entries as
 the physical grid has points. If an exact table would exceed that limit, the
 grid transparently uses the wrapped binary search. Pass a ``Settings``
 object to select a scale, policy, or different limit:

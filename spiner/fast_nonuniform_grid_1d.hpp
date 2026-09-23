@@ -45,7 +45,7 @@ class FastNonUniformGrid1D {
 
  public:
   using ValueType = T;
-  static constexpr std::size_t DEFAULT_MAX_LOOKUP_RATIO = 8;
+  static constexpr std::size_t DEFAULT_MAX_LOOKUP_RATIO = 32;
 
   enum class Policy { Automatic = 0, RequireFast = 1, ForceBinary = 2 };
 

@@ -348,6 +348,7 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
     FastReferenceGrid binary(points);
     FastNonUniformGrid1D fast(points);
     REQUIRE(fast.usesFastLookup());
+    REQUIRE(fast.maxLookupRatio() == 32);
     REQUIRE(fast.lookupSize() <= fast.maxLookupRatio() * fast.nPoints());
     REQUIRE(fast.requestedPolicy() == FastGridPolicy::Automatic);
     REQUIRE(fast.scale() == 1.0);
@@ -415,7 +416,8 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
 
   SECTION("Policies and host reconfiguration control the lookup table") {
     const std::vector<double> uneven = {0.0, 0.01, 0.02, 1.0};
-    FastNonUniformGrid1D automatic(uneven, FastGridSettings{.scale = 10.0});
+    FastNonUniformGrid1D automatic(
+        uneven, FastGridSettings{.scale = 10.0, .max_lookup_ratio = 8});
     REQUIRE_FALSE(automatic.usesFastLookup());
 
     FastGridSettings settings = automatic.settings();
