@@ -70,9 +70,11 @@ int main(int argc, char *argv[]) {
       }
 
       BinaryGrid binary_host(points);
-      FastGrid fast_host(points, scale,
-                         Spiner::FastNonUniformGridPolicy::RequireFast,
-                         FastGrid::DEFAULT_MAX_LOOKUP_RATIO);
+      FastGrid fast_host(
+          points, FastGrid::Settings{.scale = scale,
+                                     .policy = FastGrid::Policy::RequireFast,
+                                     .max_lookup_ratio =
+                                         FastGrid::DEFAULT_MAX_LOOKUP_RATIO});
       BinaryGrid binary = binary_host.getOnDevice();
       FastGrid fast = fast_host.getOnDevice();
 

@@ -37,12 +37,6 @@
 
 namespace Spiner {
 
-enum class FastNonUniformGridPolicy {
-  Automatic = 0,
-  RequireFast = 1,
-  ForceBinary = 2
-};
-
 template <typename T = Real>
 class FastNonUniformGrid1D {
   static_assert(std::is_same<T, double>::value,
@@ -52,29 +46,28 @@ class FastNonUniformGrid1D {
   using ValueType = T;
   static constexpr std::size_t DEFAULT_MAX_LOOKUP_RATIO = 8;
 
+  enum class Policy { Automatic = 0, RequireFast = 1, ForceBinary = 2 };
+
+  struct Settings {
+    T scale = T(1);
+    Policy policy = Policy::Automatic;
+    std::size_t max_lookup_ratio = DEFAULT_MAX_LOOKUP_RATIO;
+  };
+
   FastNonUniformGrid1D() = default;
 
-  FastNonUniformGrid1D(const std::vector<T> &points, const T scale)
-      : FastNonUniformGrid1D(points, scale, FastNonUniformGridPolicy::Automatic,
-                             DEFAULT_MAX_LOOKUP_RATIO) {}
-
-  FastNonUniformGrid1D(std::initializer_list<T> points, const T scale)
-      : FastNonUniformGrid1D(std::vector<T>(points), scale) {}
-
-  FastNonUniformGrid1D(const std::vector<T> &points, const T scale,
-                       const FastNonUniformGridPolicy policy,
-                       const std::size_t max_lookup_ratio)
-      : coordinates_(points), scale_(scale), requested_policy_(policy),
-        max_lookup_ratio_(max_lookup_ratio) {
+  FastNonUniformGrid1D(const std::vector<T> &points,
+                       const Settings &settings = {})
+      : coordinates_(points), scale_(settings.scale),
+        requested_policy_(settings.policy),
+        max_lookup_ratio_(settings.max_lookup_ratio) {
     validateConfiguration_();
     configureLookup_();
   }
 
-  FastNonUniformGrid1D(std::initializer_list<T> points, const T scale,
-                       const FastNonUniformGridPolicy policy,
-                       const std::size_t max_lookup_ratio)
-      : FastNonUniformGrid1D(std::vector<T>(points), scale, policy,
-                             max_lookup_ratio) {}
+  FastNonUniformGrid1D(std::initializer_list<T> points,
+                       const Settings &settings = {})
+      : FastNonUniformGrid1D(std::vector<T>(points), settings) {}
 
   PORTABLE_INLINE_FUNCTION T x(const int i) const { return coordinates_.x(i); }
 
@@ -127,14 +120,14 @@ class FastNonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION std::size_t maxLookupRatio() const {
     return max_lookup_ratio_;
   }
-  PORTABLE_INLINE_FUNCTION FastNonUniformGridPolicy requestedPolicy() const {
+  PORTABLE_INLINE_FUNCTION Policy requestedPolicy() const {
     return requested_policy_;
   }
   PORTABLE_INLINE_FUNCTION bool usesFastLookup() const {
     return lookup_status_ != DataStatus::Empty;
   }
 
-  void reconfigureLookup(const FastNonUniformGridPolicy policy,
+  void reconfigureLookup(const Policy policy,
                          const std::size_t max_lookup_ratio) {
     PORTABLE_ALWAYS_REQUIRE(
         coordinates_.dataStatus() == DataStatus::AllocatedHost,
@@ -144,7 +137,7 @@ class FastNonUniformGrid1D {
     requested_policy_ = policy;
     max_lookup_ratio_ = max_lookup_ratio;
 
-    if (policy == FastNonUniformGridPolicy::ForceBinary) {
+    if (policy == Policy::ForceBinary) {
       releaseLookup_();
       return;
     }
@@ -153,7 +146,7 @@ class FastNonUniformGrid1D {
     if (usesFastLookup() && lookupSize() <= max_entries) return;
     releaseLookup_();
     const bool success = buildLookup_(max_entries);
-    if (policy == FastNonUniformGridPolicy::RequireFast) {
+    if (policy == Policy::RequireFast) {
       PORTABLE_ALWAYS_REQUIRE(
           success, "Fast lookup table exceeds its limit or is invalid");
     }
@@ -298,7 +291,7 @@ class FastNonUniformGrid1D {
     status += H5LTget_attribute_ullong(loc, name.c_str(),
                                        SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio);
     status += H5Gclose(group);
-    requested_policy_ = static_cast<FastNonUniformGridPolicy>(policy);
+    requested_policy_ = static_cast<Policy>(policy);
     max_lookup_ratio_ = static_cast<std::size_t>(ratio);
     validateConfiguration_();
     configureLookup_();
@@ -316,10 +309,9 @@ class FastNonUniformGrid1D {
   }
 
   // necessary because the enum might be set by static cast
-  static bool validPolicy_(const FastNonUniformGridPolicy policy) {
-    return policy == FastNonUniformGridPolicy::Automatic ||
-           policy == FastNonUniformGridPolicy::RequireFast ||
-           policy == FastNonUniformGridPolicy::ForceBinary;
+  static bool validPolicy_(const Policy policy) {
+    return policy == Policy::Automatic || policy == Policy::RequireFast ||
+           policy == Policy::ForceBinary;
   }
 
   void validateConfiguration_() const {
@@ -341,9 +333,9 @@ class FastNonUniformGrid1D {
   }
 
   void configureLookup_() {
-    if (requested_policy_ == FastNonUniformGridPolicy::ForceBinary) return;
+    if (requested_policy_ == Policy::ForceBinary) return;
     const bool success = buildLookup_(maxLookupEntries_());
-    if (requested_policy_ == FastNonUniformGridPolicy::RequireFast) {
+    if (requested_policy_ == Policy::RequireFast) {
       PORTABLE_ALWAYS_REQUIRE(
           success, "Fast lookup table exceeds its limit or is invalid");
     }
@@ -454,8 +446,7 @@ class FastNonUniformGrid1D {
   RegularGrid1D<T> lookup_grid_;
   int *lookup_ = nullptr;
   T scale_ = std::numeric_limits<T>::signaling_NaN();
-  FastNonUniformGridPolicy requested_policy_ =
-      FastNonUniformGridPolicy::Automatic;
+  Policy requested_policy_ = Policy::Automatic;
   std::size_t max_lookup_ratio_ = 0;
   DataStatus lookup_status_ = DataStatus::Empty;
 };

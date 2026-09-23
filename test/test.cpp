@@ -43,9 +43,10 @@ using NonUniformGrid1D = Spiner::NonUniformGrid1D<Real>;
 
 // Because this uses NQT only valid specifically for doubles
 using FastNonUniformGrid1D = Spiner::FastNonUniformGrid1D<double>;
+using FastGridSettings = FastNonUniformGrid1D::Settings;
+using FastGridPolicy = FastNonUniformGrid1D::Policy;
 
 using Spiner::DBDeleter;
-using Spiner::FastNonUniformGridPolicy;
 const Real EPSTEST = std::sqrt(DataBox::EPS);
 template <int N>
 using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<Real, N>;
@@ -345,10 +346,10 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
 
   SECTION("Fast lookup exactly matches binary lookup") {
     FastReferenceGrid binary(points);
-    FastNonUniformGrid1D fast(points, 1.0);
+    FastNonUniformGrid1D fast(points);
     REQUIRE(fast.usesFastLookup());
     REQUIRE(fast.lookupSize() <= fast.maxLookupRatio() * fast.nPoints());
-    REQUIRE(fast.requestedPolicy() == FastNonUniformGridPolicy::Automatic);
+    REQUIRE(fast.requestedPolicy() == FastGridPolicy::Automatic);
     REQUIRE(fast.scale() == 1.0);
     REQUIRE(fast.dataStatus() == DataStatus::AllocatedHost);
 
@@ -392,8 +393,11 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
           signed_log_points[i] = scale * nqtSinhForFastGridTest(transformed);
         }
         FastReferenceGrid binary(signed_log_points);
-        FastNonUniformGrid1D fast(signed_log_points, scale,
-                                  FastNonUniformGridPolicy::RequireFast, 8);
+        FastNonUniformGrid1D fast(
+            signed_log_points,
+            FastGridSettings{.scale = scale,
+                             .policy = FastGridPolicy::RequireFast,
+                             .max_lookup_ratio = 8});
         REQUIRE(fast.usesFastLookup());
         for (int i = 0; i <= 2000; ++i) {
           const double query =
@@ -410,40 +414,39 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
 
   SECTION("Policies and host reconfiguration control the lookup table") {
     const std::vector<double> uneven = {0.0, 0.01, 0.02, 1.0};
-    FastNonUniformGrid1D automatic(uneven, 10.0);
+    FastNonUniformGrid1D automatic(uneven, FastGridSettings{.scale = 10.0});
     REQUIRE_FALSE(automatic.usesFastLookup());
 
-    automatic.reconfigureLookup(FastNonUniformGridPolicy::Automatic, 32);
+    automatic.reconfigureLookup(FastGridPolicy::Automatic, 32);
     REQUIRE(automatic.usesFastLookup());
     const std::size_t lookup_size = automatic.lookupSize();
 
-    automatic.reconfigureLookup(FastNonUniformGridPolicy::RequireFast, 32);
+    automatic.reconfigureLookup(FastGridPolicy::RequireFast, 32);
     REQUIRE(automatic.lookupSize() == lookup_size);
-    REQUIRE(automatic.requestedPolicy() ==
-            FastNonUniformGridPolicy::RequireFast);
+    REQUIRE(automatic.requestedPolicy() == FastGridPolicy::RequireFast);
 
-    automatic.reconfigureLookup(FastNonUniformGridPolicy::Automatic, 8);
+    automatic.reconfigureLookup(FastGridPolicy::Automatic, 8);
     REQUIRE_FALSE(automatic.usesFastLookup());
     REQUIRE(automatic.lookupSize() == 0);
 
-    automatic.reconfigureLookup(FastNonUniformGridPolicy::ForceBinary, 32);
+    automatic.reconfigureLookup(FastGridPolicy::ForceBinary, 32);
     REQUIRE_FALSE(automatic.usesFastLookup());
-    REQUIRE(automatic.requestedPolicy() ==
-            FastNonUniformGridPolicy::ForceBinary);
+    REQUIRE(automatic.requestedPolicy() == FastGridPolicy::ForceBinary);
 
-    automatic.reconfigureLookup(FastNonUniformGridPolicy::Automatic, 32);
+    automatic.reconfigureLookup(FastGridPolicy::Automatic, 32);
     REQUIRE(automatic.usesFastLookup());
     automatic.finalize();
 
-    FastNonUniformGrid1D binary(points, 1.0,
-                                FastNonUniformGridPolicy::ForceBinary, 8);
+    FastNonUniformGrid1D binary(
+        points, FastGridSettings{.policy = FastGridPolicy::ForceBinary,
+                                 .max_lookup_ratio = 8});
     REQUIRE_FALSE(binary.usesFastLookup());
     REQUIRE(binary.index(3.0) == 5);
     binary.finalize();
   }
 
   SECTION("Copy, serialization, and device transfer preserve active mode") {
-    FastNonUniformGrid1D source(points, 1.0);
+    FastNonUniformGrid1D source(points);
     FastNonUniformGrid1D copy;
     copy.copy(source);
     REQUIRE(copy.usesFastLookup());
@@ -478,8 +481,9 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
 
     device.finalize();
 
-    FastNonUniformGrid1D binary_host(points, 1.0,
-                                     FastNonUniformGridPolicy::ForceBinary, 8);
+    FastNonUniformGrid1D binary_host(
+        points, FastGridSettings{.policy = FastGridPolicy::ForceBinary,
+                                 .max_lookup_ratio = 8});
     FastNonUniformGrid1D binary_device = binary_host.getOnDevice();
     REQUIRE_FALSE(binary_device.usesFastLookup());
     error = 0;
@@ -501,8 +505,8 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
   SECTION("DataBox interpolation uses the accelerated grid") {
     const int npoints = static_cast<int>(points.size());
     FastNonUniformDB db(npoints, npoints);
-    db.setRange(0, points, 1.0);
-    db.setRange(1, points, 1.0);
+    db.setRange(0, points, FastGridSettings{});
+    db.setRange(1, points, FastGridSettings{});
     for (int j = 0; j < npoints; ++j)
       for (int i = 0; i < npoints; ++i)
         db(j, i) = 2.0 * db.range(0).x(i) + 3.0 * db.range(1).x(j) - 1.0;
@@ -1372,8 +1376,10 @@ TEST_CASE("FastNonUniformGrid1D HDF5", "[FastNonUniformGrid1D][HDF5]") {
                                       1.0,    4.0,   20.0, 100.0};
   const std::string filename = "fast_nonuniform_grid_test.sp5";
   const std::string grid_name = "grid";
-  FastNonUniformGrid1D grid(points, 2.0, FastNonUniformGridPolicy::RequireFast,
-                            8);
+  FastNonUniformGrid1D grid(
+      points, FastGridSettings{.scale = 2.0,
+                               .policy = FastGridPolicy::RequireFast,
+                               .max_lookup_ratio = 8});
   REQUIRE(grid.usesFastLookup());
 
   hid_t file =
@@ -1393,7 +1399,7 @@ TEST_CASE("FastNonUniformGrid1D HDF5", "[FastNonUniformGrid1D][HDF5]") {
   REQUIRE(loaded.requestedPolicy() == grid.requestedPolicy());
   REQUIRE(loaded.index(3.0) == grid.index(3.0));
 
-  loaded.reconfigureLookup(FastNonUniformGridPolicy::ForceBinary, 8);
+  loaded.reconfigureLookup(FastGridPolicy::ForceBinary, 8);
   REQUIRE_FALSE(loaded.usesFastLookup());
   REQUIRE(loaded.index(3.0) == grid.index(3.0));
 

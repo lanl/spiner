@@ -157,22 +157,28 @@ interval lookup ``O(1)``. The table is uniform after transforming coordinates
 with the first-order Ports-of-Call NQT ``asinh`` function. This provides signed
 logarithmic spacing far from zero and linear spacing near zero.
 
-Construction requires a finite positive scale in the physical coordinate's
-units. It sets the transition length of the transform:
+The ``Settings`` struct supplies construction settings. Its finite,
+positive ``scale`` sets the transition length in the physical coordinate's
+units and defaults to one:
 
 .. code-block:: cpp
 
-   FastNonUniformGrid1D grid(points, 1.0);
+   FastNonUniformGrid1D grid(points);
 
 By default, the lookup table may contain at most eight times as many entries as
 the physical grid has points. If an exact table would exceed that limit, the
-grid transparently uses the wrapped binary search. The configurable constructor
-accepts a policy and a different limit:
+grid transparently uses the wrapped binary search. Pass a ``Settings``
+object to select a scale, policy, or different limit:
 
 .. code-block:: cpp
 
+   using Settings = FastNonUniformGrid1D::Settings;
+   using Policy = FastNonUniformGrid1D::Policy;
    FastNonUniformGrid1D grid(
-       points, scale, Spiner::FastNonUniformGridPolicy::RequireFast, 16);
+       points, Settings{
+                   .scale = scale,
+                   .policy = Policy::RequireFast,
+                   .max_lookup_ratio = 16});
 
 ``Automatic`` permits fallback, ``RequireFast`` fails construction if the
 table cannot fit, and ``ForceBinary`` skips the table. The selected mode can be
@@ -182,7 +188,7 @@ be reconfigured later, including after HDF5 loading:
 .. code-block:: cpp
 
    grid.reconfigureLookup(
-       Spiner::FastNonUniformGridPolicy::ForceBinary, 8);
+       FastNonUniformGrid1D::Policy::ForceBinary, 8);
 
 Reconfiguration follows the same explicit ownership convention as
 ``finalize()``: do not reconfigure an owner while shallow aliases depend on its
