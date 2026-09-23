@@ -281,14 +281,17 @@ class FastNonUniformGrid1D {
         H5Gcreate(loc, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status += coordinates_.saveHDF(group, SP5::FNG1D::COORDINATES);
     const int policy = static_cast<int>(requested_policy_);
-    const unsigned long long ratio =
-        static_cast<unsigned long long>(max_lookup_ratio_);
+    PORTABLE_REQUIRE(
+        max_lookup_ratio_ <=
+            static_cast<std::size_t>(std::numeric_limits<long long>::max()),
+        "Maximum lookup ratio cannot be represented in HDF5");
+    const long long ratio = static_cast<long long>(max_lookup_ratio_);
     status += H5LTset_attribute_double(loc, name.c_str(), SP5::FNG1D::SCALE,
                                        &scale_, 1);
     status += H5LTset_attribute_int(loc, name.c_str(),
                                     SP5::FNG1D::LOOKUP_POLICY, &policy, 1);
-    status += H5LTset_attribute_ullong(loc, name.c_str(),
-                                       SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio, 1);
+    status += H5LTset_attribute_long_long(
+        loc, name.c_str(), SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio, 1);
     status += H5Gclose(group);
     return status;
   }
@@ -301,14 +304,15 @@ class FastNonUniformGrid1D {
     hid_t group = H5Gopen(loc, name.c_str(), H5P_DEFAULT);
     status += coordinates_.loadHDF(group, SP5::FNG1D::COORDINATES);
     int policy = 0;
-    unsigned long long ratio = 0;
+    long long ratio = 0;
     status +=
         H5LTget_attribute_double(loc, name.c_str(), SP5::FNG1D::SCALE, &scale_);
     status += H5LTget_attribute_int(loc, name.c_str(),
                                     SP5::FNG1D::LOOKUP_POLICY, &policy);
-    status += H5LTget_attribute_ullong(loc, name.c_str(),
-                                       SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio);
+    status += H5LTget_attribute_long_long(loc, name.c_str(),
+                                          SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio);
     status += H5Gclose(group);
+    PORTABLE_ALWAYS_REQUIRE(ratio > 0, "Maximum lookup ratio must be positive");
     requested_policy_ = static_cast<Policy>(policy);
     max_lookup_ratio_ = static_cast<std::size_t>(ratio);
     validateSettings_();
