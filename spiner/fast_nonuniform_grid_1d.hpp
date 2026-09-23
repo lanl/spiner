@@ -32,6 +32,7 @@
 #include "ports-of-call/nqt_math.hpp"
 #include "ports-of-call/portability.hpp"
 #include "ports-of-call/portable_errors.hpp"
+#include "ports-of-call/robust_utils.hpp"
 #include "regular_grid_1d.hpp"
 #include "spiner_types.hpp"
 
@@ -49,7 +50,8 @@ class FastNonUniformGrid1D {
   enum class Policy { Automatic = 0, RequireFast = 1, ForceBinary = 2 };
 
   struct Settings {
-    T scale = T(1);
+    // A negative scale infers the transition scale from the coordinates.
+    T scale = T(-1);
     Policy policy = Policy::Automatic;
     std::size_t max_lookup_ratio = DEFAULT_MAX_LOOKUP_RATIO;
   };
@@ -58,10 +60,11 @@ class FastNonUniformGrid1D {
 
   FastNonUniformGrid1D(const std::vector<T> &points,
                        const Settings &settings = {})
-      : coordinates_(points), scale_(settings.scale),
-        requested_policy_(settings.policy),
+      : coordinates_(points), requested_policy_(settings.policy),
         max_lookup_ratio_(settings.max_lookup_ratio) {
-    validateConfiguration_();
+    scale_ = resolveScale_(settings.scale);
+    validateSettings_();
+    validateScaleRange_();
     configureLookup_();
   }
 
@@ -114,6 +117,9 @@ class FastNonUniformGrid1D {
   }
   PORTABLE_INLINE_FUNCTION const T *data() const { return coordinates_.data(); }
   PORTABLE_INLINE_FUNCTION T scale() const { return scale_; }
+  Settings settings() const {
+    return {scale_, requested_policy_, max_lookup_ratio_};
+  }
   PORTABLE_INLINE_FUNCTION std::size_t lookupSize() const {
     return usesFastLookup() ? lookup_grid_.nPoints() - 1 : 0;
   }
@@ -127,29 +133,41 @@ class FastNonUniformGrid1D {
     return lookup_status_ != DataStatus::Empty;
   }
 
-  void reconfigureLookup(const Policy policy,
-                         const std::size_t max_lookup_ratio) {
+  void reconfigureLookup(const Settings &settings) {
     PORTABLE_ALWAYS_REQUIRE(
         coordinates_.dataStatus() == DataStatus::AllocatedHost,
         "Lookup reconfiguration requires a host-owned grid");
-    PORTABLE_ALWAYS_REQUIRE(max_lookup_ratio > 0,
-                            "Maximum lookup ratio must be positive");
-    requested_policy_ = policy;
-    max_lookup_ratio_ = max_lookup_ratio;
+    const T scale = resolveScale_(settings.scale);
+    validateSettings_(scale, settings.policy, settings.max_lookup_ratio);
+    validateScaleRange_(scale);
+    const bool scale_changed = scale != scale_;
+    scale_ = scale;
+    requested_policy_ = settings.policy;
+    max_lookup_ratio_ = settings.max_lookup_ratio;
 
-    if (policy == Policy::ForceBinary) {
+    if (requested_policy_ == Policy::ForceBinary) {
       releaseLookup_();
       return;
     }
 
     const std::size_t max_entries = maxLookupEntries_();
-    if (usesFastLookup() && lookupSize() <= max_entries) return;
+    if (!scale_changed && usesFastLookup() && lookupSize() <= max_entries) {
+      return;
+    }
     releaseLookup_();
     const bool success = buildLookup_(max_entries);
-    if (policy == Policy::RequireFast) {
+    if (requested_policy_ == Policy::RequireFast) {
       PORTABLE_ALWAYS_REQUIRE(
           success, "Fast lookup table exceeds its limit or is invalid");
     }
+  }
+
+  void reconfigureLookup(const Policy policy,
+                         const std::size_t max_lookup_ratio) {
+    Settings updated = settings();
+    updated.policy = policy;
+    updated.max_lookup_ratio = max_lookup_ratio;
+    reconfigureLookup(updated);
   }
 
   std::size_t dynamicMemorySizeInBytes() const {
@@ -195,10 +213,10 @@ class FastNonUniformGrid1D {
                           lookup_status_ == DataStatus::Unmanaged),
                      "Must not de-serialize into an active fast grid");
     std::memcpy(this, src, sizeof(*this));
-    PORTABLE_REQUIRE(validPolicy_(requested_policy_) && max_lookup_ratio_ > 0 &&
-                         std::isfinite(scale_) && scale_ > 0,
-                     "Invalid serialized fast grid metadata");
-    return sizeof(*this) + setPointer(src + sizeof(*this));
+    validateSettings_();
+    const std::size_t offset = sizeof(*this) + setPointer(src + sizeof(*this));
+    validateScaleRange_();
+    return offset;
   }
 
   FastNonUniformGrid1D getOnDevice() const {
@@ -293,7 +311,8 @@ class FastNonUniformGrid1D {
     status += H5Gclose(group);
     requested_policy_ = static_cast<Policy>(policy);
     max_lookup_ratio_ = static_cast<std::size_t>(ratio);
-    validateConfiguration_();
+    validateSettings_();
+    validateScaleRange_();
     configureLookup_();
     return status;
   }
@@ -314,14 +333,47 @@ class FastNonUniformGrid1D {
            policy == Policy::ForceBinary;
   }
 
-  void validateConfiguration_() const {
-    PORTABLE_ALWAYS_REQUIRE(std::isfinite(scale_) && scale_ > 0,
-                            "Fast grid scale must be finite and positive");
-    PORTABLE_ALWAYS_REQUIRE(max_lookup_ratio_ > 0,
-                            "Maximum lookup ratio must be positive");
-    PORTABLE_ALWAYS_REQUIRE(validPolicy_(requested_policy_),
-                            "Invalid fast lookup policy");
+  T resolveScale_(const T requested_scale) const {
+    PORTABLE_ALWAYS_REQUIRE(std::isfinite(requested_scale) &&
+                                requested_scale != T(0),
+                            "Fast grid scale must be finite and nonzero");
+    if (requested_scale > T(0)) return requested_scale;
+
+    T inferred_scale = std::numeric_limits<T>::infinity();
+    for (std::size_t i = 0; i < nPoints(); ++i) {
+      const T magnitude = std::abs(coordinates_.x(static_cast<int>(i)));
+      if (magnitude >= PortsOfCall::Robust::SMALL<T>()) {
+        inferred_scale = std::min(inferred_scale, magnitude);
+      }
+    }
+    PORTABLE_ALWAYS_REQUIRE(
+        std::isfinite(inferred_scale),
+        "Cannot infer a fast grid scale from these coordinates");
+    return inferred_scale;
   }
+
+  void validateSettings_() const {
+    validateSettings_(scale_, requested_policy_, max_lookup_ratio_);
+  }
+
+  static void validateSettings_(const T scale, const Policy policy,
+                                const std::size_t max_lookup_ratio) {
+    PORTABLE_ALWAYS_REQUIRE(std::isfinite(scale) && scale > 0,
+                            "Fast grid scale must be finite and positive");
+    PORTABLE_ALWAYS_REQUIRE(max_lookup_ratio > 0,
+                            "Maximum lookup ratio must be positive");
+    PORTABLE_ALWAYS_REQUIRE(validPolicy_(policy), "Invalid fast lookup policy");
+  }
+
+  void validateScaleRange_(const T scale) const {
+    for (std::size_t i = 0; i < nPoints(); ++i) {
+      PORTABLE_ALWAYS_REQUIRE(
+          std::isfinite(coordinates_.x(static_cast<int>(i)) / scale),
+          "Fast grid coordinate range is too large for its scale");
+    }
+  }
+
+  void validateScaleRange_() const { validateScaleRange_(scale_); }
 
   std::size_t maxLookupEntries_() const {
     // guard against overflow... probably not necessary?

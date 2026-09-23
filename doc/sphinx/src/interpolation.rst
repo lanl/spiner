@@ -157,9 +157,11 @@ interval lookup ``O(1)``. The table is uniform after transforming coordinates
 with the first-order Ports-of-Call NQT ``asinh`` function. This provides signed
 logarithmic spacing far from zero and linear spacing near zero.
 
-The ``Settings`` struct supplies construction settings. Its finite,
-positive ``scale`` sets the transition length in the physical coordinate's
-units and defaults to one:
+The ``Settings`` struct supplies construction settings. A positive ``scale``
+sets the transition length in the physical coordinate's units. By default it
+is negative, which infers the scale as the smallest coordinate magnitude at
+least ``PortsOfCall::Robust::SMALL<double>()``. The resolved positive scale is
+available through ``scale()`` and is stored in HDF5:
 
 .. code-block:: cpp
 
@@ -187,8 +189,10 @@ be reconfigured later, including after HDF5 loading:
 
 .. code-block:: cpp
 
-   grid.reconfigureLookup(
-       FastNonUniformGrid1D::Policy::ForceBinary, 8);
+   auto settings = grid.settings();
+   settings.scale = -1.0; // infer again from the physical coordinates
+   settings.policy = FastNonUniformGrid1D::Policy::ForceBinary;
+   grid.reconfigureLookup(settings);
 
 Reconfiguration follows the same explicit ownership convention as
 ``finalize()``: do not reconfigure an owner while shallow aliases depend on its
@@ -196,9 +200,9 @@ lookup table. Reconfigure host storage before making device copies.
 
 Ordinary copies remain shallow. ``copy()``, ``getOnDevice()``, binary
 serialization, and HDF5 otherwise follow the ``NonUniformGrid1D`` lifecycle.
-HDF5 stores the physical coordinates and construction settings, then rebuilds
-the derived lookup table when loading. Coordinate access is read-only because
-changing a coordinate would invalidate the table.
+HDF5 stores the physical coordinates and resolved construction settings, then
+rebuilds the derived lookup table when loading. Coordinate access is read-only
+because changing a coordinate would invalidate the table.
 
 The ``PiecewiseGrid1D``
 ------------------------
