@@ -18,6 +18,7 @@
 // Generative AI was used to assist with modifications to this file.
 
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstring>
@@ -921,7 +922,8 @@ DataBox<T, Grid_t, Concept>::loadHDF(hid_t loc, const std::string &groupname) {
   hid_t group, grids;
   herr_t status = 0;
   std::vector<int> index_types;
-  std::vector<int> dims(6, 1);
+  std::array<int, 6> dims;
+  dims.fill(1);
   static_assert(std::is_same<T, double>::value || std::is_same<T, float>::value,
                 "Spiner HDF5 only defined for these data types: float, double");
   // Runtime because HDF5 is doing something evil under the hood with these
@@ -934,11 +936,11 @@ DataBox<T, Grid_t, Concept>::loadHDF(hid_t loc, const std::string &groupname) {
   // Get rank
   status +=
       H5LTget_attribute_int(loc, groupname.c_str(), SP5::DB::RANKNAME, &rank_);
+  PORTABLE_ALWAYS_REQUIRE(rank_ > 0 && rank_ <= 6, "Invalid DataBox HDF5 rank");
   // Resize metadata fields
   setAllIndexed_();
 
   // Get dimensions
-  dims.resize(rank_);
   status += H5LTget_attribute_int(loc, groupname.c_str(), SP5::DB::DIMSNAME,
                                   dims.data());
 
