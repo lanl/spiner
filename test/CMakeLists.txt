@@ -75,6 +75,9 @@ catch_discover_tests(test.bin)
 add_executable(benchmark.bin benchmark.cpp)
 target_link_libraries(benchmark.bin PRIVATE spiner::spiner spiner_test)
 
+add_executable(nonuniform_benchmark.bin nonuniform_benchmark.cpp)
+target_link_libraries(nonuniform_benchmark.bin PRIVATE spiner::spiner spiner_test)
+
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin PRIVATE spiner::spiner spiner_test)
