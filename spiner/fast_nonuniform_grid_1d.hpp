@@ -45,7 +45,7 @@ class FastNonUniformGrid1D {
 
  public:
   using ValueType = T;
-  static constexpr std::size_t DEFAULT_MAX_LOOKUP_RATIO = 32;
+  static constexpr int DEFAULT_MAX_LOOKUP_RATIO = 32;
 
   enum class Policy { Automatic = 0, RequireFast = 1, ForceBinary = 2 };
 
@@ -53,7 +53,7 @@ class FastNonUniformGrid1D {
     // A negative scale infers the transition scale from the coordinates.
     T scale = T(-1);
     Policy policy = Policy::Automatic;
-    std::size_t max_lookup_ratio = DEFAULT_MAX_LOOKUP_RATIO;
+    int max_lookup_ratio = DEFAULT_MAX_LOOKUP_RATIO;
   };
 
   FastNonUniformGrid1D() = default;
@@ -77,16 +77,16 @@ class FastNonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION int index(const T value) const {
     if (!usesFastLookup()) return coordinates_.index(value);
     if (value <= min()) return 0;
-    if (value >= max()) return static_cast<int>(nPoints()) - 2;
+    if (value >= max()) return nPoints() - 2;
 
     const T transformed = transform_(value / scale_);
     int lookup_index =
         std::max(0, std::min(lookup_grid_.index(transformed),
-                             static_cast<int>(lookupSize()) - 1));
+                             lookupSize() - 1));
     int coordinate_index = lookup_[lookup_index];
     // the lookup table is essentially discrete interpolation. This
     // off-by-one check interpolates to the correct index.
-    if (coordinate_index < static_cast<int>(nPoints()) - 2 &&
+    if (coordinate_index < nPoints() - 2 &&
         value >= coordinates_.x(coordinate_index + 1)) {
       ++coordinate_index;
     }
@@ -120,10 +120,10 @@ class FastNonUniformGrid1D {
   Settings settings() const {
     return {scale_, requested_policy_, max_lookup_ratio_};
   }
-  PORTABLE_INLINE_FUNCTION std::size_t lookupSize() const {
+  PORTABLE_INLINE_FUNCTION int lookupSize() const {
     return usesFastLookup() ? lookup_grid_.nPoints() - 1 : 0;
   }
-  PORTABLE_INLINE_FUNCTION std::size_t maxLookupRatio() const {
+  PORTABLE_INLINE_FUNCTION int maxLookupRatio() const {
     return max_lookup_ratio_;
   }
   PORTABLE_INLINE_FUNCTION Policy requestedPolicy() const {
@@ -150,7 +150,7 @@ class FastNonUniformGrid1D {
       return;
     }
 
-    const std::size_t max_entries = maxLookupEntries_();
+    const int max_entries = maxLookupEntries_();
     if (!scale_changed && usesFastLookup() && lookupSize() <= max_entries) {
       return;
     }
@@ -162,8 +162,7 @@ class FastNonUniformGrid1D {
     }
   }
 
-  void reconfigureLookup(const Policy policy,
-                         const std::size_t max_lookup_ratio) {
+  void reconfigureLookup(const Policy policy, const int max_lookup_ratio) {
     Settings updated = settings();
     updated.policy = policy;
     updated.max_lookup_ratio = max_lookup_ratio;
@@ -281,17 +280,14 @@ class FastNonUniformGrid1D {
         H5Gcreate(loc, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status += coordinates_.saveHDF(group, SP5::FNG1D::COORDINATES);
     const int policy = static_cast<int>(requested_policy_);
-    PORTABLE_REQUIRE(
-        max_lookup_ratio_ <=
-            static_cast<std::size_t>(std::numeric_limits<long long>::max()),
-        "Maximum lookup ratio cannot be represented in HDF5");
-    const long long ratio = static_cast<long long>(max_lookup_ratio_);
+    PORTABLE_REQUIRE(max_lookup_ratio_ <= std::numeric_limits<int>::max(),
+                     "Maximum lookup ratio cannot be represented in HDF5");
     status += H5LTset_attribute_double(loc, name.c_str(), SP5::FNG1D::SCALE,
                                        &scale_, 1);
     status += H5LTset_attribute_int(loc, name.c_str(),
                                     SP5::FNG1D::LOOKUP_POLICY, &policy, 1);
-    status += H5LTset_attribute_long_long(
-        loc, name.c_str(), SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio, 1);
+    status += H5LTset_attribute_int(
+        loc, name.c_str(), SP5::FNG1D::MAX_LOOKUP_RATIO, &max_lookup_ratio_, 1);
     status += H5Gclose(group);
     return status;
   }
@@ -304,17 +300,17 @@ class FastNonUniformGrid1D {
     hid_t group = H5Gopen(loc, name.c_str(), H5P_DEFAULT);
     status += coordinates_.loadHDF(group, SP5::FNG1D::COORDINATES);
     int policy = 0;
-    long long ratio = 0;
+    int ratio = 0;
     status +=
         H5LTget_attribute_double(loc, name.c_str(), SP5::FNG1D::SCALE, &scale_);
     status += H5LTget_attribute_int(loc, name.c_str(),
                                     SP5::FNG1D::LOOKUP_POLICY, &policy);
-    status += H5LTget_attribute_long_long(loc, name.c_str(),
-                                          SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio);
+    status += H5LTget_attribute_int(loc, name.c_str(),
+                                    SP5::FNG1D::MAX_LOOKUP_RATIO, &ratio);
     status += H5Gclose(group);
     PORTABLE_ALWAYS_REQUIRE(ratio > 0, "Maximum lookup ratio must be positive");
     requested_policy_ = static_cast<Policy>(policy);
-    max_lookup_ratio_ = static_cast<std::size_t>(ratio);
+    max_lookup_ratio_ = ratio;
     validateSettings_();
     validateScaleRange_();
     configureLookup_();
@@ -344,8 +340,8 @@ class FastNonUniformGrid1D {
     if (requested_scale > T(0)) return requested_scale;
 
     T inferred_scale = std::numeric_limits<T>::infinity();
-    for (std::size_t i = 0; i < nPoints(); ++i) {
-      const T magnitude = std::abs(coordinates_.x(static_cast<int>(i)));
+    for (int i = 0; i < nPoints(); ++i) {
+      const T magnitude = std::abs(coordinates_.x(i));
       if (magnitude >= PortsOfCall::Robust::SMALL<T>()) {
         inferred_scale = std::min(inferred_scale, magnitude);
       }
@@ -361,7 +357,7 @@ class FastNonUniformGrid1D {
   }
 
   static void validateSettings_(const T scale, const Policy policy,
-                                const std::size_t max_lookup_ratio) {
+                                const int max_lookup_ratio) {
     PORTABLE_ALWAYS_REQUIRE(std::isfinite(scale) && scale > 0,
                             "Fast grid scale must be finite and positive");
     PORTABLE_ALWAYS_REQUIRE(max_lookup_ratio > 0,
@@ -370,9 +366,9 @@ class FastNonUniformGrid1D {
   }
 
   void validateScaleRange_(const T scale) const {
-    for (std::size_t i = 0; i < nPoints(); ++i) {
+    for (int i = 0; i < nPoints(); ++i) {
       PORTABLE_ALWAYS_REQUIRE(
-          std::isfinite(coordinates_.x(static_cast<int>(i)) / scale),
+          std::isfinite(coordinates_.x(i) / scale),
           "Fast grid coordinate range is too large for its scale");
     }
   }
@@ -381,9 +377,8 @@ class FastNonUniformGrid1D {
 
   std::size_t maxLookupEntries_() const {
     // guard against overflow... probably not necessary?
-    if (nPoints() >
-        std::numeric_limits<std::size_t>::max() / max_lookup_ratio_) {
-      return std::numeric_limits<std::size_t>::max();
+    if (nPoints() > std::numeric_limits<int>::max() / max_lookup_ratio_) {
+      return std::numeric_limits<int>::max();
     }
     return nPoints() * max_lookup_ratio_;
   }
@@ -397,7 +392,7 @@ class FastNonUniformGrid1D {
     }
   }
 
-  bool buildLookup_(const std::size_t max_entries) {
+  bool buildLookup_(const int max_entries) {
     const T transformed_min = transform_(min() / scale_);
     const T transformed_max = transform_(max() / scale_);
     if (!(std::isfinite(transformed_min) && std::isfinite(transformed_max) &&
@@ -408,7 +403,7 @@ class FastNonUniformGrid1D {
     // compute min spacing between coordinates
     T min_spacing = std::numeric_limits<T>::infinity();
     T previous = transformed_min;
-    for (std::size_t i = 1; i < nPoints(); ++i) {
+    for (int i = 1; i < nPoints(); ++i) {
       const T current = transform_(coordinates_.x(i) / scale_);
       const T spacing = current - previous;
       if (!std::isfinite(current) || !(spacing > 0)) return false;
@@ -420,18 +415,17 @@ class FastNonUniformGrid1D {
     const T slightly_smaller_spacing = std::nextafter(min_spacing, T(0));
     const T span = transformed_max - transformed_min;
     const T required = std::ceil(span / slightly_smaller_spacing);
-    const std::size_t max_cells =
-        std::min(max_entries,
-                 static_cast<std::size_t>(std::numeric_limits<int>::max() - 1));
+    const int max_cells = std::min(
+        max_entries, std::numeric_limits<int>::max() - 1);
     if (!std::isfinite(required) || required < 1 ||
         required > static_cast<T>(max_cells)) {
       return false;
     }
 
     // One additional cell provides margin against rounding in the lookup grid.
-    const std::size_t cells = static_cast<std::size_t>(required);
+    const int cells = required;
     if (cells == max_cells) return false;
-    const std::size_t conservative_cells = cells + 1;
+    const int conservative_cells = cells + 1;
     const RegularGrid1D<T> candidate_grid(transformed_min, transformed_max,
                                           conservative_cells + 1);
     // Sanity check to ensure lookup table doesn't predict wrong point
@@ -451,18 +445,18 @@ class FastNonUniformGrid1D {
   }
 
   bool lookupLayoutIsValid_(const RegularGrid1D<T> &grid,
-                            const std::size_t cells) const {
+                            const int cells) const {
     int source_index = 0;
     // for each lookup index, find source index
-    for (std::size_t j = 0; j < cells; ++j) {
-      const T left = grid.x(static_cast<int>(j));
-      const T right = grid.x(static_cast<int>(j + 1));
-      while (source_index < static_cast<int>(nPoints()) - 2 &&
+    for (int j = 0; j < cells; ++j) {
+      const T left = grid.x(j);
+      const T right = grid.x(j + 1);
+      while (source_index < nPoints() - 2 &&
              transform_(coordinates_.x(source_index + 1) / scale_) < left) {
         ++source_index;
       }
       // and ensure there's only 1 source index per lookup index
-      if (source_index + 2 <= static_cast<int>(nPoints()) - 2 &&
+      if (source_index + 2 <= nPoints() - 2 &&
           transform_(coordinates_.x(source_index + 2) / scale_) < right) {
         return false;
       }
@@ -474,8 +468,8 @@ class FastNonUniformGrid1D {
                    const std::size_t cells) const {
     int source_index = 0;
     for (std::size_t j = 0; j < cells; ++j) {
-      const T left = grid.x(static_cast<int>(j));
-      while (source_index < static_cast<int>(nPoints()) - 2 &&
+      const T left = grid.x(j);
+      while (source_index < nPoints() - 2 &&
              transform_(coordinates_.x(source_index + 1) / scale_) < left) {
         ++source_index;
       }
@@ -503,7 +497,7 @@ class FastNonUniformGrid1D {
   int *lookup_ = nullptr;
   T scale_ = std::numeric_limits<T>::signaling_NaN();
   Policy requested_policy_ = Policy::Automatic;
-  std::size_t max_lookup_ratio_ = 0;
+  int max_lookup_ratio_ = 0;
   DataStatus lookup_status_ = DataStatus::Empty;
 };
 
