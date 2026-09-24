@@ -109,8 +109,8 @@ class FastNonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
     const bool lookup_well_formed =
         !usesFastLookup() || lookup_grid_.isWellFormed();
-    return coordinates_.isWellFormed() && std::isfinite(scale_) && scale_ > 0 &&
-           max_lookup_ratio_ > 0 && lookup_well_formed;
+    return lookup_well_formed && coordinates_.isWellFormed() && std::isfinite(scale_) && scale_ > 0 &&
+           max_lookup_ratio_ > 0 ;
   }
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const {
     return coordinates_.dataStatus();
