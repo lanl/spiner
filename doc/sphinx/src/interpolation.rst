@@ -9,6 +9,7 @@ grids. There are two lower-level objects:
 * ``RegularGrid1D``
 * ``PiecewiseGrid1D``
 * ``NonUniformGrid1D``
+* ``FastNonUniformGrid1D``
 
 These objects contain the metadata required for interpolation
 operations and have a few useful userspace functions, which are
@@ -24,6 +25,7 @@ a type alias such as:
    using RegularGrid1D = Spiner::RegularGrid1D<double>;
    using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<double>;
    using NonUniformGrid1D = Spiner::NonUniformGrid1D<double>;
+   using FastNonUniformGrid1D = Spiner::FastNonUniformGrid1D<double>;
 
 .. note::
    In the function signature below we refer to ``T`` and ``Real`` as
@@ -145,6 +147,62 @@ bracketing point with a portable binary search, and ``weights(x, ix, w)`` uses
 the spacing of that local interval. Lookup is ``O(log N)``. Values below or
 above the coordinate range use the first or last interval respectively, just
 as ``RegularGrid1D`` does, so interpolation extrapolates linearly.
+
+``FastNonUniformGrid1D``
+------------------------
+
+``FastNonUniformGrid1D<double>`` owns the same explicit physical coordinates
+as ``NonUniformGrid1D<double>`` and can add an integer lookup table that makes
+interval lookup ``O(1)``. The table is uniform after transforming coordinates
+with the first-order Ports-of-Call NQT ``asinh`` function. This provides signed
+logarithmic spacing far from zero and linear spacing near zero.
+
+The ``Settings`` struct supplies construction settings. A positive ``scale``
+sets the transition length in the physical coordinate's units. By default it
+is negative, which infers the scale as the smallest coordinate magnitude at
+least ``PortsOfCall::Robust::SMALL<double>()``. The resolved positive scale is
+available through ``scale()`` and is stored in HDF5:
+
+.. code-block:: cpp
+
+   FastNonUniformGrid1D grid(points);
+
+By default, the lookup table may contain at most 32 times as many entries as
+the physical grid has points. If an exact table would exceed that limit, the
+grid transparently uses the wrapped binary search. Pass a ``Settings``
+object to select a scale, policy, or different limit:
+
+.. code-block:: cpp
+
+   using Settings = FastNonUniformGrid1D::Settings;
+   using Policy = FastNonUniformGrid1D::Policy;
+   FastNonUniformGrid1D grid(
+       points, Settings{
+                   .scale = scale,
+                   .policy = Policy::RequireFast,
+                   .max_lookup_ratio = 16});
+
+``Automatic`` permits fallback, ``RequireFast`` fails construction if the
+table cannot fit, and ``ForceBinary`` skips the table. The selected mode can be
+inspected with ``usesFastLookup()`` and ``lookupSize()``. A host-owned grid can
+be reconfigured later, including after HDF5 loading:
+
+.. code-block:: cpp
+
+   auto settings = grid.settings();
+   settings.scale = -1.0; // infer again from the physical coordinates
+   settings.policy = FastNonUniformGrid1D::Policy::ForceBinary;
+   grid.reconfigureLookup(settings);
+
+Reconfiguration follows the same explicit ownership convention as
+``finalize()``: do not reconfigure an owner while shallow aliases depend on its
+lookup table. Reconfigure host storage before making device copies.
+
+Ordinary copies remain shallow. ``copy()``, ``getOnDevice()``, binary
+serialization, and HDF5 otherwise follow the ``NonUniformGrid1D`` lifecycle.
+HDF5 stores the physical coordinates and resolved construction settings, then
+rebuilds the derived lookup table when loading. Coordinate access is read-only
+because changing a coordinate would invalidate the table.
 
 The ``PiecewiseGrid1D``
 ------------------------

@@ -11,6 +11,8 @@
 # publicly and display publicly, and to permit others to do so.
 # ------------------------------------------------------------------------------#
 
+# Generative AI was used to assist with modifications to this file.
+
 cmake_minimum_required(VERSION 3.24)
 
 set(SPINER_VERSION 1.7.0)
@@ -54,6 +56,8 @@ endif()
 
 # use HDF5
 option(SPINER_USE_HDF "Use HDF5 for I/O" OFF)
+option(SPINER_USE_PORTABLE_NQT
+       "Use portable rather than aliased NQT functions" OFF)
 option(SPINER_BUILD_TESTS "Compile Tests" OFF)
 # use Kokkos offloading in tests
 cmake_dependent_option(SPINER_TEST_USE_KOKKOS "Use kokkos offloading for tests"
@@ -73,6 +77,9 @@ include(cmake/Format.cmake)
 add_library(spiner INTERFACE)
 add_library(spiner::spiner ALIAS spiner)
 target_compile_features(spiner INTERFACE cxx_std_20)
+if(SPINER_USE_PORTABLE_NQT)
+  target_compile_definitions(spiner INTERFACE SPINER_USE_PORTABLE_NQT)
+endif()
 
 # ##############################################################################
 # Dependencies           #
@@ -90,7 +97,7 @@ if(NOT TARGET ports-of-call::ports-of-call)
   FetchContent_Declare(
     ports-of-call
     GIT_REPOSITORY https://github.com/lanl/ports-of-call
-    GIT_TAG v3.0.0 # TODO: update if needed
+    GIT_TAG v3.1.1 # TODO: update if needed
   )
 set(SPINER_DEP_LIST "ports-of-call")
 endif()
@@ -215,6 +222,7 @@ config_summary_dependency("Ports-of-Call" "ports-of-call")
 
 config_summary_block("User Options")
 config_summary_option("SPINER_USE_HDF")
+config_summary_option("SPINER_USE_PORTABLE_NQT")
 config_summary_option("SPINER_BUILD_TESTS")
 config_summary_option("SPINER_TEST_USE_KOKKOS")
 config_summary_option("SPINER_TEST_USE_KOKKOS_CUDA")

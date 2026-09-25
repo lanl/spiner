@@ -15,6 +15,8 @@
 // permit others to do so.
 //======================================================================
 
+// Generative AI was used to assist with modifications to this file.
+
 // This file contains strings defined for use accross the SP5 data
 // format
 
@@ -45,6 +47,13 @@ constexpr char RANGE_INFONAME[] = "range columns";
 constexpr char RANGE_INFO[] = "[0]:min [1]:max [2]:dx";
 constexpr int RANGE_RANK = 1;
 } // namespace RG1D
+
+namespace FNG1D {
+constexpr char COORDINATES[] = "coordinates";
+constexpr char SCALE[] = "scale";
+constexpr char LOOKUP_POLICY[] = "lookup_policy";
+constexpr char MAX_LOOKUP_RATIO[] = "max_lookup_ratio";
+} // namespace FNG1D
 
 } // namespace SP5
 

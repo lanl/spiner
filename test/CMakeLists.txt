@@ -9,6 +9,8 @@
 # reproduce, prepare derivative works, distribute copies to the public, perform
 # publicly and display publicly, and to permit others to do so.
 
+# Generative AI was used to assist with modifications to this file.
+
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -74,6 +76,9 @@ catch_discover_tests(test.bin)
 # Benchmarking
 add_executable(benchmark.bin benchmark.cpp)
 target_link_libraries(benchmark.bin PRIVATE spiner::spiner spiner_test)
+
+add_executable(nonuniform_benchmark.bin nonuniform_benchmark.cpp)
+target_link_libraries(nonuniform_benchmark.bin PRIVATE spiner::spiner spiner_test)
 
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
