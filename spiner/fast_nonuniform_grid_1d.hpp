@@ -169,6 +169,8 @@ class FastNonUniformGrid1D {
     reconfigureLookup(updated);
   }
 
+  // TODO(JMM): Should we support setting pointer from somewhere
+  // else... e.g., when a grid is unamanged?
   std::size_t dynamicMemorySizeInBytes() const {
     return coordinates_.dynamicMemorySizeInBytes() + lookupSize() * sizeof(int);
   }

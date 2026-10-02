@@ -107,6 +107,8 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
 
+  // TODO(JMM): Should we support setting pointer from somewhere
+  // else... e.g., when a grid is unamanged?
   std::size_t dynamicMemorySizeInBytes() const { return n_ * sizeof(T); }
   std::size_t serializedSizeInBytes() const {
     return sizeof(*this) + dynamicMemorySizeInBytes();
