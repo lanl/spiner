@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "# ncoarse = " << ncoarse << std::endl;
-    std::unique_ptr<DataBox, DBDeleter> pdb(new DataBox(
+    std::unique_ptr<DataBox, DBDeleter<>> pdb(new DataBox(
         Spiner::AllocationTarget::Device, ncoarse, ncoarse, ncoarse));
     for (int d = 0; d < pdb->rank(); d++) {
       pdb->setRange(d, xmin, xmax, ncoarse);

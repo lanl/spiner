@@ -120,7 +120,7 @@ class DataBox {
     rank_ = dataView_.GetRank();
     for (int i = 0; i < rank_; i++) {
       indices_[i] = b.indices_[i];
-      grids_[i] = b.grids_[i];
+      grids_[i].shallowCopy(b.grids_[i]);
     }
   }
 
@@ -245,10 +245,11 @@ class DataBox {
   // Reshapes from other databox, but does not allocate memory.
   // Does no checks that memory is available.
   // Optionally copies shape of source with ndims fewer slowest-moving
-  // dimensions
+  // dimensions. Grids are shallow copies that do not own memory.
   PORTABLE_INLINE_FUNCTION void copyShape(const DataBox<T, Grid_t, Concept> &db,
                                           const int ndims = 0);
-  // Returns new databox with same memory and metadata
+  // Reallocates and copies shape, index types, and deep copies of the
+  // grids of src. Everything but the values in a deep copy.
   inline void copyMetadata(const DataBox<T, Grid_t, Concept> &src);
 
 #ifdef SPINER_USE_HDF
@@ -269,7 +270,9 @@ class DataBox {
   // Copy assignment is shallow
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
   operator=(const DataBox<T, Grid_t, Concept> &other);
-  inline void copy(const DataBox<T, Grid_t, Concept> &src);
+  // Deep copies values and grids of a host-accessible src into newly
+  // allocated memory. Free with finalize and finalizeGrids.
+  inline void deepCopy(const DataBox<T, Grid_t, Concept> &src);
 
   // utility info
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
@@ -451,14 +454,12 @@ class DataBox {
     return a;
   }
 
+  // Frees the values of this DataBox. Grids are managed separately;
+  // see finalizeGrids.
   // TODO(JMM): Potentially use this for device-free
   void finalize() {
     PORTABLE_REQUIRE(ownsAllocatedMemory(),
                      "Must only finalize databox that owns its own data.");
-    // TODO(JMM): This may eventually need to be more complex
-    for (int i = 0; i < rank_; ++i) {
-      grids_[i].finalize();
-    }
     if (status_ == DataStatus::AllocatedDevice) {
       PORTABLE_FREE(data_);
     } else if (status_ == DataStatus::AllocatedHost) {
@@ -466,6 +467,16 @@ class DataBox {
     }
     data_ = nullptr;
     status_ = DataStatus::Empty;
+  }
+
+  // Frees any memory owned by the grids of this DataBox. Grids that do
+  // not own memory, e.g., shallow copies, are left alone. Independent
+  // of finalize, and safe to call on a DataBox that does not own its
+  // values.
+  void finalizeGrids() {
+    for (int i = 0; i < MAXRANK; ++i) {
+      grids_[i].finalize();
+    }
   }
 
  private:
@@ -784,7 +795,7 @@ DataBox<T, Grid_t, Concept>::copyShape(const DataBox<T, Grid_t, Concept> &db,
   rank_ = db.rank_ - ndims;
   for (int i = 0; i < rank_; i++) {
     indices_[i] = db.indices_[i];
-    grids_[i] = db.grids_[i];
+    grids_[i].shallowCopy(db.grids_[i]);
   }
 }
 // reallocates and then copies shape from other databox
@@ -799,7 +810,7 @@ inline void DataBox<T, Grid_t, Concept>::copyMetadata(
          src.dim(1));
   rank_ = src.rank_; // resize sets rank
   for (int i = 0; i < rank_; i++) {
-    grids_[i] = src.grids_[i];
+    grids_[i].deepCopy(src.grids_[i]);
     indices_[i] = src.indices_[i];
   }
 }
@@ -956,8 +967,7 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
-      // TODO(JMM): Add a way to shallow copy metadata automatically
-      grids_[i].copy(src.grids_[i]); // must also be a deep copy
+      grids_[i] = src.grids_[i];
     }
   }
   return *this;
@@ -966,7 +976,9 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
 // Performs a deep copy
 template <typename T, typename Grid_t, typename Concept>
 inline void
-DataBox<T, Grid_t, Concept>::copy(const DataBox<T, Grid_t, Concept> &src) {
+DataBox<T, Grid_t, Concept>::deepCopy(const DataBox<T, Grid_t, Concept> &src) {
+  PORTABLE_REQUIRE(src.status_ != DataStatus::AllocatedDevice,
+                   "Cannot deep copy a device-resident DataBox");
   copyMetadata(src);
   for (int i = 0; i < src.size(); i++)
     dataView_(i) = src(i);
@@ -1059,9 +1071,15 @@ inline void free(T &value) {
   value.finalize();
 }
 
+// Deleter for smart pointers. If FinalizeGrids is true, the grids of
+// the DataBox are finalized as well as its values.
+template <bool FinalizeGrids = false>
 struct DBDeleter {
   template <Finalizable T>
   void operator()(T *ptr) {
+    if constexpr (FinalizeGrids) {
+      ptr->finalizeGrids();
+    }
     ptr->finalize();
     delete ptr;
   }

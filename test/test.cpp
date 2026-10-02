@@ -143,6 +143,19 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
     restored.finalize();
     grid.finalize();
   }
+
+  SECTION("Shallow and deep copies of a regular grid are plain copies") {
+    RegularGrid1D grid(-1.0, 2.0, 7);
+    RegularGrid1D shallow, deep;
+    shallow.shallowCopy(grid);
+    deep.deepCopy(grid);
+    for (const RegularGrid1D &g : {shallow, deep}) {
+      REQUIRE(g.dataStatus() == DataStatus::Trivial);
+      REQUIRE(g.min() == grid.min());
+      REQUIRE(g.max() == grid.max());
+      REQUIRE(g.nPoints() == grid.nPoints());
+    }
+  }
 }
 
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
@@ -183,10 +196,10 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
     REQUIRE(std::abs(borrowed_points[2] - 0.25) <= EPSTEST);
   }
 
-  SECTION("copy creates independent host-owned coordinates") {
+  SECTION("deepCopy creates independent host-owned coordinates") {
     NonUniformGrid1D source(points);
     NonUniformGrid1D copy;
-    copy.copy(source);
+    copy.deepCopy(source);
     REQUIRE(copy.dataStatus() == DataStatus::AllocatedHost);
     REQUIRE(copy.data() != source.data());
     REQUIRE(copy.nPoints() == source.nPoints());
@@ -202,11 +215,39 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
   SECTION("A non uniform grid can be deep copied.") {
     NonUniformGrid1D source(points);
     NonUniformGrid1D copy;
-    copy.copy(source);
+    copy.deepCopy(source);
     REQUIRE(copy.data() != source.data());
     REQUIRE(source.x(1) == -0.5);
     copy.finalize();
     source.finalize();
+  }
+
+  SECTION("shallowCopy creates a non-owning handle") {
+    NonUniformGrid1D source(points);
+    NonUniformGrid1D shallow;
+    shallow.shallowCopy(source);
+    REQUIRE(shallow.dataStatus() == DataStatus::Unmanaged);
+    REQUIRE(source.dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(shallow.data() == source.data());
+    REQUIRE(shallow.nPoints() == source.nPoints());
+
+    // An ordinary copy, by contrast, copies the ownership status.
+    NonUniformGrid1D alias = source;
+    REQUIRE(alias.dataStatus() == DataStatus::AllocatedHost);
+
+    // Finalizing the non-owning handle leaves the owner intact.
+    shallow.finalize();
+    REQUIRE(source.dataStatus() == DataStatus::AllocatedHost);
+    for (std::size_t i = 0; i < points.size(); ++i)
+      REQUIRE(source.x(i) == points[i]);
+    source.finalize();
+  }
+
+  SECTION("shallowCopy of an empty grid is empty") {
+    NonUniformGrid1D source;
+    NonUniformGrid1D shallow;
+    shallow.shallowCopy(source);
+    REQUIRE(shallow.dataStatus() == DataStatus::Empty);
   }
 
   SECTION("getOnDevice creates device-owned coordinates") {
@@ -276,7 +317,11 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
         },
         value);
     REQUIRE(std::abs(value) <= EPSTEST);
+    // finalize frees only values. Grids are freed by finalizeGrids.
     device.finalize();
+    for (int i = 0; i < RANK; ++i)
+      REQUIRE(device.range(i).dataStatus() == DataStatus::AllocatedDevice);
+    device.finalizeGrids();
     for (int i = 0; i < RANK; ++i)
       REQUIRE(device.range(i).dataStatus() == DataStatus::Empty);
 
@@ -307,6 +352,7 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
         REQUIRE(restored.range(i).x(j) == db.range(i).x(j));
     }
 
+    db.finalizeGrids();
     db.finalize();
     for (int i = 0; i < RANK; ++i)
       REQUIRE(db.range(i).dataStatus() == DataStatus::Empty);
@@ -323,7 +369,7 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
     REQUIRE(device.dataStatus() == DataStatus::AllocatedDevice);
     REQUIRE(&device.range(0) != &db.range(0));
     REQUIRE(device.range(0).data() == db.range(0).data());
-    REQUIRE(device.range(0).dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(device.range(0).dataStatus() == DataStatus::Unmanaged);
 
     Real sum = 0;
     portableReduce(
@@ -332,9 +378,73 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
         sum);
     REQUIRE(sum == 6.0);
 
-    // The shallow grid alias must not finalize the host-owned coordinates.
-    device.range(0) = NonUniformGrid1D{};
+    // The shallow grid alias does not finalize the host-owned coordinates.
+    device.finalizeGrids();
+    REQUIRE(db.range(0).dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(db.range(0).x(1) == points[1]);
     device.finalize();
+    db.finalizeGrids();
+    db.finalize();
+  }
+
+  SECTION("A DataBox separates ownership of values and grids") {
+    constexpr int N = 4;
+    NonUniformDB db(N, N);
+    db.setRange(0, points);
+    db.setRange(1, points);
+
+    SECTION("Slices hold non-owning grids") {
+      NonUniformDB slice = db.slice(1);
+      REQUIRE(slice.dataStatus() == DataStatus::Unmanaged);
+      REQUIRE(slice.range(0).dataStatus() == DataStatus::Unmanaged);
+      REQUIRE(slice.range(0).data() == db.range(0).data());
+      slice.finalizeGrids();
+      REQUIRE(db.range(0).dataStatus() == DataStatus::AllocatedHost);
+    }
+
+    SECTION("Copies and assignment are handles with the same ownership") {
+      NonUniformDB copy(db);
+      NonUniformDB assigned;
+      assigned = db;
+      for (const NonUniformDB *handle : {&copy, &assigned}) {
+        REQUIRE(handle->data() == db.data());
+        for (int i = 0; i < db.rank(); ++i) {
+          REQUIRE(handle->range(i).data() == db.range(i).data());
+          REQUIRE(handle->range(i).dataStatus() == DataStatus::AllocatedHost);
+        }
+      }
+    }
+
+    SECTION("deepCopy copies values and grids") {
+      for (int i = 0; i < db.size(); ++i)
+        db(i) = static_cast<Real>(i);
+      NonUniformDB copy;
+      copy.deepCopy(db);
+      REQUIRE(copy.data() != db.data());
+      for (int i = 0; i < db.size(); ++i)
+        REQUIRE(copy(i) == db(i));
+      for (int i = 0; i < db.rank(); ++i) {
+        REQUIRE(copy.indexType(i) == db.indexType(i));
+        REQUIRE(copy.range(i).dataStatus() == DataStatus::AllocatedHost);
+        REQUIRE(copy.range(i).data() != db.range(i).data());
+      }
+      // The copy is fully independent of the original.
+      copy.finalizeGrids();
+      copy.finalize();
+      REQUIRE(db.range(0).x(1) == points[1]);
+    }
+
+    SECTION("finalize leaves grids and finalizeGrids frees them") {
+      NonUniformDB other(N);
+      other.setRange(0, points);
+      other.finalize();
+      REQUIRE(other.dataStatus() == DataStatus::Empty);
+      REQUIRE(other.range(0).dataStatus() == DataStatus::AllocatedHost);
+      other.finalizeGrids();
+      REQUIRE(other.range(0).dataStatus() == DataStatus::Empty);
+    }
+
+    db.finalizeGrids();
     db.finalize();
   }
 }
@@ -461,7 +571,7 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
   SECTION("Copy, serialization, and device transfer preserve active mode") {
     FastNonUniformGrid1D source(points);
     FastNonUniformGrid1D copy;
-    copy.copy(source);
+    copy.deepCopy(source);
     REQUIRE(copy.usesFastLookup());
     REQUIRE(copy.data() != source.data());
     REQUIRE(copy.lookupSize() == source.lookupSize());
@@ -515,6 +625,24 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
     source.finalize();
   }
 
+  SECTION("shallowCopy creates a non-owning handle to coordinates and table") {
+    FastNonUniformGrid1D source(points);
+    REQUIRE(source.usesFastLookup());
+    FastNonUniformGrid1D shallow;
+    shallow.shallowCopy(source);
+    REQUIRE(shallow.dataStatus() == DataStatus::Unmanaged);
+    REQUIRE(shallow.data() == source.data());
+    REQUIRE(shallow.usesFastLookup());
+    REQUIRE(shallow.lookupSize() == source.lookupSize());
+    REQUIRE(shallow.index(3.0) == source.index(3.0));
+
+    shallow.finalize();
+    REQUIRE(source.dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(source.usesFastLookup());
+    REQUIRE(source.index(3.0) == 5);
+    source.finalize();
+  }
+
   SECTION("DataBox interpolation uses the accelerated grid") {
     const int npoints = static_cast<int>(points.size());
     FastNonUniformDB db(npoints, npoints);
@@ -536,7 +664,9 @@ TEST_CASE("FastNonUniformGrid1D", "[FastNonUniformGrid1D]") {
         },
         result);
     REQUIRE(std::abs(result - (-4.0)) <= EPSTEST);
+    device.finalizeGrids();
     device.finalize();
+    db.finalizeGrids();
     db.finalize();
   }
 }
@@ -688,7 +818,7 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
 
     SECTION("DataBoxes can be deep copied") {
       DataBox db2;
-      db2.copy(db);
+      db2.deepCopy(db);
       REQUIRE(&(db2(0)) != &(db(0)));
       db2.finalize(); // deep copies require free
     }
@@ -1110,6 +1240,7 @@ TEST_CASE("interpFromDB with memory-owning grids",
   REQUIRE(std::sqrt(error) <= EPSTEST);
 
   // Freeing the destination must leave the source grids intact.
+  dst.finalizeGrids();
   free(dst);
   for (int i = 0; i < src.rank(); i++) {
     REQUIRE(src.range(i).dataStatus() == DataStatus::AllocatedHost);
@@ -1121,6 +1252,7 @@ TEST_CASE("interpFromDB with memory-owning grids",
   constexpr Real x = 0.45;
   REQUIRE(std::abs(src.interpToReal(z, y, x) - linearFunction(z, y, x)) <=
           EPSTEST);
+  src.finalizeGrids();
   free(src);
 }
 
@@ -1458,13 +1590,22 @@ SCENARIO("Using unique pointers to garbage collect DataBox",
          "[DataBox][GarbageCollection]") {
   constexpr int N = 1000;
   GIVEN("A databox allocated on device with a unique pointer") {
-    std::unique_ptr<DataBox, DBDeleter> pdb(
+    std::unique_ptr<DataBox, DBDeleter<>> pdb(
         new DataBox(Spiner::AllocationTarget::Device, N));
     THEN("We can access it") {
       auto db = *pdb; // shallow copy
       portableFor(
           "Just do something", 0, N,
           PORTABLE_LAMBDA(int i) { db(i) = 2.0 * i; });
+    }
+  }
+  GIVEN("A databox with memory-owning grids and a unique pointer") {
+    // DBDeleter<true> also finalizes the grids. A leak checker such as
+    // LeakSanitizer reports the coordinates if it does not.
+    std::unique_ptr<NonUniformDB, DBDeleter<true>> pdb(new NonUniformDB(4));
+    pdb->setRange(0, std::vector<Real>{-1.0, -0.5, 0.25, 2.0});
+    THEN("Its grids own their memory") {
+      REQUIRE(pdb->range(0).dataStatus() == DataStatus::AllocatedHost);
     }
   }
 }
@@ -1505,7 +1646,9 @@ TEST_CASE("NonUniformGrid1D HDF5", "[NonUniformGrid1D][HDF5]") {
     REQUIRE(loaded_db.range(0).x(i) == db.range(0).x(i));
   REQUIRE(std::abs(loaded_db.interpToReal(0.0)) <= EPSTEST);
 
+  loaded_db.finalizeGrids();
   loaded_db.finalize();
+  db.finalizeGrids();
   db.finalize();
   loaded.finalize();
   grid.finalize();

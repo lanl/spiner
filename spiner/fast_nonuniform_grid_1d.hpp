@@ -238,7 +238,29 @@ class FastNonUniformGrid1D {
     return grid;
   }
 
-  void copy(const FastNonUniformGrid1D &other) {
+  // Make a non-owning handle to the coordinates and lookup table of
+  // other. other remains responsible for them and must outlive this
+  // grid.
+  PORTABLE_INLINE_FUNCTION void
+  shallowCopy(const FastNonUniformGrid1D &other) {
+    if (this == &other) return;
+    PORTABLE_REQUIRE((dataStatus() == DataStatus::Empty ||
+                      dataStatus() == DataStatus::Unmanaged) &&
+                         (lookup_status_ == DataStatus::Empty ||
+                          lookup_status_ == DataStatus::Unmanaged),
+                     "Must not copy into an active fast grid");
+    coordinates_.shallowCopy(other.coordinates_);
+    lookup_grid_ = other.lookup_grid_;
+    lookup_ = other.lookup_;
+    scale_ = other.scale_;
+    requested_policy_ = other.requested_policy_;
+    max_lookup_ratio_ = other.max_lookup_ratio_;
+    lookup_status_ = (other.lookup_status_ == DataStatus::Empty)
+                         ? DataStatus::Empty
+                         : DataStatus::Unmanaged;
+  }
+
+  void deepCopy(const FastNonUniformGrid1D &other) {
     if (this == &other) return;
     PORTABLE_REQUIRE((dataStatus() == DataStatus::Empty ||
                       dataStatus() == DataStatus::Unmanaged) &&
@@ -249,7 +271,7 @@ class FastNonUniformGrid1D {
                          other.lookup_status_ != DataStatus::AllocatedDevice,
                      "Cannot deep copy a device-resident fast grid to host");
 
-    coordinates_.copy(other.coordinates_);
+    coordinates_.deepCopy(other.coordinates_);
     lookup_grid_ = other.lookup_grid_;
     scale_ = other.scale_;
     requested_policy_ = other.requested_policy_;

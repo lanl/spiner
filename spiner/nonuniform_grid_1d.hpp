@@ -153,9 +153,22 @@ class NonUniformGrid1D {
     return grid;
   }
 
+  // Make a non-owning handle to the coordinates of other. Unlike
+  // normal copy construction and assignment, which copy the ownership
+  // status, the result never frees the coordinates. other remains
+  // responsible for them and must outlive this grid.
+  PORTABLE_INLINE_FUNCTION void shallowCopy(const NonUniformGrid1D &other) {
+    if (this == &other) return;
+    PORTABLE_REQUIRE(
+        (status_ == DataStatus::Empty || status_ == DataStatus::Unmanaged),
+        "Must not copy into an active grid.");
+    *this = other;
+    if (status_ != DataStatus::Empty) status_ = DataStatus::Unmanaged;
+  }
+
   // Explicitly make an independent host-owned copy. Normal copy construction
   // and assignment remain shallow.
-  void copy(const NonUniformGrid1D &other) {
+  void deepCopy(const NonUniformGrid1D &other) {
     if (this == &other) return;
     PORTABLE_REQUIRE(other.status_ != DataStatus::AllocatedDevice,
                      "Cannot deep copy a device-resident grid to host");
