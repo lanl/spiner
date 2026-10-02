@@ -135,7 +135,12 @@ class RegularGrid1D {
     return sizeof(*this);
   }
 
-  void copy(const RegularGrid1D<T> &other) { *this = other; }
+  // RegularGrid1D owns no dynamic memory, so shallow and deep copies
+  // are both plain copies.
+  PORTABLE_INLINE_FUNCTION void shallowCopy(const RegularGrid1D<T> &other) {
+    *this = other;
+  }
+  void deepCopy(const RegularGrid1D<T> &other) { *this = other; }
 
   RegularGrid1D<T> getOnDevice() const { return *this; }
 

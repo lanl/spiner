@@ -162,9 +162,11 @@ copied to GPU.
 
 Set ``include_grids`` to ``false`` to skip the deep copy of the grid
 objects. This permits manual management of grid memory when reducing the
-device-memory footprint is important. The result still has the source's
-shallow grid metadata, so its grids must be made device-accessible before
-they are used for device-side interpolation.
+device-memory footprint is important. The result holds non-owning shallow
+copies of the source's grids (see ``shallowCopy`` in the grid
+documentation), so finalizing them does not free the source's grid memory.
+Its grids must be made device-accessible before they are used for
+device-side interpolation.
 
 .. note::
   If GPU support is not enabled, ``getOnDevice`` and friends are
@@ -199,9 +201,46 @@ and
 
 .. cpp:function:: DataBox::finalize();
 
-both will do the same thing and free the memory in a ``DataBox`` in a
+both will do the same thing and free the values in a ``DataBox`` in a
 context-dependent way. I.e., no matter what the ``AllocationTarget``
 was, the appropriate memory will be freed.
+
+Some grids, such as ``NonUniformGrid1D``, own dynamic memory of their
+own. That memory is managed separately from the values and is **not**
+freed by ``free`` or ``finalize``. Free it with
+
+.. cpp:function:: void DataBox::finalizeGrids();
+
+which finalizes every grid held by the ``DataBox``. Grids that do not
+own memory, including all ``RegularGrid1D`` and ``PiecewiseGrid1D``
+grids and non-owning shallow copies, are left alone, so it is always
+safe to call. It is independent of ``finalize`` and may be called on a
+``DataBox`` that does not own its values. For example:
+
+.. code-block:: cpp
+
+  Spiner::DataBox<double, Spiner::NonUniformGrid1D<double>> db(N);
+  db.setRange(0, points); // db's grid owns a copy of points
+  // ...
+  db.finalizeGrids(); // frees the grid coordinates
+  free(db);           // frees the values
+
+Grid ownership follows one rule. An operation that makes a new handle
+to the *same* ``DataBox`` copies its grids along with their ownership.
+An operation that builds a *different* ``DataBox`` from another's
+metadata either gives it non-owning shallow copies of the grids or, if
+it is a deep copy, new grids that it owns. It never makes two
+``DataBox`` objects owners of the same grid memory. Specifically:
+
+* ``setRange`` copies the grid it is given, including its ownership,
+  so a ``DataBox`` given a memory-owning grid is responsible for it.
+* Copy construction and assignment of a ``DataBox`` produce handles to
+  the same ``DataBox``. They report the same ownership as the source,
+  for both values and grids. Free through only one of them.
+* Slices, ``copyShape``, and ``getOnDevice(false)`` build a different
+  ``DataBox`` and give it non-owning shallow copies of the grids.
+* ``getOnDevice()``, ``copyMetadata``, and ``deepCopy`` build a
+  different ``DataBox`` with new grids that it owns.
 
 .. warning::
   Do not free a ``DataBox`` if its memory is managed externally, e.g.,
@@ -228,6 +267,16 @@ which returns ``true`` if a given databox is managing memory and
 returns ``false`` if the databox is managing memory and ``true``
 otherwise.
 
+To make an independent copy of a host-accessible ``DataBox``, use
+
+.. cpp:function:: void DataBox::deepCopy(const DataBox &src);
+
+which allocates new memory and copies the values, index types, and
+grids of ``src``. The grids are deep copies owned by the new
+``DataBox``, so free it with both ``finalizeGrids`` and ``finalize``.
+The grids of the ``DataBox`` being copied into must not own memory.
+Use ``getOnDevice`` to copy a ``DataBox`` to device.
+
 Using ``DataBox`` with smart pointers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -238,13 +287,21 @@ scenario:
 
 .. code-block:: cpp
 
+  template <bool FinalizeGrids = false>
   struct DBDeleter {
     template <typename T>
     void operator()(T *ptr) {
+      if constexpr (FinalizeGrids) {
+        ptr->finalizeGrids();
+      }
       ptr->finalize();
       delete ptr;
     }
   };
+
+``DBDeleter<>`` frees only the values, like ``free``.
+``DBDeleter<true>`` also calls ``finalizeGrids``, which you need when
+the ``DataBox`` owns memory-owning grids.
 
 It can be used, for example, with a ``std::unique_ptr`` via:
 
@@ -255,7 +312,7 @@ It can be used, for example, with a ``std::unique_ptr`` via:
 
   // Creates a unique pointer pointing to a DataBox
   // with memory allocated on device
-  std::unique_ptr<DataBox, Spiner::DBDeleter> pdb(
+  std::unique_ptr<DataBox, Spiner::DBDeleter<>> pdb(
     new DataBox(Spiner::AllocationTarget::Device, N));
   
   // Before using the databox in, e.g., a GPU or Kokkos kernel, get a
@@ -483,7 +540,9 @@ ranges). In this case, the method
 can assist. This method resets and re-allocates the data in a
 ``DataBox`` to the exact same size and shape as ``src``. More
 importantly, it also copies the relevant ``IndexType`` and independent
-variable range for each dimension.
+variable range for each dimension. The grids are deep copies owned by
+the ``DataBox``, so free them with ``finalizeGrids``. The grids of the
+``DataBox`` being reset must not own memory.
 
 One can also manually set the ``IndexType`` in a given dimension with
 
@@ -548,21 +607,55 @@ interpolated values of another ``DataBox``. For example, the method
 
 .. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x);
 
-allocates the ``DataBox`` to have a rank one lower than ``src`` and
-fill it with the faster moving elements of ``src`` interpolated to
-``x`` in the slowest-moving direction. Similarly for
+fills the ``DataBox`` with the faster moving elements of ``src``
+interpolated to ``x`` in the slowest-moving direction. Similarly,
 
 .. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x2, const T x1);
 
-The methods
+interpolates the two slowest-moving directions of ``src`` to ``x2``
+and ``x1``.
 
-.. cpp:function:: DataBox Databox::InterpToDB(const T x) const;
+.. warning::
 
-and
+  ``interpFromDB`` never allocates, reshapes, or frees memory. The
+  ``DataBox`` being filled must already exist with storage and the shape
+  of the remaining faster-moving dimensions of ``src``. In other words,
+  it must have rank ``src.rank() - 1`` (or ``src.rank() - 2``) and
+  ``dim(i) == src.dim(i)`` for each remaining dimension. Both ``DataBox``
+  objects must be accessible from the execution space in which
+  ``interpFromDB`` is called, for example both on device inside a
+  kernel. 
 
-.. cpp:function:: DataBox Databox::InterpToDB(const T x2, const T x1);
+Only values are written. The grids and index types of the ``DataBox``
+being filled are left unchanged, so call ``setRange`` on it yourself if
+you want to interpolate it later. For example:
 
-return a new ``DataBox`` object, rather than setting it from a source ``DataBox``.
+.. code-block:: cpp
+
+  // src has shape (NZ, NY, NX)
+  Spiner::DataBox<double> dst(NY, NX);
+  dst.interpFromDB(src, z);
+  dst.setRange(1, src.range(1));
+  dst.setRange(0, src.range(0));
+  double val = dst.interpToReal(y, x);
+  // ...
+  free(dst);
+
+.. warning::
+
+  Be careful when the grids own their own memory, as
+  ``NonUniformGrid1D`` does. ``setRange`` copies a grid's ownership
+  along with it, so passing ``src.range(i)`` would make both ``DataBox``
+  objects owners of the same grid memory. To share the grids, pass a
+  non-owning handle instead:
+
+  .. code-block:: cpp
+
+    Spiner::NonUniformGrid1D<double> x_grid;
+    x_grid.shallowCopy(src.range(0));
+    dst.setRange(0, x_grid);
+
+  Then only ``src`` frees the grid memory, through ``finalizeGrids``.
 
 File I/O
 ^^^^^^^^^

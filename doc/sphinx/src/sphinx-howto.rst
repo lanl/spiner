@@ -21,31 +21,6 @@ If you are using `Docker`_, then simply pull the docker image specified below:
 
 Then, after running :code:`docker run -it <docker-image-name> /bin/bash`, install the theme we are using with :code:`pip install sphinx_rtd_theme`
 
-Using Spack
-^^^^^^^^^^^
-
-If you are using `Spack`_ to provision dependencies, then follow the steps as such:
-
-.. _Spack: https://spack.io
-
-.. literalinclude:: ../../../.gitlab-ci.yml
-   :lineno-match:
-   :language: yaml
-   :lines: 115-122
-
-from :code:`.gitlab-ci.yml`
-
-.. warning::
-   If you do not have either Docker or Spack locally, you would need to install one of them first.
-
-   For Docker, refer to their `Get Docker Guide`_.
-
-   For Spack, refer to their `Getting Started Guide`_.
-
-.. _Get Docker Guide: https://docs.docker.com/get-docker
-
-.. _Getting Started Guide: https://spack.readthedocs.io/en/latest/getting_started.html#installation
-
 Using Python
 ^^^^^^^^^^^^
 
