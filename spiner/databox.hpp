@@ -210,21 +210,19 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
-  // Interpolates SLOWEST indices of databox to a new
-  // DataBox, interpolated at that slowest index.
-  // WARNING: requires memory to be pre-allocated.
+  // Fills this DataBox with db interpolated at x (or x2, x1) in its
+  // slowest one (or two) dimensions.
+  // REQUIRES: this DataBox already has storage and the shape of the
+  // faster dimensions of db, i.e., rank db.rank() - 1 (or - 2) and
+  // dim(i) == db.dim(i) for every remaining dimension. Both data
+  // buffers must be accessible from the calling execution space.
+  // Only values are written. The grids and index types of this
+  // DataBox are left untouched; call setRange to interpolate it.
   // TODO: add 3d and higher interpFromDB if necessary
   PORTABLE_INLINE_FUNCTION void
   interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x);
   PORTABLE_INLINE_FUNCTION void
   interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x2, const T x1);
-  template <typename... Args>
-  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept>
-  interpToDB(Args... args) {
-    DataBox<T, Grid_t, Concept> db;
-    db.interpFromDB(*this, std::forward<Args>(args)...);
-    return db;
-  }
 
   // Setters
   // NOTE: i ranges from 0 to N-1, where 0 is the FASTEST moving
@@ -481,6 +479,9 @@ class DataBox {
 
   PORTABLE_INLINE_FUNCTION void setAllIndexed_();
   PORTABLE_INLINE_FUNCTION bool canInterpToReal_(const int interpOrder) const;
+  PORTABLE_INLINE_FUNCTION void
+  requireCanInterpFromDB_(const DataBox<T, Grid_t, Concept> &db,
+                          const int ndims) const;
   inline std::string gridname_(int i) const {
     return SP5::DB::GRID_FORMAT[0] + std::to_string(i + 1) +
            SP5::DB::GRID_FORMAT[1];
@@ -734,18 +735,12 @@ template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
 DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
                                           const T x) {
-  assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 1].isWellFormed());
-  assert(size() == (db.size() / db.dim(db.rank_)));
+  requireCanInterpFromDB_(db, 1);
 
   int ix;
   weights_t<T> w;
-  copyShape(db, 1);
-
   db.grids_[db.rank_ - 1].weights(x, ix, w);
   DataBox<T, Grid_t, Concept> lower(db.slice(ix)), upper(db.slice(ix + 1));
-  // lower = db.slice(ix);
-  // upper = db.slice(ix+1);
   for (int i = 0; i < size(); i++) {
     dataView_(i) = w[0] * lower(i) + w[1] * upper(i);
   }
@@ -755,38 +750,15 @@ template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
 DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
                                           const T x2, const T x1) {
-  assert(db.rank_ >= 2);
-  assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 1].isWellFormed());
-  assert(db.indices_[db.rank_ - 2] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 2].isWellFormed());
-  assert(size() == (db.size() / (db.dim(db.rank_) * db.dim(db.rank_ - 1))));
+  requireCanInterpFromDB_(db, 2);
 
   int ix2, ix1;
   weights_t<T> w2, w1;
-  copyShape(db, 2);
-
   db.grids_[db.rank_ - 2].weights(x1, ix1, w1);
   db.grids_[db.rank_ - 1].weights(x2, ix2, w2);
   DataBox<T, Grid_t, Concept> corners[2][2]{
       {db.slice(ix2, ix1), db.slice(ix2 + 1, ix1)},
       {db.slice(ix2, ix1 + 1), db.slice(ix2 + 1, ix1 + 1)}};
-  //    copyShape(db,2);
-  //
-  //    db.grids_[db.rank_-2].weights(x1, ix1, w1);
-  //    db.grids_[db.rank_-1].weights(x2, ix2, w2);
-  // corners[0][0] = db.slice(ix2,   ix1   );
-  // corners[1][0] = db.slice(ix2,   ix1+1 );
-  // corners[0][1] = db.slice(ix2+1, ix1   );
-  // corners[1][1] = db.slice(ix2+1, ix1+1 );
-  /*
-  for (int i = 0; i < size(); i++) {
-    dataView_(i) = (   w2[0]*w1[0]*corners[0][0](i)
-                     + w2[0]*w1[1]*corners[1][0](i)
-                     + w2[1]*w1[0]*corners[0][1](i)
-                     + w2[1]*w1[1]*corners[1][1](i));
-  }
-  */
   for (int i = 0; i < size(); i++) {
     dataView_(i) =
         (w2[0] * (w1[0] * corners[0][0](i) + w1[1] * corners[1][0](i)) +
@@ -1043,6 +1015,31 @@ DataBox<T, Grid_t, Concept>::canInterpToReal_(const int interpOrder) const {
     if (!(grids_[i].isWellFormed())) return false;
   }
   return true;
+}
+
+// Checks the preconditions of interpFromDB: this DataBox must
+// already have storage and the shape of the faster dimensions of db,
+// and the ndims slowest dimensions of db must be interpolatable.
+template <typename T, typename Grid_t, typename Concept>
+PORTABLE_INLINE_FUNCTION void
+DataBox<T, Grid_t, Concept>::requireCanInterpFromDB_(
+    const DataBox<T, Grid_t, Concept> &db, const int ndims) const {
+  PORTABLE_REQUIRE(db.rank_ > ndims,
+                   "interpFromDB source must keep at least one dimension");
+  PORTABLE_REQUIRE(rank_ == db.rank_ - ndims,
+                   "interpFromDB destination has the wrong rank");
+  PORTABLE_REQUIRE(dataView_.data() != nullptr,
+                   "interpFromDB destination must already have storage");
+  for (int i = 1; i <= rank_; ++i) {
+    PORTABLE_REQUIRE(dim(i) == db.dim(i),
+                     "interpFromDB destination has the wrong shape");
+  }
+  for (int i = db.rank_ - ndims; i < db.rank_; ++i) {
+    PORTABLE_REQUIRE(db.indices_[i] == IndexType::Interpolated,
+                     "interpFromDB source dimension must be interpolated");
+    PORTABLE_REQUIRE(db.grids_[i].isWellFormed(),
+                     "interpFromDB source grid must be well formed");
+  }
 }
 
 template <typename T, typename Grid_t, typename Concept>

@@ -19,3 +19,8 @@
 ## Prior agentic work
 
 - Machine-readable plans describing previous agentic efforts are available in the `plan_histories/` folder. Consult them when prior implementation context is relevant.
+
+## Reporting your results
+
+- Dump your plans into the `plan_histories/` folder and when requested
+- Each file you modify should have a current copyright and a disclaimer about AI use

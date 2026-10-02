@@ -909,7 +909,7 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
   SECTION("interpFromDB 3D->2D") {
     constexpr Real z = (zmax + zmin) / 2.;
 
-    SECTION("Slicing relevant for interpToDB in slowest index works") {
+    SECTION("Slicing relevant for interpFromDB in slowest index works") {
       int iz = grids[RANK - 1].index(z);
       DataBox lower = db.slice(iz);
       DataBox upper = db.slice(iz + 1);
@@ -927,9 +927,22 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
       REQUIRE(error <= EPSTEST);
     }
 
-    DataBox db2d;
-    db2d.resize(db.size() / db.dim(db.rank()));
+    // The destination must already exist with the shape of the
+    // faster dimensions of the source.
+    DataBox db2d(NY, NX);
+    Real *const storage = db2d.data();
     db2d.interpFromDB(db, z);
+
+    // Only values are written. Storage, shape, and metadata are the
+    // caller's.
+    REQUIRE(db2d.data() == storage);
+    REQUIRE(db2d.dataStatus() == DataStatus::AllocatedHost);
+    REQUIRE(db2d.rank() == 2);
+    REQUIRE(db2d.dim(1) == NX);
+    REQUIRE(db2d.dim(2) == NY);
+    for (int i = 0; i < db2d.rank(); i++) {
+      REQUIRE(db2d.indexType(i) == IndexType::Indexed);
+    }
 
     Real error = 0;
     for (int iy = 0; iy < NY; iy++) {
@@ -944,7 +957,10 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     error = sqrt(error);
     REQUIRE(error <= EPSTEST);
 
-    SECTION("interpToReal 2D") {
+    SECTION("interpToReal 2D after the caller sets the grids") {
+      for (int i = 0; i < db2d.rank(); i++) {
+        db2d.setRange(i, grids[i]);
+      }
       Real error = 0;
       for (int iy = 0; iy < NFINE; iy++) {
         Real y = fine_grids[1].x(iy);
@@ -952,6 +968,23 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
           Real x = fine_grids[0].x(ix);
           Real f_true = linearFunction(z, y, x);
           Real difference = db2d.interpToReal(y, x) - f_true;
+          error += (difference * difference);
+        }
+      }
+      error = sqrt(error);
+      REQUIRE(error <= EPSTEST);
+    }
+
+    SECTION("Repeated fills reuse the same destination") {
+      constexpr Real z2 = zmin + 0.25 * (zmax - zmin);
+      db2d.interpFromDB(db, z2);
+      REQUIRE(db2d.data() == storage);
+      Real error = 0;
+      for (int iy = 0; iy < NY; iy++) {
+        Real y = grids[1].x(iy);
+        for (int ix = 0; ix < NX; ix++) {
+          Real x = grids[0].x(ix);
+          Real difference = db2d(iy, ix) - linearFunction(z2, y, x);
           error += (difference * difference);
         }
       }
@@ -977,11 +1010,13 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
       REQUIRE(error <= EPSTEST);
     }
 
-    DataBox db1d;
-    db1d.resize(db.size() / (db.dim(db.rank()) * db.dim(db.rank() - 1)));
+    DataBox db1d(NX);
+    Real *const storage = db1d.data();
     db1d.interpFromDB(db, z, y);
+    REQUIRE(db1d.data() == storage);
     REQUIRE(db1d.rank() == 1);
     REQUIRE(db1d.dim(1) == NX);
+    REQUIRE(db1d.indexType(0) == IndexType::Indexed);
 
     Real error = 0;
     for (int ix = 0; ix < NX; ix++) {
@@ -994,7 +1029,99 @@ TEST_CASE("DataBox interpolation", "[DataBox]") {
     REQUIRE(error <= EPSTEST);
     free(db1d);
   }
+
+  SECTION("interpFromDB fills a device DataBox inside a kernel") {
+    constexpr Real z = (zmax + zmin) / 2.;
+    DataBox src = db.getOnDevice();
+    DataBox dst(Spiner::AllocationTarget::Device, NY, NX);
+
+    portableFor(
+        "interpFromDB on device", 0, 1, PORTABLE_LAMBDA(const int) {
+          // Captures are const. Copies are shallow, so filling a copy
+          // fills dst.
+          DataBox fill = dst;
+          fill.interpFromDB(src, z);
+        });
+
+    Real error = 0;
+    portableReduce(
+        "Check interpFromDB on device", 0, NY, 0, NX,
+        PORTABLE_LAMBDA(const int iy, const int ix, Real &accumulate) {
+          RegularGrid1D ygrid(ymin, ymax, NY);
+          RegularGrid1D xgrid(xmin, xmax, NX);
+          Real difference =
+              dst(iy, ix) - linearFunction(z, ygrid.x(iy), xgrid.x(ix));
+          accumulate += difference * difference;
+        },
+        error);
+    REQUIRE(std::sqrt(error) <= EPSTEST);
+    free(dst);
+    free(src);
+  }
+
   free(db); // free databox
+}
+
+TEST_CASE("interpFromDB with memory-owning grids",
+          "[DataBox][NonUniformGrid1D]") {
+  constexpr int NZ = 3;
+  constexpr int NY = 4;
+  constexpr int NX = 5;
+  const std::vector<Real> zpoints = {-1.0, -0.25, 0.0};
+  const std::vector<Real> ypoints = {-0.5, -0.1, 0.2, 0.5};
+  const std::vector<Real> xpoints = {0.0, 0.1, 0.3, 0.6, 1.0};
+
+  NonUniformDB src(NZ, NY, NX);
+  src.setRange(0, xpoints);
+  src.setRange(1, ypoints);
+  src.setRange(2, zpoints);
+  for (int iz = 0; iz < NZ; iz++) {
+    for (int iy = 0; iy < NY; iy++) {
+      for (int ix = 0; ix < NX; ix++) {
+        src(iz, iy, ix) = linearFunction(zpoints[iz], ypoints[iy], xpoints[ix]);
+      }
+    }
+  }
+
+  // The destination owns its own grids, set up by the caller.
+  NonUniformDB dst(NY, NX);
+  dst.setRange(0, xpoints);
+  dst.setRange(1, ypoints);
+  const Real *const xdata = dst.range(0).data();
+  const Real *const ydata = dst.range(1).data();
+
+  constexpr Real z = -0.5;
+  dst.interpFromDB(src, z);
+
+  // interpFromDB must not alias the source grids into the destination.
+  REQUIRE(dst.range(0).data() == xdata);
+  REQUIRE(dst.range(1).data() == ydata);
+  REQUIRE(dst.range(0).data() != src.range(0).data());
+  REQUIRE(dst.range(1).data() != src.range(1).data());
+
+  Real error = 0;
+  for (int iy = 0; iy < NY; iy++) {
+    for (int ix = 0; ix < NX; ix++) {
+      Real difference =
+          dst(iy, ix) - linearFunction(z, ypoints[iy], xpoints[ix]);
+      error += difference * difference;
+    }
+  }
+  REQUIRE(std::sqrt(error) <= EPSTEST);
+
+  // Freeing the destination must leave the source grids intact.
+  free(dst);
+  for (int i = 0; i < src.rank(); i++) {
+    REQUIRE(src.range(i).dataStatus() == DataStatus::AllocatedHost);
+  }
+  for (int ix = 0; ix < NX; ix++) {
+    REQUIRE(src.range(0).x(ix) == xpoints[ix]);
+  }
+  constexpr Real y = 0.1;
+  constexpr Real x = 0.45;
+  REQUIRE(std::abs(src.interpToReal(z, y, x) - linearFunction(z, y, x)) <=
+          EPSTEST);
+  free(src);
 }
 
 TEST_CASE("DataBox Interpolation with piecewise grids",

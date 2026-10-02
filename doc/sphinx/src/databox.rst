@@ -548,21 +548,48 @@ interpolated values of another ``DataBox``. For example, the method
 
 .. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x);
 
-allocates the ``DataBox`` to have a rank one lower than ``src`` and
-fill it with the faster moving elements of ``src`` interpolated to
-``x`` in the slowest-moving direction. Similarly for
+fills the ``DataBox`` with the faster moving elements of ``src``
+interpolated to ``x`` in the slowest-moving direction. Similarly,
 
 .. cpp:function:: void DataBox::interpFromDB(const DataBox &src, const T x2, const T x1);
 
-The methods
+interpolates the two slowest-moving directions of ``src`` to ``x2``
+and ``x1``.
 
-.. cpp:function:: DataBox Databox::InterpToDB(const T x) const;
+.. warning::
 
-and
+  ``interpFromDB`` never allocates, reshapes, or frees memory. The
+  ``DataBox`` being filled must already exist with storage and the shape
+  of the remaining faster-moving dimensions of ``src``. In other words,
+  it must have rank ``src.rank() - 1`` (or ``src.rank() - 2``) and
+  ``dim(i) == src.dim(i)`` for each remaining dimension. Both ``DataBox``
+  objects must be accessible from the execution space in which
+  ``interpFromDB`` is called, for example both on device inside a
+  kernel. 
 
-.. cpp:function:: DataBox Databox::InterpToDB(const T x2, const T x1);
+Only values are written. The grids and index types of the ``DataBox``
+being filled are left unchanged, so call ``setRange`` on it yourself if
+you want to interpolate it later. For example:
 
-return a new ``DataBox`` object, rather than setting it from a source ``DataBox``.
+.. code-block:: cpp
+
+  // src has shape (NZ, NY, NX)
+  Spiner::DataBox<double> dst(NY, NX);
+  dst.interpFromDB(src, z);
+  dst.setRange(1, src.range(1));
+  dst.setRange(0, src.range(0));
+  double val = dst.interpToReal(y, x);
+  // ...
+  free(dst);
+
+.. warning::
+
+  Be careful when the grids own their own memory, as
+  ``NonUniformGrid1D`` does. Assigning a grid with ``setRange`` copies it
+  shallowly, so in that case give ``dst`` its own grids, for example by
+  constructing them from the same points, rather than sharing those of
+  ``src``. Otherwise freeing both ``DataBox`` objects frees the shared
+  grid memory twice.
 
 File I/O
 ^^^^^^^^^
