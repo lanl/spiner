@@ -80,9 +80,8 @@ class FastNonUniformGrid1D {
     if (value >= max()) return nPoints() - 2;
 
     const T transformed = transform_(value / scale_);
-    int lookup_index =
-        std::max(0, std::min(lookup_grid_.index(transformed),
-                             lookupSize() - 1));
+    int lookup_index = std::max(
+        0, std::min(lookup_grid_.index(transformed), lookupSize() - 1));
     int coordinate_index = lookup_[lookup_index];
     // the lookup table is essentially discrete interpolation. This
     // off-by-one check interpolates to the correct index.
@@ -101,6 +100,16 @@ class FastNonUniformGrid1D {
     w[0] = T(1) - w[1];
   }
 
+  // Weights and derivatives with respect to the supplied grid coordinate.
+  // Uses the same cell selection and extrapolation as weights().
+  PORTABLE_INLINE_FUNCTION void weightsWithGrad(const T &x, int &ix,
+                                                weights_t<T> &w,
+                                                weights_t<T> &dw) const {
+    weights(x, ix, w);
+    dw[1] = T(1) / (coordinates_.x(ix + 1) - coordinates_.x(ix));
+    dw[0] = -dw[1];
+  }
+
   PORTABLE_INLINE_FUNCTION T min() const { return coordinates_.min(); }
   PORTABLE_INLINE_FUNCTION T max() const { return coordinates_.max(); }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const {
@@ -109,8 +118,8 @@ class FastNonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
     const bool lookup_well_formed =
         !usesFastLookup() || lookup_grid_.isWellFormed();
-    return lookup_well_formed && coordinates_.isWellFormed() && std::isfinite(scale_) && scale_ > 0 &&
-           max_lookup_ratio_ > 0 ;
+    return lookup_well_formed && coordinates_.isWellFormed() &&
+           std::isfinite(scale_) && scale_ > 0 && max_lookup_ratio_ > 0;
   }
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const {
     return coordinates_.dataStatus();
@@ -243,8 +252,7 @@ class FastNonUniformGrid1D {
   // Make a non-owning handle to the coordinates and lookup table of
   // other. other remains responsible for them and must outlive this
   // grid.
-  PORTABLE_INLINE_FUNCTION void
-  shallowCopy(const FastNonUniformGrid1D &other) {
+  PORTABLE_INLINE_FUNCTION void shallowCopy(const FastNonUniformGrid1D &other) {
     if (this == &other) return;
     PORTABLE_REQUIRE((dataStatus() == DataStatus::Empty ||
                       dataStatus() == DataStatus::Unmanaged) &&
@@ -439,8 +447,8 @@ class FastNonUniformGrid1D {
     const T slightly_smaller_spacing = std::nextafter(min_spacing, T(0));
     const T span = transformed_max - transformed_min;
     const T required = std::ceil(span / slightly_smaller_spacing);
-    const int max_cells = std::min(
-        max_entries, std::numeric_limits<int>::max() - 1);
+    const int max_cells =
+        std::min(max_entries, std::numeric_limits<int>::max() - 1);
     if (!std::isfinite(required) || required < 1 ||
         required > static_cast<T>(max_cells)) {
       return false;

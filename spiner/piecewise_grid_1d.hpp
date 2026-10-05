@@ -146,6 +146,15 @@ class PiecewiseGrid1D {
     ix += pointTotals_[ig];
   }
 
+  // Differentiate the weights of the same subgrid selected by weights().
+  PORTABLE_INLINE_FUNCTION void weightsWithGrad(const T &x, int &ix,
+                                                weights_t<T> &w,
+                                                weights_t<T> &dw) const {
+    const int ig = findGridFromPosition(x);
+    grids_[ig].weightsWithGrad(x, ix, w, dw);
+    ix += pointTotals_[ig];
+  }
+
   PORTABLE_INLINE_FUNCTION T min() const { return grids_[0].min(); }
   PORTABLE_INLINE_FUNCTION T max() const { return grids_[NGRIDS_ - 1].max(); }
   PORTABLE_INLINE_FUNCTION size_t nPoints() const {
