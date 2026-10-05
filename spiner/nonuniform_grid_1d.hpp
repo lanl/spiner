@@ -98,6 +98,16 @@ class NonUniformGrid1D {
     w[0] = T(1) - w[1];
   }
 
+  // Weights and derivatives with respect to the supplied grid coordinate.
+  // Uses the same cell selection and extrapolation as weights().
+  PORTABLE_INLINE_FUNCTION void weightsWithGrad(const T &x, int &ix,
+                                                weights_t<T> &w,
+                                                weights_t<T> &dw) const {
+    weights(x, ix, w);
+    dw[1] = T(1) / (data_[ix + 1] - data_[ix]);
+    dw[0] = -dw[1];
+  }
+
   PORTABLE_INLINE_FUNCTION T min() const { return data_[0]; }
   PORTABLE_INLINE_FUNCTION T max() const { return data_[n_ - 1]; }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const { return n_; }
