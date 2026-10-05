@@ -25,6 +25,7 @@
 #include <ports-of-call/portability.hpp>
 #include <ports-of-call/portable_arrays.hpp>
 #include <spiner/databox.hpp>
+#include <spiner/interp_toy.hpp>
 #include <spiner/interpolation.hpp>
 #include <spiner/spiner_types.hpp>
 
@@ -1877,6 +1878,204 @@ SCENARIO("Kokkos functionality: interpolation", "[DataBox],[Kokkos]") {
   free(db);
 }
 #endif
+
+// A three-point quadratic rule, optionally limited to the range of the
+// two samples bracketing x. Exercises interp_toy with a nonlinear
+// reducer and a stencil that must be shifted inward at the upper edge.
+template <class Grid>
+PORTABLE_INLINE_FUNCTION auto limitedQuadratic(const Grid &grid, const Real x,
+                                               const bool limit) {
+  int ix;
+  Spiner::weights_t<Real> w;
+  grid.weights(x, ix, w);
+  const int n = static_cast<int>(grid.nPoints());
+  const int s = (ix + 2 < n) ? ix : n - 3;
+  const int k = ix - s; // offset of the left bracketing sample
+  const Real x0 = grid.x(s);
+  const Real x1 = grid.x(s + 1);
+  const Real x2 = grid.x(s + 2);
+  const Real l0 = (x - x1) * (x - x2) / ((x0 - x1) * (x0 - x2));
+  const Real l1 = (x - x0) * (x - x2) / ((x1 - x0) * (x1 - x2));
+  const Real l2 = (x - x0) * (x - x1) / ((x2 - x0) * (x2 - x1));
+  return Spiner::interp::make_interpolation(
+      std::array<int, 3>{s, s + 1, s + 2}, [=](const auto &v) {
+        auto q = l0 * v[0] + l1 * v[1] + l2 * v[2];
+        if (limit) {
+          const auto lo = v[k] < v[k + 1] ? v[k] : v[k + 1];
+          const auto hi = v[k] < v[k + 1] ? v[k + 1] : v[k];
+          q = q < lo ? lo : (q > hi ? hi : q);
+        }
+        return q;
+      });
+}
+
+TEST_CASE("interp_toy interpolate_with", "[DataBox][interp_toy]") {
+  using Spiner::interp::at;
+  using Spiner::interp::interpolate_with;
+  using Spiner::interp::linear;
+
+  constexpr Real xmin = 0;
+  constexpr Real xmax = 1;
+
+  GIVEN("A four-dimensional data box filled with a linear function") {
+    constexpr int NCOARSE = 5;
+    constexpr int NFINE = 12;
+    constexpr int RANK = 4;
+    DataBox db(Spiner::AllocationTarget::Device, NCOARSE, NCOARSE, NCOARSE,
+               NCOARSE);
+    for (int i = 0; i < RANK; i++)
+      db.setRange(i, xmin, xmax, NCOARSE);
+
+    portableFor(
+        "Fill 4D databox", 0, NCOARSE, 0, NCOARSE, 0, NCOARSE, 0, NCOARSE,
+        PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
+                        const int ix) {
+          RegularGrid1D grid(xmin, xmax, NCOARSE);
+          db(ia, iz, iy, ix) =
+              linearFunction(grid.x(ia), grid.x(iz), grid.x(iy), grid.x(ix));
+        });
+
+    THEN("Fully linear interpolation is exact and matches interpToReal") {
+      Real error = 0;
+      Real mismatch = 0;
+      portableReduce(
+          "interpolate_with 4D", 0, NFINE, 0, NFINE, 0, NFINE, 0, NFINE,
+          PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
+                          const int ix, Real &accumulate) {
+            RegularGrid1D grid(xmin, xmax, NFINE);
+            const Real a = grid.x(ia);
+            const Real z = grid.x(iz);
+            const Real y = grid.x(iy);
+            const Real x = grid.x(ix);
+            const Real v = interpolate_with(
+                db, linear(db.range(3), a), linear(db.range(2), z),
+                linear(db.range(1), y), linear(db.range(0), x));
+            const Real difference = v - linearFunction(a, z, y, x);
+            accumulate += difference * difference;
+          },
+          error);
+      portableReduce(
+          "interpolate_with vs interpToReal 4D", 0, NFINE, 0, NFINE, 0, NFINE,
+          0, NFINE,
+          PORTABLE_LAMBDA(const int ia, const int iz, const int iy,
+                          const int ix, Real &accumulate) {
+            RegularGrid1D grid(xmin, xmax, NFINE);
+            const Real a = grid.x(ia);
+            const Real z = grid.x(iz);
+            const Real y = grid.x(iy);
+            const Real x = grid.x(ix);
+            const Real v = interpolate_with(
+                db, linear(db.range(3), a), linear(db.range(2), z),
+                linear(db.range(1), y), linear(db.range(0), x));
+            const Real difference = v - db.interpToReal(a, z, y, x);
+            accumulate += difference * difference;
+          },
+          mismatch);
+      REQUIRE(error <= EPSTEST);
+      REQUIRE(mismatch <= EPSTEST);
+    }
+
+    THEN("A fixed index may sit in any dimension") {
+      Real error = 0;
+      portableReduce(
+          "interpolate_with 4D with indices", 0, NCOARSE, 0, NFINE, 0, NFINE,
+          0, NFINE,
+          PORTABLE_LAMBDA(const int i, const int iz, const int iy,
+                          const int ix, Real &accumulate) {
+            RegularGrid1D grid(xmin, xmax, NFINE);
+            RegularGrid1D coarse(xmin, xmax, NCOARSE);
+            const Real c = coarse.x(i);
+            const Real z = grid.x(iz);
+            const Real y = grid.x(iy);
+            const Real x = grid.x(ix);
+            const auto lz = linear(db.range(2), z);
+            const auto ly = linear(db.range(1), y);
+            const auto lx = linear(db.range(0), x);
+            const Real slowest =
+                interpolate_with(db, at(i), lz, ly, lx) -
+                linearFunction(c, z, y, x);
+            const Real middle =
+                interpolate_with(db, linear(db.range(3), z), lz, at(i), lx) -
+                linearFunction(z, z, c, x);
+            const Real fastest =
+                interpolate_with(db, linear(db.range(3), z), lz, ly, at(i)) -
+                db.interpToReal(z, z, y, i);
+            accumulate +=
+                slowest * slowest + middle * middle + fastest * fastest;
+          },
+          error);
+      REQUIRE(error <= EPSTEST);
+    }
+    free(db);
+  }
+
+  GIVEN("A 2D data box holding a function quadratic in x") {
+    constexpr int NX = 11;
+    constexpr int NY = 4;
+    constexpr int NFINE = 37;
+    DataBox db(Spiner::AllocationTarget::Device, NY, NX);
+    db.setRange(0, xmin, xmax, NX);
+    db.setRange(1, xmin, xmax, NY);
+    portableFor(
+        "Fill 2D databox", 0, NY, 0, NX,
+        PORTABLE_LAMBDA(const int iy, const int ix) {
+          RegularGrid1D gx(xmin, xmax, NX);
+          RegularGrid1D gy(xmin, xmax, NY);
+          const Real x = gx.x(ix);
+          db(iy, ix) = gy.x(iy) + x * x;
+        });
+
+    THEN("Mixing linear and limited quadratic rules is exact") {
+      Real error = 0;
+      portableReduce(
+          "interpolate_with limited quadratic", 0, NFINE, 0, NFINE,
+          PORTABLE_LAMBDA(const int iy, const int ix, Real &accumulate) {
+            RegularGrid1D grid(xmin, xmax, NFINE);
+            const Real y = grid.x(iy);
+            const Real x = grid.x(ix);
+            const Real v =
+                interpolate_with(db, linear(db.range(1), y),
+                                 limitedQuadratic(db.range(0), x, true));
+            const Real difference = v - (y + x * x);
+            accumulate += difference * difference;
+          },
+          error);
+      REQUIRE(error <= EPSTEST);
+    }
+    free(db);
+  }
+
+  GIVEN("A 1D data box with a spike") {
+    constexpr int NX = 11;
+    DataBox db(NX);
+    db.setRange(0, xmin, xmax, NX);
+    for (int ix = 0; ix < NX; ix++) {
+      db(ix) = (ix == 5) ? 1 : 0;
+    }
+    // Stencil {3, 4, 5} sees the spike; x is bracketed by two zeros.
+    const Real x = 0.35;
+    THEN("The unlimited quadratic undershoots") {
+      REQUIRE(interpolate_with(db, limitedQuadratic(db.range(0), x, false)) <
+              -0.1);
+    }
+    THEN("The limiter keeps the result within the bracketing samples") {
+      REQUIRE(interpolate_with(db, limitedQuadratic(db.range(0), x, true)) ==
+              0);
+    }
+    free(db);
+  }
+
+  SECTION("The result type follows the data type") {
+    using FloatDB = Spiner::DataBox<float>;
+    using Spiner::RegularGrid1D;
+    STATIC_REQUIRE(
+        std::is_same_v<decltype(interpolate_with(
+                           std::declval<const FloatDB &>(),
+                           linear(std::declval<RegularGrid1D<float>>(), 0.f),
+                           at(0))),
+                       float>);
+  }
+}
 
 int main(int argc, char *argv[]) {
 

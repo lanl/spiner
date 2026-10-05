@@ -46,6 +46,10 @@ struct weights_t {
     assert(0 <= i && i <= 1);
     return i == 0 ? first : second;
   }
+  PORTABLE_INLINE_FUNCTION const T &operator[](const int i) const {
+    assert(0 <= i && i <= 1);
+    return i == 0 ? first : second;
+  }
 };
 
 template <typename T = Real,

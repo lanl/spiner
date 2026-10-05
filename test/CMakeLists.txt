@@ -1,4 +1,4 @@
-# © 2021. Triad National Security, LLC. All rights reserved.  This program was
+# © 2021-2026. Triad National Security, LLC. All rights reserved.  This program was
 # produced under U.S. Government contract 89233218CNA000001 for Los Alamos
 # National Laboratory (LANL), which is operated by Triad National Security, LLC
 # for the U.S.  Department of Energy/National Nuclear Security Administration.
@@ -79,6 +79,9 @@ target_link_libraries(benchmark.bin PRIVATE spiner::spiner spiner_test)
 
 add_executable(nonuniform_benchmark.bin nonuniform_benchmark.cpp)
 target_link_libraries(nonuniform_benchmark.bin PRIVATE spiner::spiner spiner_test)
+
+add_executable(interp_toy_benchmark.bin interp_toy_benchmark.cpp)
+target_link_libraries(interp_toy_benchmark.bin PRIVATE spiner::spiner spiner_test)
 
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
