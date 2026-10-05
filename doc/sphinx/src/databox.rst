@@ -1,3 +1,5 @@
+.. Copyright 2026 Triad National Security, LLC. All rights reserved.
+
 .. _databox:
 
 The DataBox
@@ -576,6 +578,76 @@ so on. These interpolation routines are hand-tuned for performance.
   Do not call ``interpToReal`` with a ``DataBox`` that is the wrong shape
   or try to interpolate on indices that are not interpolatable.
   This is checked with an ``assert`` statement.
+
+.. _interpolation-with-gradients:
+
+Interpolation with gradients
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``interpToRealWithGrads`` returns the interpolated value and its derivatives
+with respect to the continuous grid coordinates. It supports fully
+interpolated rank-1 and rank-2 databoxes:
+
+.. cpp:function:: DataBox::InterpResult1D DataBox::interpToRealWithGrads(const T x1) const noexcept;
+
+.. cpp:function:: DataBox::InterpResult2D DataBox::interpToRealWithGrads(const T x2, const T x1) const noexcept;
+
+The nested result types are plain aggregates with members of type ``T``:
+
+.. code-block:: cpp
+
+   struct InterpResult1D { T value, d_dx1; };
+   struct InterpResult2D { T value, d_dx2, d_dx1; };
+
+Use named members or structured bindings. As with all databox types, arguments
+and returned derivatives follow slowest-to-fastest order: ``x2`` then
+``x1``. For example, this host-side table represents
+``f(y, x) = 1 + 2*x - 3*y + 4*x*y``:
+
+.. code-block:: cpp
+
+   Spiner::DataBox<double> db(3, 4); // (ny, nx)
+   db.setRange(0, 0.0, 3.0, 4);    // x, fastest dimension
+   db.setRange(1, 0.0, 4.0, 3);    // y, slowest dimension
+   for (int j = 0; j < 3; ++j) {
+     const double y = 2.0 * j;
+     for (int i = 0; i < 4; ++i) {
+       const double x = i;
+       db(j, i) = 1.0 + 2.0*x - 3.0*y + 4.0*x*y;
+     }
+   }
+   auto [value, df_dy, df_dx] = db.interpToRealWithGrads(1.0, 0.5);
+   // value = 1, df_dy = -1, df_dx = 6
+   db.finalize();
+
+For a fully interpolated 1D databox, use:
+
+.. code-block:: cpp
+
+   auto [value, df_dx] = db1.interpToRealWithGrads(x);
+   // Equivalently:
+   auto result = db1.interpToRealWithGrads(x);
+   // result.value and result.d_dx1
+
+The derivatives are analytic derivatives of the existing underlying
+interpolant, using the same cell selection and weights as
+``interpToReal``.  They are not interpolated samples of a separately
+computed gradient field.  At knots or cell boundaries, derivatives can
+be discontinuous; the result uses the derivative from the cell
+selected by the grid lookup. Out-of-range coordinates use the boundary
+cell's linear extrapolation and its derivatives.
+
+Derivatives are taken with respect to the supplied grid coordinates. If a
+coordinate represents a transformed variable, such as a logarithm, apply
+the chain rule to obtain derivatives with respect to the original variable.
+
+All four built-in grid types support these methods. Custom grid types
+must provide :ref:`weightsWithGrad <grid-weight-derivatives>` to
+support this mode for linear interpolants. The databox must have the
+matching rank and all dimensions must be interpolatable with
+well-formed grids, as checked by assertions. There are no mixed
+indexed/interpolated or higher-dimensional overloads of
+``interpToRealWithGrads``.
 
 Mixed interpolation and indexing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
