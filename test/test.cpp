@@ -846,6 +846,82 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
   }
 }
 
+// A distinguishable policy verifies that DataBox dispatches both overloads
+// and retains the policy through operations that return another DataBox.
+struct OffsetGradStencil {
+  template <typename T, typename Grids, typename Array>
+  PORTABLE_FORCEINLINE_FUNCTION static Spiner::InterpolationHelpers::Result1D<T>
+  interpToRealWithGrads(T x, const Grids &g, const Array &a) noexcept {
+    auto result =
+        Spiner::InterpolationStencils::Linear::interpToRealWithGrads(x, g, a);
+    result.value += T(10);
+    result.d_dx1 += T(20);
+    return result;
+  }
+  template <typename T, typename Grids, typename Array>
+  PORTABLE_FORCEINLINE_FUNCTION static Spiner::InterpolationHelpers::Result2D<T>
+  interpToRealWithGrads(T y, T x, const Grids &g, const Array &a) noexcept {
+    auto result = Spiner::InterpolationStencils::Linear::interpToRealWithGrads(
+        y, x, g, a);
+    result.value += T(10);
+    result.d_dx2 += T(30);
+    result.d_dx1 += T(20);
+    return result;
+  }
+};
+
+TEST_CASE("DataBox gradient stencil selection", "[DataBox][Gradients]") {
+  using Box = Spiner::DataBox<Real, RegularGrid1D, OffsetGradStencil>;
+  static_assert(std::is_same_v<Box::GradStencilType, OffsetGradStencil>);
+  static_assert(std::is_same_v<DataBox::GradStencilType,
+                               Spiner::InterpolationStencils::Linear>);
+  Box plane(2, 2);
+  plane.setRange(0, Real(0), Real(1), 2);
+  plane.setRange(1, Real(0), Real(2), 2);
+  for (int j = 0; j < 2; ++j)
+    for (int i = 0; i < 2; ++i)
+      plane(j, i) = Real(2 * i + 6 * j);
+  const auto [value, dy, dx] = plane.interpToRealWithGrads(Real(1), Real(0.5));
+  REQUIRE(value == Real(14));
+  REQUIRE(dy == Real(33));
+  REQUIRE(dx == Real(22));
+  REQUIRE(plane.interpToReal(Real(1), Real(0.5)) == Real(4));
+
+  auto line = plane.slice(0);
+  static_assert(std::is_same_v<decltype(line), Box>);
+  const auto [line_value, line_dx] = line.interpToRealWithGrads(Real(0.5));
+  REQUIRE(line_value == Real(11));
+  REQUIRE(line_dx == Real(22));
+  Box copy(plane), assigned;
+  assigned = copy;
+  REQUIRE(assigned.interpToRealWithGrads(Real(1), Real(0.5)).value == Real(14));
+  Box deep;
+  deep.deepCopy(plane);
+  REQUIRE(deep.interpToRealWithGrads(Real(1), Real(0.5)).d_dx2 == Real(33));
+
+  auto device = Spiner::getOnDeviceDataBox(plane);
+  static_assert(std::is_same_v<decltype(device), Box>);
+  Real error = 0;
+  portableReduce(
+      "Custom gradient stencil", 0, 1,
+      PORTABLE_LAMBDA(const int, Real &sum) {
+        const auto [v, dy, dx] =
+            device.interpToRealWithGrads(Real(1), Real(0.5));
+        const auto row = device.slice(0);
+        const auto [v1, dx1] = row.interpToRealWithGrads(Real(0.5));
+        sum += std::abs(v - Real(14)) + std::abs(dy - Real(33)) +
+               std::abs(dx - Real(22)) + std::abs(v1 - Real(11)) +
+               std::abs(dx1 - Real(22));
+      },
+      error);
+  REQUIRE(error == Real(0));
+  device.finalizeGrids();
+  device.finalize();
+  deep.finalizeGrids();
+  deep.finalize();
+  plane.finalize();
+}
+
 // The caller owns the grids; boxes below borrow their handles and only free
 // data.
 template <typename Grid>

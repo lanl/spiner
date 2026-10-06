@@ -49,6 +49,30 @@ as, for example:
 More detail on the interpolation gridding is available below and in
 the interpolation section.
 
+The third template parameter, ``GradStencil``, selects the implementation of
+``interpToRealWithGrads`` and defaults to
+``Spiner::InterpolationStencils::Linear``:
+
+.. code-block:: cpp
+
+   using DataBox = Spiner::DataBox<double, Spiner::RegularGrid1D<double>,
+                                  MyGradStencil>;
+
+The policy supplies portable static overloads
+``interpToRealWithGrads(x1, grids, data)`` and
+``interpToRealWithGrads(x2, x1, grids, data)``, returning
+``Spiner::InterpolationHelpers::Result1D<T>`` and ``Result2D<T>`` respectively.
+``grids`` and ``data`` are passed by const reference; grid index zero is the
+fastest axis, and data are accessed as ``data(i1)`` or ``data(i2, i1)``.
+Policies must support the calling execution space and must not throw, since
+the DataBox entry points are ``noexcept``. DataBox retains the rank and grid
+validity assertions before dispatching to the policy. The policy type is
+available as ``DataBox::GradStencilType`` and is preserved by slices, copies,
+and device transfers. It does not change value-only ``interpToReal`` calls.
+The internal ``Concept`` template parameter follows ``GradStencil`` as the
+fourth parameter; code explicitly supplying the former third parameter must
+move it to fourth position.
+
 .. note::
    In C++17 and later, you can also get the default type specialization
    by simply omitting the template arguments.
@@ -592,7 +616,7 @@ interpolated rank-1 and rank-2 databoxes:
 
 .. cpp:function:: DataBox::InterpResult2D DataBox::interpToRealWithGrads(const T x2, const T x1) const noexcept;
 
-The nested result types are plain aggregates with members of type ``T``:
+The nested result aliases name plain aggregates with members of type ``T``:
 
 .. code-block:: cpp
 
