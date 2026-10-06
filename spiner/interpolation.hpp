@@ -21,5 +21,6 @@
 #include "nonuniform_grid_1d.hpp"
 #include "piecewise_grid_1d.hpp"
 #include "regular_grid_1d.hpp"
+#include "interpolation_stencils.hpp"
 
 #endif // SPINER_INTERPOLATION_
