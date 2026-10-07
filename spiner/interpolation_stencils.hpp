@@ -95,26 +95,36 @@ struct Rational {
       S[i] = ratio(f[i + 1] - f[i], dx[i]);
     }
 
-    if (x < x[1]) {
+    if (x <= x[0]) { // linear extrap off bottom
+      dfout = ratio(S[0], dx[0]);
+      fout = f[0]  + (x - x[0]) * dfout;
+    } else if (x >= x[3]) { // linear extrap off top
+      dfout = ratio(S[3], dx[3]);
+      fout = f[3] + (x - x[3]) * dfout;
+    } if (x < x[1]) { // Kerley eqn 12
       C2 = ratio(S[1] - S[0], dx[1] + dx[0]);
       if (S[0] * (S[0] - dx[0] * C2) <= 0) C2 = ratio(S[0], dx[0]);
       fout = f[0] + (x - x[0]) * (S[0] - C2 * (x[1] - x));
-      dfout = S[0] + C2 * (x - x[0]) - C2 * (x[1] - x);
+      dfout = S[0] + c2 * (2 * x - x[0] - x[1]);
+    } else if (x >= x[2]) { // Kerley eqn 13
+      C1 = ratio(S[2] - S[1], dx[2] + dx[1]);
+      fout = f[2] + (x - x[2]) * (S[2] - C1 * (x[3] - x));
+      dfout = S[2] + C1 * (2 * x - x[2] - x[3]);
+    } else { // Kerley eqn 11
+      C1 = ratio(S[1] - S[0], dx[1] + dx[0]);
+      C2 = ratio(S[2] - S[1], dx[2] + dx[1]);
+      if (S[0] * (S[0] - dx[0] * C2) <= 0) C1 = ratio(S[1] - 2 * S[0], dx[1]);
+
+      T mu1 = std::abs(C2 * (x[2] - x));
+      T mu2 = std::abs(C1 * (x - x[1]));
+
+      fout = f[1] + (x - x[1]) * (S[1] - ratio(C1 * mu1 + C2 * mu2, mu1 + mu2) *
+                                             (x[2] - x));
+      dfout = S[1] + ratio((x[1] - x[2]) * mu1 * mu2 *
+                               (x * (mu1 + mu2) - x[2] * mu1 - x[1] * mu2),
+                           (x - x[1]) * (x - x[2]) * (mu1 + mu2) * (mu1 + mu2));
     }
 
-    // Kerley eqn 11
-    T C1 = ratio(S[1] - S[0], dx[1] + dx[0]);
-    T C2 = ratio(S[2] - S[1], dx[2] + dx[1]);
-    if (S[0] * (S[0] - dx[0] * C2) <= 0) C1 = ratio(S[1] - 2 * S[0], dx[1]);
-
-    T mu1 = std::abs(C2 * (x[2] - x));
-    T mu2 = std::abs(C1 * (x - x[1]));
-
-    fout = f[1] + (x - x[1]) * (S[1] - ratio(C1 * mu1 + C2 * mu2, mu1 + mu2) *
-                                           (x[2] - x));
-    dfout = S[1] + ratio((x[1] - x[2]) * mu1 * mu2 *
-                             (x * (mu1 + mu2) - x[2] * mu1 - x[1] * mu2),
-                         (x - x[1]) * (x - x[2]) * (mu1 + mu2) * (mu1 + mu2));
     return {fout, dfout};
   }
 };
