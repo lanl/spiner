@@ -965,6 +965,10 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     status_ = src.status_;
     data_ = src.data_;
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
+    // assignment doesn't "unhook" from the parent object, so these
+    // should be straight assignment operators, not shallowCopy or
+    // deepCopy. Underlying grid data will be copied shallow, but the
+    // grid data ownership, if relevant, will be unchanged.
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
       grids_[i] = src.grids_[i];
