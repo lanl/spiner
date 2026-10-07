@@ -120,7 +120,7 @@ class DataBox {
     rank_ = dataView_.GetRank();
     for (int i = 0; i < rank_; i++) {
       indices_[i] = b.indices_[i];
-      grids_[i] = b.grids_[i];
+      grids_[i].shallowCopy(b.grids_[i]);
     }
   }
 
@@ -210,21 +210,19 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
-  // Interpolates SLOWEST indices of databox to a new
-  // DataBox, interpolated at that slowest index.
-  // WARNING: requires memory to be pre-allocated.
+  // Fills this DataBox with db interpolated at x (or x2, x1) in its
+  // slowest one (or two) dimensions.
+  // REQUIRES: this DataBox already has storage and the shape of the
+  // faster dimensions of db, i.e., rank db.rank() - 1 (or - 2) and
+  // dim(i) == db.dim(i) for every remaining dimension. Both data
+  // buffers must be accessible from the calling execution space.
+  // Only values are written. The grids and index types of this
+  // DataBox are left untouched; call setRange to interpolate it.
   // TODO: add 3d and higher interpFromDB if necessary
   PORTABLE_INLINE_FUNCTION void
   interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x);
   PORTABLE_INLINE_FUNCTION void
   interpFromDB(const DataBox<T, Grid_t, Concept> &db, const T x2, const T x1);
-  template <typename... Args>
-  PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept>
-  interpToDB(Args... args) {
-    DataBox<T, Grid_t, Concept> db;
-    db.interpFromDB(*this, std::forward<Args>(args)...);
-    return db;
-  }
 
   // Setters
   // NOTE: i ranges from 0 to N-1, where 0 is the FASTEST moving
@@ -247,10 +245,11 @@ class DataBox {
   // Reshapes from other databox, but does not allocate memory.
   // Does no checks that memory is available.
   // Optionally copies shape of source with ndims fewer slowest-moving
-  // dimensions
+  // dimensions. Grids are shallow copies that do not own memory.
   PORTABLE_INLINE_FUNCTION void copyShape(const DataBox<T, Grid_t, Concept> &db,
                                           const int ndims = 0);
-  // Returns new databox with same memory and metadata
+  // Reallocates and copies shape, index types, and deep copies of the
+  // grids of src. Everything but the values in a deep copy.
   inline void copyMetadata(const DataBox<T, Grid_t, Concept> &src);
 
 #ifdef SPINER_USE_HDF
@@ -271,7 +270,9 @@ class DataBox {
   // Copy assignment is shallow
   PORTABLE_INLINE_FUNCTION DataBox<T, Grid_t, Concept> &
   operator=(const DataBox<T, Grid_t, Concept> &other);
-  inline void copy(const DataBox<T, Grid_t, Concept> &src);
+  // Deep copies values and grids of a host-accessible src into newly
+  // allocated memory. Free with finalize and finalizeGrids.
+  inline void deepCopy(const DataBox<T, Grid_t, Concept> &src);
 
   // utility info
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
@@ -453,14 +454,12 @@ class DataBox {
     return a;
   }
 
+  // Frees the values of this DataBox. Grids are managed separately;
+  // see finalizeGrids.
   // TODO(JMM): Potentially use this for device-free
   void finalize() {
     PORTABLE_REQUIRE(ownsAllocatedMemory(),
                      "Must only finalize databox that owns its own data.");
-    // TODO(JMM): This may eventually need to be more complex
-    for (int i = 0; i < rank_; ++i) {
-      grids_[i].finalize();
-    }
     if (status_ == DataStatus::AllocatedDevice) {
       PORTABLE_FREE(data_);
     } else if (status_ == DataStatus::AllocatedHost) {
@@ -468,6 +467,16 @@ class DataBox {
     }
     data_ = nullptr;
     status_ = DataStatus::Empty;
+  }
+
+  // Frees any memory owned by the grids of this DataBox. Grids that do
+  // not own memory, e.g., shallow copies, are left alone. Independent
+  // of finalize, and safe to call on a DataBox that does not own its
+  // values.
+  void finalizeGrids() {
+    for (int i = 0; i < MAXRANK; ++i) {
+      grids_[i].finalize();
+    }
   }
 
  private:
@@ -481,6 +490,9 @@ class DataBox {
 
   PORTABLE_INLINE_FUNCTION void setAllIndexed_();
   PORTABLE_INLINE_FUNCTION bool canInterpToReal_(const int interpOrder) const;
+  PORTABLE_INLINE_FUNCTION void
+  requireCanInterpFromDB_(const DataBox<T, Grid_t, Concept> &db,
+                          const int ndims) const;
   inline std::string gridname_(int i) const {
     return SP5::DB::GRID_FORMAT[0] + std::to_string(i + 1) +
            SP5::DB::GRID_FORMAT[1];
@@ -734,18 +746,12 @@ template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
 DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
                                           const T x) {
-  assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 1].isWellFormed());
-  assert(size() == (db.size() / db.dim(db.rank_)));
+  requireCanInterpFromDB_(db, 1);
 
   int ix;
   weights_t<T> w;
-  copyShape(db, 1);
-
   db.grids_[db.rank_ - 1].weights(x, ix, w);
   DataBox<T, Grid_t, Concept> lower(db.slice(ix)), upper(db.slice(ix + 1));
-  // lower = db.slice(ix);
-  // upper = db.slice(ix+1);
   for (int i = 0; i < size(); i++) {
     dataView_(i) = w[0] * lower(i) + w[1] * upper(i);
   }
@@ -755,38 +761,15 @@ template <typename T, typename Grid_t, typename Concept>
 PORTABLE_INLINE_FUNCTION void
 DataBox<T, Grid_t, Concept>::interpFromDB(const DataBox<T, Grid_t, Concept> &db,
                                           const T x2, const T x1) {
-  assert(db.rank_ >= 2);
-  assert(db.indices_[db.rank_ - 1] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 1].isWellFormed());
-  assert(db.indices_[db.rank_ - 2] == IndexType::Interpolated);
-  assert(db.grids_[db.rank_ - 2].isWellFormed());
-  assert(size() == (db.size() / (db.dim(db.rank_) * db.dim(db.rank_ - 1))));
+  requireCanInterpFromDB_(db, 2);
 
   int ix2, ix1;
   weights_t<T> w2, w1;
-  copyShape(db, 2);
-
   db.grids_[db.rank_ - 2].weights(x1, ix1, w1);
   db.grids_[db.rank_ - 1].weights(x2, ix2, w2);
   DataBox<T, Grid_t, Concept> corners[2][2]{
       {db.slice(ix2, ix1), db.slice(ix2 + 1, ix1)},
       {db.slice(ix2, ix1 + 1), db.slice(ix2 + 1, ix1 + 1)}};
-  //    copyShape(db,2);
-  //
-  //    db.grids_[db.rank_-2].weights(x1, ix1, w1);
-  //    db.grids_[db.rank_-1].weights(x2, ix2, w2);
-  // corners[0][0] = db.slice(ix2,   ix1   );
-  // corners[1][0] = db.slice(ix2,   ix1+1 );
-  // corners[0][1] = db.slice(ix2+1, ix1   );
-  // corners[1][1] = db.slice(ix2+1, ix1+1 );
-  /*
-  for (int i = 0; i < size(); i++) {
-    dataView_(i) = (   w2[0]*w1[0]*corners[0][0](i)
-                     + w2[0]*w1[1]*corners[1][0](i)
-                     + w2[1]*w1[0]*corners[0][1](i)
-                     + w2[1]*w1[1]*corners[1][1](i));
-  }
-  */
   for (int i = 0; i < size(); i++) {
     dataView_(i) =
         (w2[0] * (w1[0] * corners[0][0](i) + w1[1] * corners[1][0](i)) +
@@ -812,7 +795,7 @@ DataBox<T, Grid_t, Concept>::copyShape(const DataBox<T, Grid_t, Concept> &db,
   rank_ = db.rank_ - ndims;
   for (int i = 0; i < rank_; i++) {
     indices_[i] = db.indices_[i];
-    grids_[i] = db.grids_[i];
+    grids_[i].shallowCopy(db.grids_[i]);
   }
 }
 // reallocates and then copies shape from other databox
@@ -827,7 +810,7 @@ inline void DataBox<T, Grid_t, Concept>::copyMetadata(
          src.dim(1));
   rank_ = src.rank_; // resize sets rank
   for (int i = 0; i < rank_; i++) {
-    grids_[i] = src.grids_[i];
+    grids_[i].deepCopy(src.grids_[i]);
     indices_[i] = src.indices_[i];
   }
 }
@@ -984,8 +967,7 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
-      // TODO(JMM): Add a way to shallow copy metadata automatically
-      grids_[i].copy(src.grids_[i]); // must also be a deep copy
+      grids_[i] = src.grids_[i];
     }
   }
   return *this;
@@ -994,7 +976,9 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
 // Performs a deep copy
 template <typename T, typename Grid_t, typename Concept>
 inline void
-DataBox<T, Grid_t, Concept>::copy(const DataBox<T, Grid_t, Concept> &src) {
+DataBox<T, Grid_t, Concept>::deepCopy(const DataBox<T, Grid_t, Concept> &src) {
+  PORTABLE_REQUIRE(src.status_ != DataStatus::AllocatedDevice,
+                   "Cannot deep copy a device-resident DataBox");
   copyMetadata(src);
   for (int i = 0; i < src.size(); i++)
     dataView_(i) = src(i);
@@ -1045,6 +1029,31 @@ DataBox<T, Grid_t, Concept>::canInterpToReal_(const int interpOrder) const {
   return true;
 }
 
+// Checks the preconditions of interpFromDB: this DataBox must
+// already have storage and the shape of the faster dimensions of db,
+// and the ndims slowest dimensions of db must be interpolatable.
+template <typename T, typename Grid_t, typename Concept>
+PORTABLE_INLINE_FUNCTION void
+DataBox<T, Grid_t, Concept>::requireCanInterpFromDB_(
+    const DataBox<T, Grid_t, Concept> &db, const int ndims) const {
+  PORTABLE_REQUIRE(db.rank_ > ndims,
+                   "interpFromDB source must keep at least one dimension");
+  PORTABLE_REQUIRE(rank_ == db.rank_ - ndims,
+                   "interpFromDB destination has the wrong rank");
+  PORTABLE_REQUIRE(dataView_.data() != nullptr,
+                   "interpFromDB destination must already have storage");
+  for (int i = 1; i <= rank_; ++i) {
+    PORTABLE_REQUIRE(dim(i) == db.dim(i),
+                     "interpFromDB destination has the wrong shape");
+  }
+  for (int i = db.rank_ - ndims; i < db.rank_; ++i) {
+    PORTABLE_REQUIRE(db.indices_[i] == IndexType::Interpolated,
+                     "interpFromDB source dimension must be interpolated");
+    PORTABLE_REQUIRE(db.grids_[i].isWellFormed(),
+                     "interpFromDB source grid must be well formed");
+  }
+}
+
 template <typename T, typename Grid_t, typename Concept>
 inline DataBox<T, Grid_t, Concept>
 getOnDeviceDataBox(const DataBox<T, Grid_t, Concept> &a_host,
@@ -1062,9 +1071,15 @@ inline void free(T &value) {
   value.finalize();
 }
 
+// Deleter for smart pointers. If FinalizeGrids is true, the grids of
+// the DataBox are finalized as well as its values.
+template <bool FinalizeGrids = false>
 struct DBDeleter {
   template <Finalizable T>
   void operator()(T *ptr) {
+    if constexpr (FinalizeGrids) {
+      ptr->finalizeGrids();
+    }
     ptr->finalize();
     delete ptr;
   }

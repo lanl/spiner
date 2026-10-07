@@ -40,8 +40,8 @@ interpolation object you are using. It is a template parameter.
 We begin by discussing ``RegularGrid1D``, as the ``PiecewiseGrid1D``
 object is built on top of it.
 
-Construction
-^^^^^^^^^^^^^
+Constructing a ``RegularGrid1D``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A ``RegularGrid1D`` requires three values to specify an interpolation
 grid: the minimum value of the independent variable, the maximum value
@@ -94,8 +94,8 @@ regular or piecewise-regular intervals. Each grid has independent coordinate
 storage, so a ``DataBox<double, NonUniformGrid1D>`` can use a different
 non-uniform coordinate sequence for every axis.
 
-Construction
-^^^^^^^^^^^^^
+Constructing a ``NonUniformGrid1D``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Constructing from a ``std::vector`` or initializer list makes an owning host
 copy of the points:
@@ -127,17 +127,41 @@ space of the borrowed points; using an inaccessible pointer can cause a
 segmentation fault. Borrowed points must remain alive and unchanged for the
 grid's lifetime.
 
-Like ``DataBox``, ordinary grid copies are shallow reference-style copies;
-finalize an owned grid exactly once. Every grid type also provides an explicit
-``copy(other)`` method. For ``NonUniformGrid1D``, it is a deep copy that:
+Like ``DataBox``, ordinary grid copies are shallow reference-style copies
+that also copy the ownership status, so the copy and the original both report
+that they own the coordinates. Finalize an owned grid exactly once, through
+only one of them. Every grid type also provides two explicit copy methods,
+which make the ownership of the result unambiguous:
 
-.. cpp:function:: void NonUniformGrid1D::copy(const NonUniformGrid1D& other)
+.. cpp:function:: void NonUniformGrid1D::shallowCopy(const NonUniformGrid1D& other)
+
+is the same as ordinary assignment, except that the result is marked
+``Unmanaged``. It is a non-owning handle to the coordinates of ``other``:
+finalizing it never frees them, ``other`` remains responsible for them, and
+``other`` must outlive it. ``shallowCopy`` may be called on host or device.
+
+.. cpp:function:: void NonUniformGrid1D::deepCopy(const NonUniformGrid1D& other)
 
 allocates independent host-owned coordinate storage and copies the coordinates
 from a host-resident ``other`` grid. It must not be used with a device-resident
-source; use ``getOnDevice()`` to make a deep device copy. For
-``RegularGrid1D`` and ``PiecewiseGrid1D``, which do not own non-trivial dynamic
-memory, ``copy(other)`` is correspondingly a trivial metadata copy.
+source; use ``getOnDevice()`` to make a deep device copy.
+
+Both methods require that the grid being copied into does not own memory, so
+that nothing is leaked. For ``RegularGrid1D`` and ``PiecewiseGrid1D``, which do
+not own non-trivial dynamic memory, ``shallowCopy`` and ``deepCopy`` are both
+trivial metadata copies.
+
+For example, an owning handle and a non-owning handle to the same coordinates
+can be made with:
+
+.. code-block:: cpp
+
+   NonUniformGrid1D owner(points);  // AllocatedHost
+   NonUniformGrid1D view;
+   view.shallowCopy(owner);         // Unmanaged
+   // ...
+   view.finalize();  // no-op
+   owner.finalize(); // frees the coordinates
 
 Mapping and interpolation
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -198,8 +222,10 @@ Reconfiguration follows the same explicit ownership convention as
 ``finalize()``: do not reconfigure an owner while shallow aliases depend on its
 lookup table. Reconfigure host storage before making device copies.
 
-Ordinary copies remain shallow. ``copy()``, ``getOnDevice()``, binary
-serialization, and HDF5 otherwise follow the ``NonUniformGrid1D`` lifecycle.
+Ordinary copies remain shallow. ``shallowCopy()`` makes a non-owning handle to
+both the coordinates and the lookup table. ``deepCopy()``, ``getOnDevice()``,
+binary serialization, and HDF5 otherwise follow the ``NonUniformGrid1D``
+lifecycle.
 HDF5 stores the physical coordinates and resolved construction settings, then
 rebuilds the derived lookup table when loading. Coordinate access is read-only
 because changing a coordinate would invalidate the table.
@@ -221,8 +247,8 @@ can specify a different value with, e.g.,
    // Maximum number of "pieces" in a grid = 10
    using PiecewiseGrid1D = Spiner::PiecewiseGrid1D<double, 10>;
 
-Constructiong a ``PiecewiseGrid1D``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Constructing a ``PiecewiseGrid1D``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A ``PiecewiseGrid1D`` is constructed from either a ``std::vector`` or
 a ``std::initializer_list`` of ``RegularGrid1D`` s. For example:
@@ -294,7 +320,8 @@ All grid types implement the resource-management interface used by
 .. cpp:function:: std::size_t Grid::serialize(char *dst) const;
 .. cpp:function:: std::size_t Grid::deSerialize(char *src);
 .. cpp:function:: std::size_t Grid::setPointer(char *src);
-.. cpp:function:: void Grid::copy(const Grid& other);
+.. cpp:function:: void Grid::shallowCopy(const Grid& other);
+.. cpp:function:: void Grid::deepCopy(const Grid& other);
 .. cpp:function:: Grid Grid::getOnDevice() const;
 .. cpp:function:: void Grid::finalize();
 
@@ -303,7 +330,13 @@ it contains only inline data. ``PiecewiseGrid1D`` applies them
 recursively to its component grids. ``NonUniformGrid1D`` uses them to
 manage its coordinate array. This interface allows grid types to own
 dynamically allocated host or device data without requiring grid-specific
-resource handling in ``DataBox``.
+resource handling in ``DataBox``. ``DataBox::finalize`` does not call
+``Grid::finalize``. ``DataBox::finalizeGrids`` does, for every grid in the
+``DataBox``. ``DataBox`` copies its grids with ordinary assignment when it
+makes a new handle to the same ``DataBox``. When it builds a different
+``DataBox`` from another's metadata, it uses ``shallowCopy`` or, for deep
+copies, ``deepCopy``. See :ref:`Semantics and Memory Management` for
+details.
 
 ``serialize`` writes the inline grid object followed by its dynamic
 memory. ``dumpDynamicMemory`` writes only the latter, allowing a grid
@@ -312,6 +345,6 @@ embedded in a ``DataBox`` to avoid serializing its inline bytes twice.
 The binary serialization methods have the same transient,
 build-dependent compatibility limitations as ``DataBox``
 serialization. See :ref:`the DataBox serialization documentation
-<serialization-and-de-serialization>` for details.
+<Serialization and de-serialization>` for details.
 
 Generative AI was used to assist with modifications to this page.

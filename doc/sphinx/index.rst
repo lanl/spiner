@@ -39,8 +39,8 @@ automatically integrated into the build system.
 
 .. _Ports of Call: https://lanl.github.io/ports-of-call/main/index.html
 
-Contributing
-^^^^^^^^^^^^
+Getting Help and Contributing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you use Spiner and need help, submit an issue to the Spiner
 repository. If you'd like to contribute, just fork and submit a pull

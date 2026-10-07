@@ -205,7 +205,13 @@ class PiecewiseGrid1D {
     return sizeof(*this) + setPointer(src + sizeof(*this));
   }
 
-  void copy(const PiecewiseGrid1D<T, NGRIDSMAX> &other) { *this = other; }
+  // The component grids own no dynamic memory, so shallow and deep
+  // copies are both plain copies.
+  PORTABLE_INLINE_FUNCTION void
+  shallowCopy(const PiecewiseGrid1D<T, NGRIDSMAX> &other) {
+    *this = other;
+  }
+  void deepCopy(const PiecewiseGrid1D<T, NGRIDSMAX> &other) { *this = other; }
 
   PiecewiseGrid1D<T, NGRIDSMAX> getOnDevice() const {
     PiecewiseGrid1D<T, NGRIDSMAX> grid(*this);

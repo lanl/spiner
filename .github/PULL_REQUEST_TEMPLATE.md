@@ -1,5 +1,5 @@
 <!--Provide a general summary of your changes in the title above, for
-example "Improve interpToDB routines.".  Please avoid
+example "Improve interpFromDB routines.".  Please avoid
 non-descriptive titles such as "Addresses issue #8576".-->
 
 ## PR Summary
