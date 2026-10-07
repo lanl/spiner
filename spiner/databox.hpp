@@ -57,6 +57,15 @@ class DataBox {
  public:
   using ValueType = T;
   using GridType = Grid_t;
+  // named tuples for value + gradient data. They work with structured
+  // binding.
+  struct InterpResult1D {
+    T value, d_dx1;
+  };
+  struct InterpResult2D {
+    T value, d_dx2, d_dx1;
+  };
+
   static constexpr int MAXRANK = PortableMDArray<T>::MAXDIM;
   static constexpr T EPS = 10.0 * std::numeric_limits<T>::epsilon();
 
@@ -210,6 +219,15 @@ class DataBox {
   PORTABLE_FORCEINLINE_FUNCTION T interpToReal(const T x4, const T x3,
                                                const T x2, const int idx,
                                                const T x1) const noexcept;
+  // Value and derivatives of the interpolant. Derivatives are with
+  // respect to supplied grid coordinates (including extrapolation).
+  // At control points, use the one-sided derivative of the cell
+  // selected by the grid.
+  PORTABLE_FORCEINLINE_FUNCTION InterpResult1D
+  interpToRealWithGrads(const T x1) const noexcept;
+  PORTABLE_FORCEINLINE_FUNCTION InterpResult2D
+  interpToRealWithGrads(const T x2, const T x1) const noexcept;
+
   // Fills this DataBox with db interpolated at x (or x2, x1) in its
   // slowest one (or two) dimensions.
   // REQUIRES: this DataBox already has storage and the shape of the
@@ -524,6 +542,40 @@ inline void DataBox<T, Grid_t, Concept>::setArray(PortableMDArray<T> &A) {
   dataView_ = A;
   rank_ = A.GetRank();
   setAllIndexed_();
+}
+
+template <typename T, typename Grid_t, typename Concept>
+PORTABLE_FORCEINLINE_FUNCTION
+    typename DataBox<T, Grid_t, Concept>::InterpResult1D
+    DataBox<T, Grid_t, Concept>::interpToRealWithGrads(
+        const T x1) const noexcept {
+  assert(canInterpToReal_(1));
+  int ix;
+  weights_t<T> w, dw;
+  grids_[0].weightsWithGrad(x1, ix, w, dw);
+  const T f0 = dataView_(ix);
+  const T f1 = dataView_(ix + 1);
+  return {w[0] * f0 + w[1] * f1, dw[1] * (f1 - f0)};
+}
+
+template <typename T, typename Grid_t, typename Concept>
+PORTABLE_FORCEINLINE_FUNCTION
+    typename DataBox<T, Grid_t, Concept>::InterpResult2D
+    DataBox<T, Grid_t, Concept>::interpToRealWithGrads(
+        const T x2, const T x1) const noexcept {
+  assert(canInterpToReal_(2));
+  int ix1, ix2;
+  weights_t<T> w1, w2, dw1, dw2;
+  grids_[0].weightsWithGrad(x1, ix1, w1, dw1);
+  grids_[1].weightsWithGrad(x2, ix2, w2, dw2);
+  const T f00 = dataView_(ix2, ix1);
+  const T f01 = dataView_(ix2, ix1 + 1);
+  const T f10 = dataView_(ix2 + 1, ix1);
+  const T f11 = dataView_(ix2 + 1, ix1 + 1);
+  return {w2[0] * (w1[0] * f00 + w1[1] * f01) +
+              w2[1] * (w1[0] * f10 + w1[1] * f11),
+          dw2[1] * (w1[0] * (f10 - f00) + w1[1] * (f11 - f01)),
+          dw1[1] * (w2[0] * (f01 - f00) + w2[1] * (f11 - f10))};
 }
 
 template <typename T, typename Grid_t, typename Concept>
@@ -965,6 +1017,10 @@ DataBox<T, Grid_t, Concept>::operator=(const DataBox<T, Grid_t, Concept> &src) {
     status_ = src.status_;
     data_ = src.data_;
     dataView_.InitWithShallowSlice(src.dataView_, 6, 0, src.dim(6));
+    // assignment doesn't "unhook" from the parent object, so these
+    // should be straight assignment operators, not shallowCopy or
+    // deepCopy. Underlying grid data will be copied shallow, but the
+    // grid data ownership, if relevant, will be unchanged.
     for (int i = 0; i < rank_; i++) {
       indices_[i] = src.indices_[i];
       grids_[i] = src.grids_[i];

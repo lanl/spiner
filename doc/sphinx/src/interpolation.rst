@@ -1,3 +1,18 @@
+.. ======================================================================
+..  © (or copyright) 2019-2026. Triad National Security, LLC. All rights
+..  reserved.  This program was produced under U.S. Government contract
+..  89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
+..  operated by Triad National Security, LLC for the U.S.  Department of
+..  Energy/National Nuclear Security Administration. All rights in the
+..  program are reserved by Triad National Security, LLC, and the
+..  U.S. Department of Energy/National Nuclear Security
+..  Administration. The Government is granted for itself and others acting
+..  on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+..  in this material to reproduce, prepare derivative works, distribute
+..  copies to the public, perform publicly and display publicly, and to
+..  permit others to do so.
+.. ======================================================================
+
 .. _interpolation:
 
 Gridding for Interpolation
@@ -33,6 +48,38 @@ a type alias such as:
 
 When constructing a ``DataBox``, you may wish to specify which
 interpolation object you are using. It is a template parameter.
+
+.. _grid-weight-derivatives:
+
+Interpolation weights and derivatives
+-------------------------------------
+
+All four built-in grid types provide ``weightsWithGrad`` for computing the
+two linear interpolation weights and their coordinate derivatives in one
+cell lookup:
+
+.. code-block:: cpp
+
+   int ix;
+   Spiner::weights_t<double> w, dw;
+   grid.weightsWithGrad(x, ix, w, dw);
+
+The portable, const member function has the signature:
+
+.. code-block:: cpp
+
+   void weightsWithGrad(const T &x, int &ix,
+                        Spiner::weights_t<T> &w,
+                        Spiner::weights_t<T> &dw) const;
+
+``ix`` identifies the lower stencil point, and ``w[0]`` and ``w[1]`` are
+exactly the weights returned by ``weights(x, ix, w)``. ``dw[0]`` and
+``dw[1]`` are their derivatives with respect to ``x``. For a selected
+interval of width ``h``, these are ``-1/h`` and ``1/h`` respectively.
+
+Custom linear grid types can implement this same interface to support
+:ref:`DataBox interpolation with gradients
+<interpolation-with-gradients>`.
 
 ``RegularGrid1D``
 ------------------

@@ -846,6 +846,136 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
   }
 }
 
+// The caller owns the grids; boxes below borrow their handles and only free
+// data.
+template <typename Grid>
+void checkInterpolationGradients(const Grid &gx, const Grid &gy) {
+  using T = typename Grid::ValueType;
+  using Box = Spiner::DataBox<T, Grid>;
+  const int nx = gx.nPoints(), ny = gy.nPoints();
+  Box line(nx), plane(ny, nx);
+  line.setRange(0, gx);
+  plane.setRange(0, gx);
+  plane.setRange(1, gy);
+  for (int i = 0; i < nx; ++i)
+    line(i) = T(4);
+  const T x = T(0.37) * gx.min() + T(0.63) * gx.max();
+  const T y = T(0.61) * gy.min() + T(0.39) * gy.max();
+  REQUIRE(line.interpToRealWithGrads(x).d_dx1 == T(0));
+  for (int i = 0; i < nx; ++i)
+    line(i) = T(2) + T(3) * gx.x(i);
+  for (int j = 0; j < ny; ++j)
+    for (int i = 0; i < nx; ++i)
+      plane(j, i) =
+          T(1) + T(2) * gx.x(i) - T(3) * gy.x(j) + T(4) * gx.x(i) * gy.x(j);
+
+  std::vector<T> xs = {gx.min(), x, gx.max()};
+  std::vector<T> ys = {gy.min(), y, gy.max()};
+#ifndef SPINER_DISABLE_BOUNDS_CHECKS
+  xs.push_back(gx.min() - T(1));
+  xs.push_back(gx.max() + T(1));
+  ys.push_back(gy.min() - T(2));
+  ys.push_back(gy.max() + T(2));
+#endif
+  for (const T qx : xs) {
+    const auto [v, dx] = line.interpToRealWithGrads(qx);
+    REQUIRE(std::abs(v - line.interpToReal(qx)) <= EPSTEST);
+    REQUIRE(std::abs(v - (T(2) + T(3) * qx)) <= EPSTEST);
+    REQUIRE(std::abs(dx - T(3)) <= EPSTEST);
+    for (const T qy : ys) {
+      const auto [v2, dy2, dx2] = plane.interpToRealWithGrads(qy, qx);
+      REQUIRE(std::abs(v2 - plane.interpToReal(qy, qx)) <= EPSTEST);
+      REQUIRE(std::abs(v2 - (T(1) + T(2) * qx - T(3) * qy + T(4) * qx * qy)) <=
+              EPSTEST);
+      REQUIRE(std::abs(dx2 - (T(2) + T(4) * qy)) <= EPSTEST);
+      REQUIRE(std::abs(dy2 - (-T(3) + T(4) * qx)) <= EPSTEST);
+    }
+  }
+
+  // Portable execution uses deep device copies, including grid coordinates.
+  auto device_line = line.getOnDevice();
+  auto device_plane = plane.getOnDevice();
+  T error = 0;
+  portableReduce(
+      "Interpolation gradients", 0, 1,
+      PORTABLE_LAMBDA(const int, T &sum) {
+        const auto [v, dx] = device_line.interpToRealWithGrads(x);
+        const auto [v2, dy2, dx2] = device_plane.interpToRealWithGrads(y, x);
+        sum += std::abs(v - (T(2) + T(3) * x)) + std::abs(dx - T(3));
+        sum += std::abs(v2 - (T(1) + T(2) * x - T(3) * y + T(4) * x * y));
+        sum += std::abs(dy2 - (-T(3) + T(4) * x)) +
+               std::abs(dx2 - (T(2) + T(4) * y));
+      },
+      error);
+  REQUIRE(error <= EPSTEST);
+  device_line.finalizeGrids();
+  device_line.finalize();
+  device_plane.finalizeGrids();
+  device_plane.finalize();
+
+  // Quadratic samples produce different linear slopes on adjacent cells.
+  // Check every knot, including duplicated piecewise subgrid endpoints.
+  for (int i = 0; i < nx; ++i)
+    line(i) = gx.x(i) * gx.x(i);
+  for (int i = 0; i < nx; ++i) {
+    int ix;
+    Spiner::weights_t<T> w, dw;
+    gx.weightsWithGrad(gx.x(i), ix, w, dw);
+    int original_ix;
+    Spiner::weights_t<T> original_w;
+    gx.weights(gx.x(i), original_ix, original_w);
+    REQUIRE(ix == original_ix);
+    REQUIRE(w[0] == original_w[0]);
+    REQUIRE(w[1] == original_w[1]);
+    REQUIRE(dw[0] == -dw[1]);
+    const auto result = line.interpToRealWithGrads(gx.x(i));
+    REQUIRE(std::abs(result.value - line.interpToReal(gx.x(i))) <= EPSTEST);
+    REQUIRE(std::abs(result.d_dx1 - (gx.x(ix) + gx.x(ix + 1))) <= EPSTEST);
+  }
+  // Finite differences strictly inside each nondegenerate cell.
+  for (int i = 0; i + 1 < nx; ++i) {
+    const T h = gx.x(i + 1) - gx.x(i);
+    if (h == T(0)) continue;
+    const T q = gx.x(i) + T(0.4) * h;
+    const T eps = T(0.001) * h;
+    const T fd = (line.interpToReal(q + eps) - line.interpToReal(q - eps)) /
+                 (T(2) * eps);
+    REQUIRE(std::abs(line.interpToRealWithGrads(q).d_dx1 - fd) <= EPSTEST);
+    const T fd2 =
+        (plane.interpToReal(y, q + eps) - plane.interpToReal(y, q - eps)) /
+        (T(2) * eps);
+    REQUIRE(std::abs(plane.interpToRealWithGrads(y, q).d_dx1 - fd2) <= EPSTEST);
+  }
+  plane.finalize();
+  line.finalize();
+}
+
+TEST_CASE("Interpolation values and gradients", "[DataBox][Gradients]") {
+  SECTION("Regular grids") {
+    checkInterpolationGradients(RegularGrid1D(-2, 4, 7),
+                                RegularGrid1D(-3, 5, 5));
+  }
+  SECTION("Nonuniform grids") {
+    NonUniformGrid1D gx({-2, -1, 0, 0.5, 4}), gy({-3, -2, 1, 5});
+    checkInterpolationGradients(gx, gy);
+    gx.finalize();
+    gy.finalize();
+  }
+  SECTION("Fast nonuniform grids") {
+    FastNonUniformGrid1D gx({-100, -20, -4, -1, 0, 1, 4, 20, 100});
+    FastNonUniformGrid1D gy({-3, -2, 1, 5});
+    REQUIRE(gx.usesFastLookup());
+    checkInterpolationGradients(gx, gy);
+    gx.finalize();
+    gy.finalize();
+  }
+  SECTION("Piecewise grids") {
+    PiecewiseGrid1D<2> gx({RegularGrid1D(-2, 0, 3), RegularGrid1D(0, 4, 3)});
+    PiecewiseGrid1D<2> gy({RegularGrid1D(-3, 1, 3), RegularGrid1D(1, 5, 5)});
+    checkInterpolationGradients(gx, gy);
+  }
+}
+
 TEST_CASE("DataBox interpolation", "[DataBox]") {
 
   GIVEN("A four-dimensional data box filled with a linear function") {

@@ -46,6 +46,10 @@ struct weights_t {
     assert(0 <= i && i <= 1);
     return i == 0 ? first : second;
   }
+  PORTABLE_INLINE_FUNCTION const T &operator[](const int i) const {
+    assert(0 <= i && i <= 1);
+    return i == 0 ? first : second;
+  }
 };
 
 template <typename T = Real,
@@ -88,6 +92,16 @@ class RegularGrid1D {
     const auto floor = static_cast<T>(ix) * dx_ + min_;
     w[1] = idx_ * (x - floor);
     w[0] = (1. - w[1]);
+  }
+
+  // Weights and derivatives with respect to the supplied grid coordinate.
+  // Uses the same cell selection and extrapolation as weights().
+  PORTABLE_INLINE_FUNCTION void weightsWithGrad(const T &x, int &ix,
+                                                weights_t<T> &w,
+                                                weights_t<T> &dw) const {
+    weights(x, ix, w);
+    dw[1] = idx_;
+    dw[0] = -dw[1];
   }
 
   // 1D interpolation
