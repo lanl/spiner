@@ -17,6 +17,10 @@
 
 // Generative AI was used to assist with modifications to this file.
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+
 #include <ports-of-call/portability.hpp>
 #include <ports-of-call/robust_utils.hpp>
 
@@ -71,9 +75,11 @@ struct Linear {
   }
 }; // struct Linear
 
-// Rational function interpolation as described by Kerley, 1977, LA-6903-MS
+// Rational function interpolation as described by Kerley, 1977, LA-6903-MS.
+// Requires at least four points per interpolated axis. Outside the table, use
+// linear secant extrapolation; at exact endpoints use the interior derivative.
 struct Rational {
-  constexpr int NCONTROL = 4;
+  static constexpr int NCONTROL = 4;
   template <typename T, typename GridArray_t, typename Array_t>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   interpToRealWithGrads(const T x, const GridArray_t &g,
@@ -83,10 +89,10 @@ struct Rational {
         N >= NCONTROL,
         "Four point stencil required for rational function interpolation.");
     int ix = std::min(N - 3, std::max(1, g[0].index(x)));
-    const std::array<T, NCONTROL> xg = {g[0].x(i - 1), g[0].x(i), g[0].x(i + 1),
-                                        g[0].x(i + 2)};
+    const std::array<T, NCONTROL> xg = {g[0].x(ix - 1), g[0].x(ix),
+                                        g[0].x(ix + 1), g[0].x(ix + 2)};
     const std::array<T, NCONTROL> f = {a(ix - 1), a(ix), a(ix + 1), a(ix + 2)};
-    return interp1DHelper_(x, xg, f);
+    return interp1DHelper_(x, xg, f, ix == 1);
   }
 
   template <typename T, typename GridArray_t, typename Array_t>
@@ -102,56 +108,58 @@ struct Rational {
     PORTABLE_REQUIRE(
         N2 >= NCONTROL,
         "Four point stencil required for rational function interpolation.");
-    int ix1 = std::min(N1 - 3, std::max(1, g[0].index(x1)));
-    int ix2 = std::min(N2 - 3, std::max(1, g[1].index(x2)));
+    // Indices of cell enclosing x1 and x2
+    const int ix1 = std::min(N1 - 2, std::max(0, g[0].index(x1)));
+    const int ix2 = std::min(N2 - 2, std::max(0, g[1].index(x2)));
+    // indices of the first cell in the full four-point stencil
+    const int start1 = std::min(N1 - 4, std::max(0, ix1 - 1));
+    const int start2 = std::min(N2 - 4, std::max(0, ix2 - 1));
 
     std::array<T, NCONTROL> x1g, x2g;
     for (int c = 0; c < NCONTROL; ++c) {
-      x1g[c] = g[0].x(ix1 - 1 + c);
-      x2g[c] = g[1].x(ix2 - 1 + c);
+      x1g[c] = g[0].x(start1 + c);
+      x2g[c] = g[1].x(start2 + c);
     }
 
     // Kerley eqn 17
     // compute rj(x) = r_{ix2}(x1)
     std::array<T, NCONTROL> f;
     for (int c = 0; c < NCONTROL; ++c) {
-      f[c] = a(ix2, ix1 - 1 + c);
+      f[c] = a(ix2, start1 + c);
     }
-    auto [rjx, drjdx] = interp1DHelper_(x1, x1g, f);
+    auto [rjx, drjdx] = interp1DHelper_(x1, x1g, f, ix1 == 1);
     // compute r_{j + 1}(x) = r_{ix2 + 1}(x1)
     for (int c = 0; c < NCONTROL; ++c) {
-      f[c] = a(ix2 + 1, ix1 - 1 + c);
+      f[c] = a(ix2 + 1, start1 + c);
     }
-    auto [rjp1x, drjp1dx] = interp1DHelper_(x1, x1g, f);
+    auto [rjp1x, drjp1dx] = interp1DHelper_(x1, x1g, f, ix1 == 1);
     // compute ri(y) = r_{ix1}(x2)
     for (int c = 0; c < NCONTROL; ++c) {
-      f[c] = a(ix1 - 1 + c, ix2);
+      f[c] = a(start2 + c, ix1);
     }
-    auto [riy, dridy] = interp1DHelper_(x2, x2g, f);
+    auto [riy, dridy] = interp1DHelper_(x2, x2g, f, ix2 == 1);
     // compute r_{i+1}(y) = r_{ix1+1}(x2)
     for (int c = 0; c < NCONTROL; ++c) {
-      f[c] = a(ix1 - 1 + c, ix2+1);
+      f[c] = a(start2 + c, ix1 + 1);
     }
-    auto [rip1y, drip1dy] = interp1DHelper_(x2, x2g, f);
+    auto [rip1y, drip1dy] = interp1DHelper_(x2, x2g, f, ix2 == 1);
 
-    // compute slopes for Kerley eqn 18
-    T dx = x1g[ix1 + 1] - x1g[ix1];
-    T dy = x2g[ix2 + 1] - x2g[ix2];
-    T qx = ratio(x1 - x1g[ix1], dx);
-    T qy = ratio(x2 - x2g[ix2], dy);
-    // Kerley eqn 18
-    T fout = rjx * (1 - qy) + rjp1x * qy + riy * (1 - qx) + rip1y * qx
-      - a(ix2, ix1) * (1 - qx) * (1 - qy) - a(ix2 + 1, ix1) * (1 - qx) * qy
-      - a(ix2, ix1 + 1) * qx * (1 - qy) - a(ix2 + 1, ix1 + 1) *qx * qy;
-
-    T dfdx2 = ratio(dx * (a(ix2, ix1) - a(ix2 + 1, ix1))
-                    - (a(ix2, ix1) - a(ix2 + 1, ix1) - a(ix2, ix1 + 1) + a(ix2 + 1, ix1 + 1)) * (x1 - x1g[ix1])
-                    - dx * rjx + dx * rjp1x + dy * (dx - x + x1g[ix1]) * dridy + dy * (x1 - x1g[ix1]) * drip1dy,
-                    dx * dy);
-    T dfdx1 = ratio(dy * (a(ix2, ix1) - a(ix2, ix1 + 1))
-                    - (a(ix2, ix1) - a(ix2 + 1, ix1) - a(ix2, ix1 + 1) + a(ix2 + 1, ix1 + 1)) * (x2 - x2g[ix2])
-                    - dy * diy + dy * rip1y + dx * (dy - x2 + x2g[ix2]) * drjdx + dx * (x2 - x2g[ix2]) * drjp1dx,
-                    dx * dy);
+    const T dx = g[0].x(ix1 + 1) - g[0].x(ix1);
+    const T dy = g[1].x(ix2 + 1) - g[1].x(ix2);
+    const T qx = ratio(x1 - g[0].x(ix1), dx);
+    const T qy = ratio(x2 - g[1].x(ix2), dy);
+    const T f00 = a(ix2, ix1), f10 = a(ix2, ix1 + 1);
+    const T f01 = a(ix2 + 1, ix1), f11 = a(ix2 + 1, ix1 + 1);
+    // Kerley eqn 18 and its partial derivatives.
+    const T fout = rjx * (1 - qy) + rjp1x * qy + riy * (1 - qx) + rip1y * qx -
+                   f00 * (1 - qx) * (1 - qy) - f01 * (1 - qx) * qy -
+                   f10 * qx * (1 - qy) - f11 * qx * qy;
+    const T dfdx1 =
+        (1 - qy) * drjdx + qy * drjp1dx +
+        ratio(rip1y - riy - (1 - qy) * (f10 - f00) - qy * (f11 - f01), dx);
+    const T dfdx2 =
+        (1 - qx) * dridy + qx * drip1dy +
+        ratio(rjp1x - rjx - (1 - qx) * (f01 - f00) - qx * (f11 - f10), dy);
 
     return {fout, dfdx2, dfdx1};
   }
@@ -159,7 +167,8 @@ struct Rational {
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   interp1DHelper_(const T x, const std::array<T, NCONTROL> &xg,
-                  const std::array<T, NCONTROL> &f) {
+                  const std::array<T, NCONTROL> &f,
+                  const bool second_table_interval) noexcept {
     using PortsOfCall::Robust::ratio;
     T fout, dfout, C1, C2;
     std::array<T, NCONTROL - 1> dx, S;
@@ -168,35 +177,35 @@ struct Rational {
       S[i] = ratio(f[i + 1] - f[i], dx[i]);
     }
 
-    if (x <= x[0]) { // linear extrap off bottom
-      dfout = ratio(S[0], dx[0]);
-      fout = f[0] + (x - x[0]) * dfout;
-    } else if (x >= x[3]) { // linear extrap off top
-      dfout = ratio(S[3], dx[3]);
-      fout = f[3] + (x - x[3]) * dfout;
-    }
-    if (x < x[1]) { // Kerley eqn 12
+    // Linearly extrapolate strictly outside the table.
+    // Exact endpoints retain the interior derivative (a jump is possible).
+    if (x < xg[0]) return {f[0] + (x - xg[0]) * S[0], S[0]};
+    if (x > xg[3]) return {f[3] + (x - xg[3]) * S[2], S[2]};
+    if (x < xg[1]) { // Kerley eqn 12
       C2 = ratio(S[1] - S[0], dx[1] + dx[0]);
       if (S[0] * (S[0] - dx[0] * C2) <= 0) C2 = ratio(S[0], dx[0]);
-      fout = f[0] + (x - x[0]) * (S[0] - C2 * (x[1] - x));
-      dfout = S[0] + c2 * (2 * x - x[0] - x[1]);
-    } else if (x >= x[2]) { // Kerley eqn 13
+      fout = f[0] + (x - xg[0]) * (S[0] - C2 * (xg[1] - x));
+      dfout = S[0] + C2 * (2 * x - xg[0] - xg[1]);
+    } else if (x >= xg[2]) { // Kerley eqn 13
       C1 = ratio(S[2] - S[1], dx[2] + dx[1]);
-      fout = f[2] + (x - x[2]) * (S[2] - C1 * (x[3] - x));
-      dfout = S[2] + C1 * (2 * x - x[2] - x[3]);
+      fout = f[2] + (x - xg[2]) * (S[2] - C1 * (xg[3] - x));
+      dfout = S[2] + C1 * (2 * x - xg[2] - xg[3]);
     } else { // Kerley eqn 11
       C1 = ratio(S[1] - S[0], dx[1] + dx[0]);
       C2 = ratio(S[2] - S[1], dx[2] + dx[1]);
-      if (S[0] * (S[0] - dx[0] * C2) <= 0) C1 = ratio(S[1] - 2 * S[0], dx[1]);
+      // Appendix A, lines 50–51: propagate the lower endpoint constraint
+      // only into the second interval of the full table.
+      if (second_table_interval && S[0] * (S[0] - dx[0] * C1) <= 0)
+        C1 = ratio(S[1] - 2 * S[0], dx[1]);
 
-      T mu1 = std::abs(C2 * (x[2] - x));
-      T mu2 = std::abs(C1 * (x - x[1]));
-
-      fout = f[1] + (x - x[1]) * (S[1] - ratio(C1 * mu1 + C2 * mu2, mu1 + mu2) *
-                                             (x[2] - x));
-      dfout = S[1] + ratio((x[1] - x[2]) * mu1 * mu2 *
-                               (x * (mu1 + mu2) - x[2] * mu1 - x[1] * mu2),
-                           (x - x[1]) * (x - x[2]) * (mu1 + mu2) * (mu1 + mu2));
+      // Appendix A, lines 54–59, including its exact-knot convention.
+      const T Q = x - xg[1], R = xg[2] - x;
+      const T mu1 = std::abs(C2 * R), mu2 = std::abs(C1 * Q);
+      const T sum = mu1 + mu2;
+      const T w = sum > 0 ? ratio(mu1, sum) : T(0);
+      const T C = C2 + w * (C1 - C2);
+      fout = f[1] + Q * (S[1] - R * C);
+      dfout = S[1] + (Q - R) * C + dx[1] * (C - C2) * (1 - w);
     }
 
     return {fout, dfout};

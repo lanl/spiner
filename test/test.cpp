@@ -922,6 +922,183 @@ TEST_CASE("DataBox gradient stencil selection", "[DataBox][Gradients]") {
   plane.finalize();
 }
 
+// Secant extension of a quadratic is an independent analytic reference.
+PORTABLE_INLINE_FUNCTION Spiner::InterpolationHelpers::Result1D<Real>
+rationalQuadraticReference(Real x, Real lo, Real next, Real prev, Real hi) {
+  if (x < lo) return {lo * lo + (x - lo) * (lo + next), lo + next};
+  if (x > hi) return {hi * hi + (x - hi) * (prev + hi), prev + hi};
+  return {x * x, 2 * x};
+}
+
+TEST_CASE("Rational 1D formulas and limiter", "[DataBox][Rational]") {
+  using Box = Spiner::DataBox<Real, RegularGrid1D,
+                              Spiner::InterpolationStencils::Rational>;
+  Box line(4);
+  line.setRange(0, Real(0), Real(3), 4);
+  const std::array<std::array<Real, 4>, 5> tables = {{{{0, -1, -4, -9}},
+                                                      {{0, 1, 5, 10}},
+                                                      {{0, 1, 2, 8}},
+                                                      {{0, 3, 4, 7}},
+                                                      {{2, 2, 2, 2}}}};
+  for (const auto &f : tables) {
+    for (int i = 0; i < 4; ++i)
+      line(i) = f[i];
+    for (int i = 0; i < 4; ++i)
+      REQUIRE(std::abs(line.interpToRealWithGrads(Real(i)).value - f[i]) <
+              1e-12);
+    for (Real x : {Real(0.25), Real(1.25), Real(1.75), Real(2.75)}) {
+      const Real h = 1e-5;
+      const auto r = line.interpToRealWithGrads(x);
+      const Real fd = (line.interpToRealWithGrads(x + h).value -
+                       line.interpToRealWithGrads(x - h).value) /
+                      (2 * h);
+      REQUIRE(std::abs(r.d_dx1 - fd) < 1e-7);
+    }
+  }
+  for (int i = 0; i < 4; ++i)
+    line(i) = -Real(i * i);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.25)).d_dx1 + 2.5) < 1e-12);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1)).d_dx1 + 2) < 1e-12);
+  for (int i = 0; i < 4; ++i)
+    line(i) = tables[1][i];
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.5)).value - 2.8) < 1e-12);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.5)).d_dx1 - 4.24) < 1e-12);
+  // Same four-point data away from the lower boundary: no limiter.
+  Box interior(6);
+  interior.setRange(0, Real(-1), Real(4), 6);
+  for (int i = 0; i < 4; ++i)
+    interior(i + 1) = tables[1][i];
+  interior(0) = -1;
+  interior(5) = 15;
+  REQUIRE(std::abs(interior.interpToRealWithGrads(Real(1.5)).value - 2.8125) <
+          1e-12);
+  interior.finalize();
+  line.finalize();
+}
+
+// Grids are borrowed on host. Device boxes own their deep-copied grids.
+template <typename Grid>
+void checkRationalQuadratics(const Grid &gx, const Grid &gy) {
+  using Box =
+      Spiner::DataBox<Real, Grid, Spiner::InterpolationStencils::Rational>;
+  const int nx = gx.nPoints(), ny = gy.nPoints();
+  Box line(nx), plane(ny, nx), transposed(nx, ny);
+  line.setRange(0, gx);
+  plane.setRange(0, gx);
+  plane.setRange(1, gy);
+  transposed.setRange(0, gy);
+  transposed.setRange(1, gx);
+  for (int i = 0; i < nx; ++i) {
+    const Real x = gx.x(i);
+    line(i) = -x * x;
+    for (int j = 0; j < ny; ++j) {
+      const Real y = gy.x(j);
+      plane(j, i) = x * x - 2 * y * y + 0.1 * x * y;
+      transposed(i, j) = plane(j, i);
+    }
+  }
+  std::vector<Real> xs = {gx.min() - 1, gx.max() + 1};
+  std::vector<Real> ys = {gy.min() - 1, gy.max() + 1};
+  for (int i = 0; i < nx; ++i) {
+    xs.push_back(gx.x(i));
+    if (i + 1 < nx) xs.push_back(gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i)));
+  }
+  for (int j = 0; j < ny; ++j) {
+    ys.push_back(gy.x(j));
+    if (j + 1 < ny) ys.push_back(gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j)));
+  }
+  for (Real x : xs) {
+    const auto rx = rationalQuadraticReference(x, gx.min(), gx.x(1),
+                                               gx.x(nx - 2), gx.max());
+    const auto r = line.interpToRealWithGrads(x);
+    REQUIRE(std::abs(r.value + rx.value) < 1e-9);
+    REQUIRE(std::abs(r.d_dx1 + rx.d_dx1) < 1e-9);
+    for (Real y : ys) {
+      const auto ry = rationalQuadraticReference(y, gy.min(), gy.x(1),
+                                                 gy.x(ny - 2), gy.max());
+      const auto p = plane.interpToRealWithGrads(y, x);
+      REQUIRE(std::abs(p.value - (rx.value - 2 * ry.value + 0.1 * x * y)) <
+              1e-9);
+      REQUIRE(std::abs(p.d_dx1 - (rx.d_dx1 + 0.1 * y)) < 1e-9);
+      REQUIRE(std::abs(p.d_dx2 - (-2 * ry.d_dx1 + 0.1 * x)) < 1e-9);
+      const auto t = transposed.interpToRealWithGrads(x, y);
+      REQUIRE(std::abs(t.value - p.value) < 1e-9);
+      REQUIRE(std::abs(t.d_dx1 - p.d_dx2) < 1e-9);
+      REQUIRE(std::abs(t.d_dx2 - p.d_dx1) < 1e-9);
+    }
+  }
+  auto device = Spiner::getOnDeviceDataBox(plane);
+  auto device_line = Spiner::getOnDeviceDataBox(line);
+  // Capture only scalar host metadata; all array reads use device copies.
+  const Real xmin = gx.min(), xmax = gx.max(), xnext = gx.x(1),
+             xprev = gx.x(nx - 2);
+  const Real ymin = gy.min(), ymax = gy.max(), ynext = gy.x(1),
+             yprev = gy.x(ny - 2);
+  Real error = 0;
+  portableReduce(
+      "Rational device values and derivatives", 0, 49,
+      PORTABLE_LAMBDA(const int k, Real &sum) {
+        const Real x = xmin - 1 + (xmax - xmin + 2) * (k % 7) / 6;
+        const Real y = ymin - 1 + (ymax - ymin + 2) * (k / 7) / 6;
+        const auto rx = rationalQuadraticReference(x, xmin, xnext, xprev, xmax);
+        const auto ry = rationalQuadraticReference(y, ymin, ynext, yprev, ymax);
+        const auto p = device.interpToRealWithGrads(y, x);
+        const auto l = device_line.interpToRealWithGrads(x);
+        sum += std::abs(p.value - (rx.value - 2 * ry.value + 0.1 * x * y)) +
+               std::abs(p.d_dx1 - (rx.d_dx1 + 0.1 * y)) +
+               std::abs(p.d_dx2 - (-2 * ry.d_dx1 + 0.1 * x)) +
+               std::abs(l.value + rx.value) + std::abs(l.d_dx1 + rx.d_dx1);
+      },
+      error);
+  REQUIRE(error < 1e-7);
+  device.finalizeGrids();
+  device.finalize();
+  device_line.finalizeGrids();
+  device_line.finalize();
+  // Nonseparable data exercises unequal and mixed-sign curvatures in Eq. (18).
+  for (int j = 0; j < ny; ++j)
+    for (int i = 0; i < nx; ++i) {
+      plane(j, i) = std::sin(Real(i + 2 * j)) + Real(i * j * j);
+      transposed(i, j) = plane(j, i);
+    }
+  for (int j = 0; j + 1 < ny; ++j)
+    for (int i = 0; i + 1 < nx; ++i) {
+      const Real x = gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i));
+      const Real y = gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j));
+      const Real hx = 1e-5 * (gx.x(i + 1) - gx.x(i));
+      const Real hy = 1e-5 * (gy.x(j + 1) - gy.x(j));
+      const auto r = plane.interpToRealWithGrads(y, x);
+      const auto t = transposed.interpToRealWithGrads(x, y);
+      const Real dx = (plane.interpToRealWithGrads(y, x + hx).value -
+                       plane.interpToRealWithGrads(y, x - hx).value) /
+                      (2 * hx);
+      const Real dy = (plane.interpToRealWithGrads(y + hy, x).value -
+                       plane.interpToRealWithGrads(y - hy, x).value) /
+                      (2 * hy);
+      REQUIRE(std::abs(r.d_dx1 - dx) < 1e-6);
+      REQUIRE(std::abs(r.d_dx2 - dy) < 1e-6);
+      REQUIRE(std::abs(r.value - t.value) < 1e-9);
+      REQUIRE(std::abs(r.d_dx1 - t.d_dx2) < 1e-9);
+      REQUIRE(std::abs(r.d_dx2 - t.d_dx1) < 1e-9);
+    }
+  line.finalize();
+  plane.finalize();
+  transposed.finalize();
+}
+
+TEST_CASE("Rational rectangular grids and linear extrapolation",
+          "[DataBox][Rational]") {
+  SECTION("Regular") {
+    checkRationalQuadratics(RegularGrid1D(1, 13, 7), RegularGrid1D(2, 8, 4));
+  }
+  SECTION("Nonuniform") {
+    NonUniformGrid1D gx({1, 1.5, 3, 4, 6, 10, 13}), gy({2, 3, 5, 8});
+    checkRationalQuadratics(gx, gy);
+    gx.finalize();
+    gy.finalize();
+  }
+}
+
 // The caller owns the grids; boxes below borrow their handles and only free
 // data.
 template <typename Grid>
