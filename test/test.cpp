@@ -1324,6 +1324,14 @@ TEST_CASE("Rational rectangular grids and linear extrapolation",
     gx.finalize();
     gy.finalize();
   }
+  SECTION("Fast nonuniform") {
+    FastNonUniformGrid1D gx({1, 1.5, 3, 4, 6, 10, 13}), gy({2, 3, 5, 8});
+    REQUIRE(gx.usesFastLookup());
+    REQUIRE(gy.usesFastLookup());
+    checkRationalQuadratics(gx, gy);
+    gx.finalize();
+    gy.finalize();
+  }
 }
 
 // The caller owns the grids; boxes below borrow their handles and only free
