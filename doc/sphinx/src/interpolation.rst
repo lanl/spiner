@@ -1,4 +1,17 @@
-.. Copyright 2026 Triad National Security, LLC. All rights reserved.
+.. ======================================================================
+..  © (or copyright) 2019-2026. Triad National Security, LLC. All rights
+..  reserved.  This program was produced under U.S. Government contract
+..  89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
+..  operated by Triad National Security, LLC for the U.S.  Department of
+..  Energy/National Nuclear Security Administration. All rights in the
+..  program are reserved by Triad National Security, LLC, and the
+..  U.S. Department of Energy/National Nuclear Security
+..  Administration. The Government is granted for itself and others acting
+..  on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+..  in this material to reproduce, prepare derivative works, distribute
+..  copies to the public, perform publicly and display publicly, and to
+..  permit others to do so.
+.. ======================================================================
 
 .. Generative AI was used to assist with modifications to this document.
 
@@ -82,25 +95,12 @@ All four grid types provide portable, const accessors:
    T invCurvatureWidth(int i) const;
 
 ``dx(i)`` is the width of interval ``i``. ``idx(i)`` is its guarded reciprocal;
-``invCurvatureWidth(i)`` is the guarded reciprocal of ``dx(i) + dx(i+1)``.
-Reciprocals use ``PortsOfCall::Robust::ratio(T(1), width)``. Valid indices are
+``invCurvatureWidth(i)`` is the guarded reciprocal of ``dx(i) + dx(i+1)``,
+except at piecewise-grid joins as described below.
+Reciprocals use ``PortsOfCall::Robust::ratio(T(1), width)``. For regular and
+nonuniform grids, valid indices are
 ``0 <= i < nPoints()-1`` for ``dx`` and ``idx``, and
-``0 <= i < nPoints()-2`` for ``invCurvatureWidth``. Indices are not clamped.
-
-Nonuniform grids store coordinate differences and their reciprocals in caches;
-fast nonuniform grids delegate to those caches. Regular grids return stored
-scalar geometry. Their width can differ slightly from subtracting two rounded
-``x(i)`` values. Piecewise grids delegate within subgrids and store geometry at
-joins, preserving both copies of shared endpoints and their intervening interval.
-
-For a nonuniform grid with ``N >= 2``, one allocation holds ``4*N-4``
-values: ``coordinates[N]``, ``dx[N-1]``, ``idx[N-1]``,
-``invCurvatureWidth[N-2]``, in that order.  Copies, device transfers,
-explicit finalization, and binary serialization handle this whole
-allocation. HDF5 stores coordinates and rebuilds caches when loading.
-Binary buffers are only compatible with matching Spiner
-builds. Coordinates are assumed unchanged during use; existing mutable
-pointer access is retained.
+``0 <= i < nPoints()-2`` for ``invCurvatureWidth``.
 
 ``RegularGrid1D``
 ------------------
@@ -162,6 +162,17 @@ regular or piecewise-regular intervals. Each grid has independent coordinate
 storage, so a ``DataBox<double, NonUniformGrid1D>`` can use a different
 non-uniform coordinate sequence for every axis.
 
+.. cpp:function:: static std::size_t NonUniformGrid1D::requiredStorageSize(std::size_t n)
+
+   Returns the number of ``T`` values required for ``n`` points, including coordinates
+   and all spacing caches but excluding the grid object itself. For ``n >= 2``,
+   this is ``4*n - 4``; ``n == 0`` returns zero for an empty grid.
+   A nonempty grid requires at least two points; ``n == 1`` is invalid.
+   This helper can be called on host or device without constructing a grid.
+   Use it to size caller-owned buffers for the pointer constructor.
+   The instance method ``dynamicMemorySizeInBytes()`` delegates to this helper
+   with ``nPoints()`` and multiplies the result by ``sizeof(T)``.
+
 Constructing a ``NonUniformGrid1D``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -190,7 +201,7 @@ validate coordinates, using the supplied execution space (host by default):
 
    std::vector<double> points = {-1.0, -0.5, 0.25, 2.0};
    const auto n = points.size();
-   points.resize(4 * n - 4); // storage for coordinates AND caches
+   points.resize(NonUniformGrid1D::requiredStorageSize(n)); // coordinates AND caches
    NonUniformGrid1D view(points.data(), n, true);
    NonUniformGrid1D second_view(points.data(), n, false);
 

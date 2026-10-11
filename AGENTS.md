@@ -22,5 +22,4 @@
 
 ## Reporting your results
 
-- Dump your plans into the `plan_histories/` folder and when requested
-- Each file you modify should have a current copyright and a disclaimer about AI use
+- Each file you modify should have a current copyright and a disclaimer about AI use. The ENTIRE triad copyright must be present. DO NOT delete it.

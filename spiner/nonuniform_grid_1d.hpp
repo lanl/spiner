@@ -50,8 +50,8 @@ class NonUniformGrid1D {
   NonUniformGrid1D(std::initializer_list<T> points)
       : NonUniformGrid1D(std::vector<T>(points)) {}
 
-  // Borrows 4*n-4 values: coordinates[n], dx[n-1], idx[n-1],
-  // invCurvatureWidth[n-2]. initialize_caches populates the cache regions;
+  // Borrows requiredStorageSize(n) values of T: coordinates[n], dx[n-1],
+  // idx[n-1], invCurvatureWidth[n-2]. initialize_caches populates the cache regions;
   // otherwise their existing contents are validated without modification.
   // No allocation occurs. The caller must
   // keep it alive and unchanged for this grid's lifetime, and is
@@ -104,8 +104,7 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION void weights(const T &value, int &ix,
                                         weights_t<T> &w) const {
     ix = index(value);
-    const T dx = data_[ix + 1] - data_[ix];
-    w[1] = (value - data_[ix]) / dx;
+    w[1] = (value - data_[ix]) * idx_(ix);
     w[0] = T(1) - w[1];
   }
 
@@ -115,7 +114,7 @@ class NonUniformGrid1D {
                                                 weights_t<T> &w,
                                                 weights_t<T> &dw) const {
     weights(x, ix, w);
-    dw[1] = T(1) / (data_[ix + 1] - data_[ix]);
+    dw[1] = idx_(ix);
     dw[0] = -dw[1];
   }
 
@@ -128,10 +127,18 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
 
+  // Number of T values for coordinates and caches, excluding the grid object.
+  // n == 0 denotes an empty grid; nonempty grids require n >= 2.
+  PORTABLE_INLINE_FUNCTION static std::size_t
+  requiredStorageSize(const std::size_t n) {
+    PORTABLE_REQUIRE(n == 0 || n >= 2, "Invalid nonuniform grid size");
+    return n == 0 ? 0 : 4 * n - 4;
+  }
+
   // TODO(JMM): Should we support setting pointer from somewhere
   // else... e.g., when a grid is unamanged?
   std::size_t dynamicMemorySizeInBytes() const {
-    return n_ == 0 ? 0 : (4 * n_ - 4) * sizeof(T);
+    return requiredStorageSize(n_) * sizeof(T);
   }
   std::size_t serializedSizeInBytes() const {
     return sizeof(*this) + dynamicMemorySizeInBytes();
@@ -313,7 +320,6 @@ class NonUniformGrid1D {
   template <typename ExecutionSpace>
   void validate(const ExecutionSpace &E, bool initialize_caches = false) const {
     bool valid = false;
-    // Capture a shallow handle by value, never a host this pointer.
     const auto grid = *this;
     portableReduce(
         "Validate UnstructuredGrid1D", E, 0, 1,
@@ -327,8 +333,7 @@ class NonUniformGrid1D {
   }
 
  private:
-  // Reference access follows the grid's shallow pointer semantics.
-  // Keep cache layout offsets in these accessors only.
+  // Syntactic sugar for cache layouts
   PORTABLE_INLINE_FUNCTION T &dx_(const std::size_t i) const {
     return data_[n_ + i];
   }

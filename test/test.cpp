@@ -239,13 +239,6 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     checkSpacingLifecycle(grid);
     grid.finalize();
   }
-  SECTION("Piecewise grid with duplicated joins and two-point subgrids") {
-    PiecewiseGrid1D<3> grid({{0, 1, 2}, {1, 3, 2}, {3, 4, 3}});
-    checkSpacingLifecycle(grid);
-    REQUIRE(grid.dx(1) == 0);
-    REQUIRE(grid.invCurvatureWidth(0) == 1);
-    REQUIRE(grid.invCurvatureWidth(1) == 0.5);
-  }
   SECTION("Single precision caches") {
     Spiner::NonUniformGrid1D<float> grid({-1, -0.5, 0.25, 2});
     checkSpacingLifecycle(grid);
@@ -265,8 +258,9 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     grid.finalize();
   }
   SECTION("Unmanaged constructors populate or validate all caches") {
-    std::vector<Real> buffer(12, -99);
     const std::array<Real, 4> points{-1, -0.5, 0.25, 2};
+    std::vector<Real> buffer(
+        NonUniformGrid1D::requiredStorageSize(points.size()), -99);
     std::copy(points.begin(), points.end(), buffer.begin());
     NonUniformGrid1D initialized(buffer.data(), points.size(), true);
     checkSpacingCache(initialized);
@@ -284,16 +278,17 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     REQUIRE(buffer == saved);
   }
   SECTION("Unmanaged device buffers initialize and validate in device space") {
-    std::array<Real, 12> host{};
+    std::vector<Real> host(NonUniformGrid1D::requiredStorageSize(4));
+    const auto bytes = host.size() * sizeof(Real);
     host[0] = -1;
     host[1] = -0.5;
     host[2] = 0.25;
     host[3] = 2;
-    auto *p = static_cast<Real *>(PORTABLE_MALLOC(sizeof(host)));
-    portableCopyToDevice(p, host.data(), sizeof(host));
+    auto *p = static_cast<Real *>(PORTABLE_MALLOC(bytes));
+    portableCopyToDevice(p, host.data(), bytes);
     NonUniformGrid1D initialized(p, 4, true, PortsOfCall::Exec::Device{});
     NonUniformGrid1D validated(p, 4, false, PortsOfCall::Exec::Device{});
-    portableCopyToHost(host.data(), p, sizeof(host));
+    portableCopyToHost(host.data(), p, bytes);
     NonUniformGrid1D host_view(host.data(), 4, false);
     checkSpacingCache(host_view);
     initialized.finalize();
@@ -302,8 +297,94 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
   }
 }
 
+template <int N>
+void checkPiecewiseSpacingCache(
+    const PiecewiseGrid1D<N> &grid,
+    const std::vector<RegularGrid1D> &subgrids) {
+  auto device = grid.getOnDevice();
+  int offset = 0;
+  for (int ig = 0; ig < subgrids.size(); ++ig) {
+    const auto &subgrid = subgrids[ig];
+    const int n = subgrid.nPoints();
+    const Real dx = subgrid.dx(0), idx = subgrid.idx(0);
+    const Real interior = subgrid.invCurvatureWidth(0);
+    const Real last = ig + 1 < subgrids.size()
+                          ? PortsOfCall::Robust::ratio(
+                                Real(1), dx + subgrids[ig + 1].dx(0))
+                          : interior;
+    // Both copies of a shared endpoint retain their subgrid's spacing.
+    for (int i = 0; i < n; ++i) {
+      REQUIRE(grid.dx(offset + i) == dx);
+      REQUIRE(grid.idx(offset + i) == idx);
+      if (i + 1 < n) {
+        const Real midpoint = subgrid.x(i) + dx / 2;
+        REQUIRE(grid.index(midpoint) == offset + i);
+        REQUIRE(grid.invCurvatureWidth(offset + i) ==
+                (i == n - 2 ? last : interior));
+      }
+    }
+    int errors = 0;
+    portableReduce(
+        "Piecewise subgrid spacing and join caches", 0, n,
+        PORTABLE_LAMBDA(const int i, int &bad) {
+          if (device.dx(offset + i) != dx) ++bad;
+          if (device.idx(offset + i) != idx) ++bad;
+          if (i + 1 < n && device.invCurvatureWidth(offset + i) !=
+                               (i == n - 2 ? last : interior))
+            ++bad;
+        },
+        errors);
+    REQUIRE(errors == 0);
+    offset += n;
+  }
+  device.finalize();
+}
+
+TEST_CASE("Piecewise grid spacing caches", "[PiecewiseGrid1D][GridSpacing]") {
+  std::vector<RegularGrid1D> subgrids;
+  SECTION("Increasing and decreasing spacing with two-point subgrids") {
+    subgrids = {{0, 1, 2}, {1, 3, 2}, {3, 4, 3}};
+  }
+  SECTION("Equal spacing across a join") {
+    subgrids = {{0, 2, 3}, {2, 4, 3}};
+  }
+  SECTION("A single two-point subgrid has no join") {
+    subgrids = {{0, 2, 2}};
+  }
+  PiecewiseGrid1D<3> grid(subgrids), shallow, deep;
+  checkPiecewiseSpacingCache(grid, subgrids);
+  shallow.shallowCopy(grid);
+  deep.deepCopy(grid);
+  checkPiecewiseSpacingCache(shallow, subgrids);
+  checkPiecewiseSpacingCache(deep, subgrids);
+
+  std::vector<std::byte> buffer(grid.serializedSizeInBytes());
+  REQUIRE(grid.serialize(buffer.data()) == buffer.size());
+  PiecewiseGrid1D<3> restored;
+  REQUIRE(restored.deSerialize(buffer.data()) == buffer.size());
+  checkPiecewiseSpacingCache(restored, subgrids);
+  restored.finalize();
+  shallow.finalize();
+  deep.finalize();
+  grid.finalize();
+}
+
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
   const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
+
+  SECTION("Storage requirements include coordinates and caches") {
+    REQUIRE(NonUniformGrid1D::requiredStorageSize(0) == 0);
+    REQUIRE(NonUniformGrid1D::requiredStorageSize(2) == 4);
+    REQUIRE(NonUniformGrid1D::requiredStorageSize(4) == 12);
+    REQUIRE(Spiner::NonUniformGrid1D<float>::requiredStorageSize(4) == 12);
+    NonUniformGrid1D grid(points);
+    const auto bytes =
+        NonUniformGrid1D::requiredStorageSize(points.size()) * sizeof(Real);
+    REQUIRE(grid.dynamicMemorySizeInBytes() == bytes);
+    REQUIRE(grid.serializedSizeInBytes() == sizeof(grid) + bytes);
+    grid.finalize();
+    REQUIRE(grid.dynamicMemorySizeInBytes() == 0);
+  }
 
   SECTION("An owning grid maps coordinates and computes local weights") {
     NonUniformGrid1D grid(points);
@@ -334,7 +415,8 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
 
   SECTION("A borrowed grid never frees its caller-owned coordinates") {
     std::vector<Real> borrowed_points = points;
-    borrowed_points.resize(4 * points.size() - 4);
+    borrowed_points.resize(
+        NonUniformGrid1D::requiredStorageSize(points.size()));
     NonUniformGrid1D grid(borrowed_points.data(), points.size(), true);
     REQUIRE(grid.dataStatus() == DataStatus::Unmanaged);
     grid.finalize();
@@ -2259,7 +2341,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
-        checkSpacingCache(loaded_grid);
+        checkPiecewiseSpacingCache(loaded_grid, {g1, g2, g3});
         REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
         for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
           REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
@@ -2286,7 +2368,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
           status += H5Fclose(file);
           REQUIRE(status == H5_SUCCESS);
 
-          checkSpacingCache(loaded_grid);
+          checkPiecewiseSpacingCache(loaded_grid, {g1});
           REQUIRE(loaded_grid.min() == g1.min());
           REQUIRE(loaded_grid.max() == g1.max());
           REQUIRE(loaded_grid.nPoints() == g1.nPoints());
