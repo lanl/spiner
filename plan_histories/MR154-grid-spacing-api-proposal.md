@@ -1,9 +1,6 @@
 # Grid spacing and reciprocal API proposal
 
-Copyright 2026 Triad National Security, LLC. All rights reserved.
 Generative AI was used to assist with this document.
-
-Status: implemented and validated on CPU; GPU validation unavailable.
 
 ## API and numerical contract
 
