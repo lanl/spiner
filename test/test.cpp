@@ -158,6 +158,150 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   }
 }
 
+// Exercise cached quantities after each supported ownership/transport path.
+template <class Grid>
+void checkSpacingCache(const Grid &g) {
+  using T = typename Grid::ValueType;
+  using PortsOfCall::Robust::ratio;
+  const T tol = 32 * std::numeric_limits<T>::epsilon();
+  for (int i = 0; i + 1 < g.nPoints(); ++i) {
+    const T width = g.x(i + 1) - g.x(i);
+    REQUIRE(std::abs(g.dx(i) - width) <= tol * std::abs(width));
+    const T inverse = ratio(T(1), width);
+    REQUIRE(std::abs(g.idx(i) - inverse) <= tol * std::abs(inverse));
+    if (i + 2 < g.nPoints()) {
+      const T curvature = ratio(T(1), width + (g.x(i + 2) - g.x(i + 1)));
+      REQUIRE(std::abs(g.invCurvatureWidth(i) - curvature) <=
+              tol * std::abs(curvature));
+    }
+  }
+}
+
+template <class Grid>
+void checkSpacingLifecycle(Grid &g) {
+  checkSpacingCache(g);
+  Grid shallow, deep;
+  shallow.shallowCopy(g);
+  deep.deepCopy(g);
+  checkSpacingCache(shallow);
+  checkSpacingCache(deep);
+  shallow.finalize();
+  deep.finalize();
+  checkSpacingCache(g);
+
+  std::vector<std::byte> buffer(g.serializedSizeInBytes());
+  REQUIRE(g.serialize(buffer.data()) == buffer.size());
+  const auto saved_buffer = buffer;
+  Grid restored;
+  REQUIRE(restored.deSerialize(buffer.data()) == buffer.size());
+  REQUIRE(buffer == saved_buffer);
+  checkSpacingCache(restored);
+  restored.finalize();
+
+  auto device = g.getOnDevice();
+  int errors = 0;
+  const int n = g.nPoints();
+  portableReduce(
+      "Validate transported grid caches", 0, n - 1,
+      PORTABLE_LAMBDA(const int i, int &bad) {
+        using T = typename Grid::ValueType;
+        using PortsOfCall::Robust::ratio;
+        const T width = device.x(i + 1) - device.x(i);
+        const T inv = ratio(T(1), width);
+        const T tol = 32 * std::numeric_limits<T>::epsilon();
+        if (std::abs(device.dx(i) - width) > tol * std::abs(width)) ++bad;
+        if (std::abs(device.idx(i) - inv) > tol * std::abs(inv)) ++bad;
+        if (i + 2 < n) {
+          const T c = ratio(T(1), width + (device.x(i + 2) - device.x(i + 1)));
+          if (std::abs(device.invCurvatureWidth(i) - c) > tol * std::abs(c))
+            ++bad;
+        }
+      },
+      errors);
+  REQUIRE(errors == 0);
+  device.finalize();
+}
+
+TEST_CASE("Grid spacing caches", "[GridSpacing]") {
+  SECTION("Regular grid") {
+    RegularGrid1D grid(-1, 3, 9);
+    checkSpacingLifecycle(grid);
+  }
+  SECTION("Nonuniform grid") {
+    NonUniformGrid1D grid({-1, -0.5, 0.25, 2});
+    checkSpacingLifecycle(grid);
+    REQUIRE(grid.dynamicMemorySizeInBytes() == (4 * 4 - 4) * sizeof(Real));
+    grid.finalize();
+  }
+  SECTION("Fast nonuniform grid") {
+    FastNonUniformGrid1D grid({-1, -0.5, 0.25, 2});
+    REQUIRE(grid.usesFastLookup());
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Piecewise grid with duplicated joins and two-point subgrids") {
+    PiecewiseGrid1D<3> grid({{0, 1, 2}, {1, 3, 2}, {3, 4, 3}});
+    checkSpacingLifecycle(grid);
+    REQUIRE(grid.dx(1) == 0);
+    REQUIRE(grid.invCurvatureWidth(0) == 1);
+    REQUIRE(grid.invCurvatureWidth(1) == 0.5);
+  }
+  SECTION("Single precision caches") {
+    Spiner::NonUniformGrid1D<float> grid({-1, -0.5, 0.25, 2});
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Two-point grids have no curvature cache") {
+    NonUniformGrid1D grid({0, 2});
+    REQUIRE(grid.dynamicMemorySizeInBytes() == 4 * sizeof(Real));
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Tiny spacings retain denominator guards") {
+    const Real small = std::numeric_limits<Real>::min();
+    NonUniformGrid1D grid({0, small, 2 * small});
+    checkSpacingLifecycle(grid);
+    REQUIRE(std::isfinite(grid.idx(0)));
+    grid.finalize();
+  }
+  SECTION("Unmanaged constructors populate or validate all caches") {
+    std::vector<Real> buffer(12, -99);
+    const std::array<Real, 4> points{-1, -0.5, 0.25, 2};
+    std::copy(points.begin(), points.end(), buffer.begin());
+    NonUniformGrid1D initialized(buffer.data(), points.size(), true);
+    checkSpacingCache(initialized);
+    const auto saved = buffer;
+    NonUniformGrid1D validated(buffer.data(), points.size(), false);
+    REQUIRE(buffer == saved);
+    checkSpacingLifecycle(validated);
+    buffer[7] = -1; // Invalid idx[0], detected by constructor's validator.
+    REQUIRE_FALSE(validated.isWellFormed());
+    buffer[7] = std::numeric_limits<Real>::quiet_NaN();
+    REQUIRE_FALSE(validated.isWellFormed());
+    buffer = saved;
+    initialized.finalize();
+    validated.finalize();
+    REQUIRE(buffer == saved);
+  }
+  SECTION("Unmanaged device buffers initialize and validate in device space") {
+    std::array<Real, 12> host{};
+    host[0] = -1;
+    host[1] = -0.5;
+    host[2] = 0.25;
+    host[3] = 2;
+    auto *p = static_cast<Real *>(PORTABLE_MALLOC(sizeof(host)));
+    portableCopyToDevice(p, host.data(), sizeof(host));
+    NonUniformGrid1D initialized(p, 4, true, PortsOfCall::Exec::Device{});
+    NonUniformGrid1D validated(p, 4, false, PortsOfCall::Exec::Device{});
+    portableCopyToHost(host.data(), p, sizeof(host));
+    NonUniformGrid1D host_view(host.data(), 4, false);
+    checkSpacingCache(host_view);
+    initialized.finalize();
+    validated.finalize();
+    PORTABLE_FREE(p);
+  }
+}
+
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
   const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
 
@@ -190,7 +334,8 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
 
   SECTION("A borrowed grid never frees its caller-owned coordinates") {
     std::vector<Real> borrowed_points = points;
-    NonUniformGrid1D grid(borrowed_points.data(), borrowed_points.size());
+    borrowed_points.resize(4 * points.size() - 4);
+    NonUniformGrid1D grid(borrowed_points.data(), points.size(), true);
     REQUIRE(grid.dataStatus() == DataStatus::Unmanaged);
     grid.finalize();
     REQUIRE(std::abs(borrowed_points[2] - 0.25) <= EPSTEST);
@@ -843,6 +988,271 @@ TEST_CASE("DataBox Basics", "[DataBox]") {
       }
     }
     db.finalize(); // free original data
+  }
+}
+
+// A distinguishable policy verifies that DataBox dispatches both overloads
+// and retains the policy through operations that return another DataBox.
+struct OffsetGradStencil {
+  template <typename T, typename Grids, typename Array>
+  PORTABLE_FORCEINLINE_FUNCTION static Spiner::InterpolationHelpers::Result1D<T>
+  interpToRealWithGrads(T x, const Grids &g, const Array &a) noexcept {
+    auto result =
+        Spiner::InterpolationStencils::Linear::interpToRealWithGrads(x, g, a);
+    result.value += T(10);
+    result.d_dx1 += T(20);
+    return result;
+  }
+  template <typename T, typename Grids, typename Array>
+  PORTABLE_FORCEINLINE_FUNCTION static Spiner::InterpolationHelpers::Result2D<T>
+  interpToRealWithGrads(T y, T x, const Grids &g, const Array &a) noexcept {
+    auto result = Spiner::InterpolationStencils::Linear::interpToRealWithGrads(
+        y, x, g, a);
+    result.value += T(10);
+    result.d_dx2 += T(30);
+    result.d_dx1 += T(20);
+    return result;
+  }
+};
+
+TEST_CASE("DataBox gradient stencil selection", "[DataBox][Gradients]") {
+  using Box = Spiner::DataBox<Real, RegularGrid1D, OffsetGradStencil>;
+  static_assert(std::is_same_v<Box::GradStencilType, OffsetGradStencil>);
+  static_assert(std::is_same_v<DataBox::GradStencilType,
+                               Spiner::InterpolationStencils::Linear>);
+  Box plane(2, 2);
+  plane.setRange(0, Real(0), Real(1), 2);
+  plane.setRange(1, Real(0), Real(2), 2);
+  for (int j = 0; j < 2; ++j)
+    for (int i = 0; i < 2; ++i)
+      plane(j, i) = Real(2 * i + 6 * j);
+  const auto [value, dy, dx] = plane.interpToRealWithGrads(Real(1), Real(0.5));
+  REQUIRE(value == Real(14));
+  REQUIRE(dy == Real(33));
+  REQUIRE(dx == Real(22));
+  REQUIRE(plane.interpToReal(Real(1), Real(0.5)) == Real(4));
+
+  auto line = plane.slice(0);
+  static_assert(std::is_same_v<decltype(line), Box>);
+  const auto [line_value, line_dx] = line.interpToRealWithGrads(Real(0.5));
+  REQUIRE(line_value == Real(11));
+  REQUIRE(line_dx == Real(22));
+  Box copy(plane), assigned;
+  assigned = copy;
+  REQUIRE(assigned.interpToRealWithGrads(Real(1), Real(0.5)).value == Real(14));
+  Box deep;
+  deep.deepCopy(plane);
+  REQUIRE(deep.interpToRealWithGrads(Real(1), Real(0.5)).d_dx2 == Real(33));
+
+  auto device = Spiner::getOnDeviceDataBox(plane);
+  static_assert(std::is_same_v<decltype(device), Box>);
+  Real error = 0;
+  portableReduce(
+      "Custom gradient stencil", 0, 1,
+      PORTABLE_LAMBDA(const int, Real &sum) {
+        const auto [v, dy, dx] =
+            device.interpToRealWithGrads(Real(1), Real(0.5));
+        const auto row = device.slice(0);
+        const auto [v1, dx1] = row.interpToRealWithGrads(Real(0.5));
+        sum += std::abs(v - Real(14)) + std::abs(dy - Real(33)) +
+               std::abs(dx - Real(22)) + std::abs(v1 - Real(11)) +
+               std::abs(dx1 - Real(22));
+      },
+      error);
+  REQUIRE(error == Real(0));
+  device.finalizeGrids();
+  device.finalize();
+  deep.finalizeGrids();
+  deep.finalize();
+  plane.finalize();
+}
+
+// Secant extension of a quadratic is an independent analytic reference.
+PORTABLE_INLINE_FUNCTION Spiner::InterpolationHelpers::Result1D<Real>
+rationalQuadraticReference(Real x, Real lo, Real next, Real prev, Real hi) {
+  if (x < lo) return {lo * lo + (x - lo) * (lo + next), lo + next};
+  if (x > hi) return {hi * hi + (x - hi) * (prev + hi), prev + hi};
+  return {x * x, 2 * x};
+}
+
+TEST_CASE("Rational 1D formulas and limiter", "[DataBox][Rational]") {
+  using Box = Spiner::DataBox<Real, RegularGrid1D,
+                              Spiner::InterpolationStencils::Rational>;
+  Box line(4);
+  line.setRange(0, Real(0), Real(3), 4);
+  const std::array<std::array<Real, 4>, 5> tables = {{{{0, -1, -4, -9}},
+                                                      {{0, 1, 5, 10}},
+                                                      {{0, 1, 2, 8}},
+                                                      {{0, 3, 4, 7}},
+                                                      {{2, 2, 2, 2}}}};
+  for (const auto &f : tables) {
+    for (int i = 0; i < 4; ++i)
+      line(i) = f[i];
+    for (int i = 0; i < 4; ++i)
+      REQUIRE(std::abs(line.interpToRealWithGrads(Real(i)).value - f[i]) <
+              1e-12);
+    for (Real x : {Real(0.25), Real(1.25), Real(1.75), Real(2.75)}) {
+      const Real h = 1e-5;
+      const auto r = line.interpToRealWithGrads(x);
+      const Real fd = (line.interpToRealWithGrads(x + h).value -
+                       line.interpToRealWithGrads(x - h).value) /
+                      (2 * h);
+      REQUIRE(std::abs(r.d_dx1 - fd) < 1e-7);
+    }
+  }
+  for (int i = 0; i < 4; ++i)
+    line(i) = -Real(i * i);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.25)).d_dx1 + 2.5) < 1e-12);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1)).d_dx1 + 2) < 1e-12);
+  for (int i = 0; i < 4; ++i)
+    line(i) = tables[1][i];
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.5)).value - 2.8) < 1e-12);
+  REQUIRE(std::abs(line.interpToRealWithGrads(Real(1.5)).d_dx1 - 4.24) < 1e-12);
+  // Same four-point data away from the lower boundary: no limiter.
+  Box interior(6);
+  interior.setRange(0, Real(-1), Real(4), 6);
+  for (int i = 0; i < 4; ++i)
+    interior(i + 1) = tables[1][i];
+  interior(0) = -1;
+  interior(5) = 15;
+  REQUIRE(std::abs(interior.interpToRealWithGrads(Real(1.5)).value - 2.8125) <
+          1e-12);
+  interior.finalize();
+  line.finalize();
+}
+
+// Grids are borrowed on host. Device boxes own their deep-copied grids.
+template <typename Grid>
+void checkRationalQuadratics(const Grid &gx, const Grid &gy) {
+  using Box =
+      Spiner::DataBox<Real, Grid, Spiner::InterpolationStencils::Rational>;
+  const int nx = gx.nPoints(), ny = gy.nPoints();
+  Box line(nx), plane(ny, nx), transposed(nx, ny);
+  line.setRange(0, gx);
+  plane.setRange(0, gx);
+  plane.setRange(1, gy);
+  transposed.setRange(0, gy);
+  transposed.setRange(1, gx);
+  for (int i = 0; i < nx; ++i) {
+    const Real x = gx.x(i);
+    line(i) = -x * x;
+    for (int j = 0; j < ny; ++j) {
+      const Real y = gy.x(j);
+      plane(j, i) = x * x - 2 * y * y + 0.1 * x * y;
+      transposed(i, j) = plane(j, i);
+    }
+  }
+  std::vector<Real> xs = {gx.min() - 1, gx.max() + 1};
+  std::vector<Real> ys = {gy.min() - 1, gy.max() + 1};
+  for (int i = 0; i < nx; ++i) {
+    xs.push_back(gx.x(i));
+    xs.push_back(std::nextafter(gx.x(i), gx.min() - 1));
+    xs.push_back(std::nextafter(gx.x(i), gx.max() + 1));
+    if (i + 1 < nx) xs.push_back(gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i)));
+  }
+  for (int j = 0; j < ny; ++j) {
+    ys.push_back(gy.x(j));
+    ys.push_back(std::nextafter(gy.x(j), gy.min() - 1));
+    ys.push_back(std::nextafter(gy.x(j), gy.max() + 1));
+    if (j + 1 < ny) ys.push_back(gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j)));
+  }
+  for (Real x : xs) {
+    const auto rx = rationalQuadraticReference(x, gx.min(), gx.x(1),
+                                               gx.x(nx - 2), gx.max());
+    const auto r = line.interpToRealWithGrads(x);
+    REQUIRE(std::abs(r.value + rx.value) < 1e-9);
+    REQUIRE(std::abs(r.d_dx1 + rx.d_dx1) < 1e-9);
+    for (Real y : ys) {
+      const auto ry = rationalQuadraticReference(y, gy.min(), gy.x(1),
+                                                 gy.x(ny - 2), gy.max());
+      const auto p = plane.interpToRealWithGrads(y, x);
+      REQUIRE(std::abs(p.value - (rx.value - 2 * ry.value + 0.1 * x * y)) <
+              1e-9);
+      REQUIRE(std::abs(p.d_dx1 - (rx.d_dx1 + 0.1 * y)) < 1e-9);
+      REQUIRE(std::abs(p.d_dx2 - (-2 * ry.d_dx1 + 0.1 * x)) < 1e-9);
+      const auto t = transposed.interpToRealWithGrads(x, y);
+      REQUIRE(std::abs(t.value - p.value) < 1e-9);
+      REQUIRE(std::abs(t.d_dx1 - p.d_dx2) < 1e-9);
+      REQUIRE(std::abs(t.d_dx2 - p.d_dx1) < 1e-9);
+    }
+  }
+  auto device = Spiner::getOnDeviceDataBox(plane);
+  auto device_line = Spiner::getOnDeviceDataBox(line);
+  // Capture only scalar host metadata; all array reads use device copies.
+  const Real xmin = gx.min(), xmax = gx.max(), xnext = gx.x(1),
+             xprev = gx.x(nx - 2);
+  const Real ymin = gy.min(), ymax = gy.max(), ynext = gy.x(1),
+             yprev = gy.x(ny - 2);
+  Real error = 0;
+  portableReduce(
+      "Rational device values and derivatives", 0, 49,
+      PORTABLE_LAMBDA(const int k, Real &sum) {
+        const Real x = xmin - 1 + (xmax - xmin + 2) * (k % 7) / 6;
+        const Real y = ymin - 1 + (ymax - ymin + 2) * (k / 7) / 6;
+        const auto rx = rationalQuadraticReference(x, xmin, xnext, xprev, xmax);
+        const auto ry = rationalQuadraticReference(y, ymin, ynext, yprev, ymax);
+        const auto p = device.interpToRealWithGrads(y, x);
+        const auto l = device_line.interpToRealWithGrads(x);
+        sum += std::abs(p.value - (rx.value - 2 * ry.value + 0.1 * x * y)) +
+               std::abs(p.d_dx1 - (rx.d_dx1 + 0.1 * y)) +
+               std::abs(p.d_dx2 - (-2 * ry.d_dx1 + 0.1 * x)) +
+               std::abs(l.value + rx.value) + std::abs(l.d_dx1 + rx.d_dx1);
+      },
+      error);
+  REQUIRE(error < 1e-7);
+  device.finalizeGrids();
+  device.finalize();
+  device_line.finalizeGrids();
+  device_line.finalize();
+  // Nonseparable data exercises unequal and mixed-sign curvatures in Eq. (18).
+  for (int j = 0; j < ny; ++j)
+    for (int i = 0; i < nx; ++i) {
+      plane(j, i) = std::sin(Real(i + 2 * j)) + Real(i * j * j);
+      transposed(i, j) = plane(j, i);
+    }
+  for (int j = 0; j + 1 < ny; ++j)
+    for (int i = 0; i + 1 < nx; ++i) {
+      const Real x = gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i));
+      const Real y = gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j));
+      const Real hx = 1e-5 * (gx.x(i + 1) - gx.x(i));
+      const Real hy = 1e-5 * (gy.x(j + 1) - gy.x(j));
+      const auto r = plane.interpToRealWithGrads(y, x);
+      const auto t = transposed.interpToRealWithGrads(x, y);
+      const Real dx = (plane.interpToRealWithGrads(y, x + hx).value -
+                       plane.interpToRealWithGrads(y, x - hx).value) /
+                      (2 * hx);
+      const Real dy = (plane.interpToRealWithGrads(y + hy, x).value -
+                       plane.interpToRealWithGrads(y - hy, x).value) /
+                      (2 * hy);
+      REQUIRE(std::abs(r.d_dx1 - dx) < 1e-6);
+      REQUIRE(std::abs(r.d_dx2 - dy) < 1e-6);
+      REQUIRE(std::abs(r.value - t.value) < 1e-9);
+      REQUIRE(std::abs(r.d_dx1 - t.d_dx2) < 1e-9);
+      REQUIRE(std::abs(r.d_dx2 - t.d_dx1) < 1e-9);
+    }
+  line.finalize();
+  plane.finalize();
+  transposed.finalize();
+}
+
+TEST_CASE("Rational rectangular grids and linear extrapolation",
+          "[DataBox][Rational]") {
+  SECTION("Regular") {
+    checkRationalQuadratics(RegularGrid1D(1, 13, 7), RegularGrid1D(2, 8, 4));
+  }
+  SECTION("Nonuniform") {
+    NonUniformGrid1D gx({1, 1.5, 3, 4, 6, 10, 13}), gy({2, 3, 5, 8});
+    checkRationalQuadratics(gx, gy);
+    gx.finalize();
+    gy.finalize();
+  }
+  SECTION("Fast nonuniform") {
+    FastNonUniformGrid1D gx({1, 1.5, 3, 4, 6, 10, 13}), gy({2, 3, 5, 8});
+    REQUIRE(gx.usesFastLookup());
+    REQUIRE(gy.usesFastLookup());
+    checkRationalQuadratics(gx, gy);
+    gx.finalize();
+    gy.finalize();
   }
 }
 
@@ -1758,6 +2168,7 @@ TEST_CASE("NonUniformGrid1D HDF5", "[NonUniformGrid1D][HDF5]") {
   status = loaded.loadHDF(file, grid_name);
   status += H5Fclose(file);
   REQUIRE(status == H5_SUCCESS);
+  checkSpacingCache(loaded);
   REQUIRE(loaded.nPoints() == grid.nPoints());
   for (std::size_t i = 0; i < grid.nPoints(); ++i)
     REQUIRE(loaded.x(i) == grid.x(i));
@@ -1806,6 +2217,7 @@ TEST_CASE("FastNonUniformGrid1D HDF5", "[FastNonUniformGrid1D][HDF5]") {
   status = loaded.loadHDF(file, grid_name);
   status += H5Fclose(file);
   REQUIRE(status == H5_SUCCESS);
+  checkSpacingCache(loaded);
   REQUIRE(loaded.usesFastLookup());
   REQUIRE(loaded.scale() == grid.scale());
   REQUIRE(loaded.maxLookupRatio() == grid.maxLookupRatio());
@@ -1847,6 +2259,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
+        checkSpacingCache(loaded_grid);
         REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
         for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
           REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
@@ -1873,6 +2286,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
           status += H5Fclose(file);
           REQUIRE(status == H5_SUCCESS);
 
+          checkSpacingCache(loaded_grid);
           REQUIRE(loaded_grid.min() == g1.min());
           REQUIRE(loaded_grid.max() == g1.max());
           REQUIRE(loaded_grid.nPoints() == g1.nPoints());

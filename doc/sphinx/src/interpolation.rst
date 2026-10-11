@@ -1,17 +1,6 @@
-.. ======================================================================
-..  © (or copyright) 2019-2026. Triad National Security, LLC. All rights
-..  reserved.  This program was produced under U.S. Government contract
-..  89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
-..  operated by Triad National Security, LLC for the U.S.  Department of
-..  Energy/National Nuclear Security Administration. All rights in the
-..  program are reserved by Triad National Security, LLC, and the
-..  U.S. Department of Energy/National Nuclear Security
-..  Administration. The Government is granted for itself and others acting
-..  on its behalf a nonexclusive, paid-up, irrevocable worldwide license
-..  in this material to reproduce, prepare derivative works, distribute
-..  copies to the public, perform publicly and display publicly, and to
-..  permit others to do so.
-.. ======================================================================
+.. Copyright 2026 Triad National Security, LLC. All rights reserved.
+
+.. Generative AI was used to assist with modifications to this document.
 
 .. _interpolation:
 
@@ -80,6 +69,38 @@ interval of width ``h``, these are ``-1/h`` and ``1/h`` respectively.
 Custom linear grid types can implement this same interface to support
 :ref:`DataBox interpolation with gradients
 <interpolation-with-gradients>`.
+
+Cached interval geometry
+------------------------
+
+All four grid types provide portable, const accessors:
+
+.. code-block:: cpp
+
+   T dx(int i) const;
+   T idx(int i) const;
+   T invCurvatureWidth(int i) const;
+
+``dx(i)`` is the width of interval ``i``. ``idx(i)`` is its guarded reciprocal;
+``invCurvatureWidth(i)`` is the guarded reciprocal of ``dx(i) + dx(i+1)``.
+Reciprocals use ``PortsOfCall::Robust::ratio(T(1), width)``. Valid indices are
+``0 <= i < nPoints()-1`` for ``dx`` and ``idx``, and
+``0 <= i < nPoints()-2`` for ``invCurvatureWidth``. Indices are not clamped.
+
+Nonuniform grids store coordinate differences and their reciprocals in caches;
+fast nonuniform grids delegate to those caches. Regular grids return stored
+scalar geometry. Their width can differ slightly from subtracting two rounded
+``x(i)`` values. Piecewise grids delegate within subgrids and store geometry at
+joins, preserving both copies of shared endpoints and their intervening interval.
+
+For a nonuniform grid with ``N >= 2``, one allocation holds ``4*N-4``
+values: ``coordinates[N]``, ``dx[N-1]``, ``idx[N-1]``,
+``invCurvatureWidth[N-2]``, in that order.  Copies, device transfers,
+explicit finalization, and binary serialization handle this whole
+allocation. HDF5 stores coordinates and rebuilds caches when loading.
+Binary buffers are only compatible with matching Spiner
+builds. Coordinates are assumed unchanged during use; existing mutable
+pointer access is retained.
 
 ``RegularGrid1D``
 ------------------
@@ -151,7 +172,7 @@ copy of the points:
 
    NonUniformGrid1D grid({-1.0, -0.5, 0.25, 2.0});
 
-Construction always allocates host coordinates. Use ``getOnDevice()`` when a
+These constructors allocate host coordinates and geometry caches. Use ``getOnDevice()`` when a
 device copy is needed:
 
 .. code-block:: cpp
@@ -160,19 +181,26 @@ device copy is needed:
    NonUniformGrid1D device_grid = host_grid.getOnDevice();
 
 The coordinates must contain at least two finite, strictly increasing values.
-The pointer constructor borrows caller-owned memory instead and validates those
-requirements in the supplied execution space (the host by default):
+The pointer constructor requires caller-owned memory for the entire coordinate
+and cache layout. Its required boolean selects cache initialization (``true``)
+or validation of already populated caches without writes (``false``). Both modes
+validate coordinates, using the supplied execution space (host by default):
 
 .. code-block:: cpp
 
    std::vector<double> points = {-1.0, -0.5, 0.25, 2.0};
-   NonUniformGrid1D view(points.data(), points.size());
+   const auto n = points.size();
+   points.resize(4 * n - 4); // storage for coordinates AND caches
+   NonUniformGrid1D view(points.data(), n, true);
+   NonUniformGrid1D second_view(points.data(), n, false);
 
 For device-resident points, pass the execution space that can access them to
-the pointer constructor. The supplied execution space must match the memory
+the pointer constructor as its fourth argument, after the boolean. The supplied execution space must match the memory
 space of the borrowed points; using an inaccessible pointer can cause a
 segmentation fault. Borrowed points must remain alive and unchanged for the
-grid's lifetime.
+grid's lifetime. Cache validation rejects nonfinite entries and compares against
+the formulas above using a relative tolerance of ``PortsOfCall::Robust::EPS<T>()`` (with exact
+equality accepted). The caller guarantees buffer capacity; no allocation occurs.
 
 Like ``DataBox``, ordinary grid copies are shallow reference-style copies
 that also copy the ownership status, so the copy and the original both report
@@ -189,7 +217,7 @@ finalizing it never frees them, ``other`` remains responsible for them, and
 
 .. cpp:function:: void NonUniformGrid1D::deepCopy(const NonUniformGrid1D& other)
 
-allocates independent host-owned coordinate storage and copies the coordinates
+allocates independent host-owned storage and copies coordinates and caches
 from a host-resident ``other`` grid. It must not be used with a device-resident
 source; use ``getOnDevice()`` to make a deep device copy.
 

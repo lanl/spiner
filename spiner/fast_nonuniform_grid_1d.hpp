@@ -110,6 +110,16 @@ class FastNonUniformGrid1D {
     dw[0] = -dw[1];
   }
 
+  PORTABLE_INLINE_FUNCTION T dx(const int i) const {
+    return coordinates_.dx(i);
+  }
+  PORTABLE_INLINE_FUNCTION T idx(const int i) const {
+    return coordinates_.idx(i);
+  }
+  PORTABLE_INLINE_FUNCTION T invCurvatureWidth(const int i) const {
+    return coordinates_.invCurvatureWidth(i);
+  }
+
   PORTABLE_INLINE_FUNCTION T min() const { return coordinates_.min(); }
   PORTABLE_INLINE_FUNCTION T max() const { return coordinates_.max(); }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const {
