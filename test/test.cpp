@@ -158,6 +158,150 @@ TEST_CASE("RegularGrid1D", "[RegularGrid1D]") {
   }
 }
 
+// Exercise cached quantities after each supported ownership/transport path.
+template <class Grid>
+void checkSpacingCache(const Grid &g) {
+  using T = typename Grid::ValueType;
+  using PortsOfCall::Robust::ratio;
+  const T tol = 32 * std::numeric_limits<T>::epsilon();
+  for (int i = 0; i + 1 < g.nPoints(); ++i) {
+    const T width = g.x(i + 1) - g.x(i);
+    REQUIRE(std::abs(g.dx(i) - width) <= tol * std::abs(width));
+    const T inverse = ratio(T(1), width);
+    REQUIRE(std::abs(g.idx(i) - inverse) <= tol * std::abs(inverse));
+    if (i + 2 < g.nPoints()) {
+      const T curvature = ratio(T(1), width + (g.x(i + 2) - g.x(i + 1)));
+      REQUIRE(std::abs(g.invCurvatureWidth(i) - curvature) <=
+              tol * std::abs(curvature));
+    }
+  }
+}
+
+template <class Grid>
+void checkSpacingLifecycle(Grid &g) {
+  checkSpacingCache(g);
+  Grid shallow, deep;
+  shallow.shallowCopy(g);
+  deep.deepCopy(g);
+  checkSpacingCache(shallow);
+  checkSpacingCache(deep);
+  shallow.finalize();
+  deep.finalize();
+  checkSpacingCache(g);
+
+  std::vector<std::byte> buffer(g.serializedSizeInBytes());
+  REQUIRE(g.serialize(buffer.data()) == buffer.size());
+  const auto saved_buffer = buffer;
+  Grid restored;
+  REQUIRE(restored.deSerialize(buffer.data()) == buffer.size());
+  REQUIRE(buffer == saved_buffer);
+  checkSpacingCache(restored);
+  restored.finalize();
+
+  auto device = g.getOnDevice();
+  int errors = 0;
+  const int n = g.nPoints();
+  portableReduce(
+      "Validate transported grid caches", 0, n - 1,
+      PORTABLE_LAMBDA(const int i, int &bad) {
+        using T = typename Grid::ValueType;
+        using PortsOfCall::Robust::ratio;
+        const T width = device.x(i + 1) - device.x(i);
+        const T inv = ratio(T(1), width);
+        const T tol = 32 * std::numeric_limits<T>::epsilon();
+        if (std::abs(device.dx(i) - width) > tol * std::abs(width)) ++bad;
+        if (std::abs(device.idx(i) - inv) > tol * std::abs(inv)) ++bad;
+        if (i + 2 < n) {
+          const T c = ratio(T(1), width + (device.x(i + 2) - device.x(i + 1)));
+          if (std::abs(device.invCurvatureWidth(i) - c) > tol * std::abs(c))
+            ++bad;
+        }
+      },
+      errors);
+  REQUIRE(errors == 0);
+  device.finalize();
+}
+
+TEST_CASE("Grid spacing caches", "[GridSpacing]") {
+  SECTION("Regular grid") {
+    RegularGrid1D grid(-1, 3, 9);
+    checkSpacingLifecycle(grid);
+  }
+  SECTION("Nonuniform grid") {
+    NonUniformGrid1D grid({-1, -0.5, 0.25, 2});
+    checkSpacingLifecycle(grid);
+    REQUIRE(grid.dynamicMemorySizeInBytes() == (4 * 4 - 4) * sizeof(Real));
+    grid.finalize();
+  }
+  SECTION("Fast nonuniform grid") {
+    FastNonUniformGrid1D grid({-1, -0.5, 0.25, 2});
+    REQUIRE(grid.usesFastLookup());
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Piecewise grid with duplicated joins and two-point subgrids") {
+    PiecewiseGrid1D<3> grid({{0, 1, 2}, {1, 3, 2}, {3, 4, 3}});
+    checkSpacingLifecycle(grid);
+    REQUIRE(grid.dx(1) == 0);
+    REQUIRE(grid.invCurvatureWidth(0) == 1);
+    REQUIRE(grid.invCurvatureWidth(1) == 0.5);
+  }
+  SECTION("Single precision caches") {
+    Spiner::NonUniformGrid1D<float> grid({-1, -0.5, 0.25, 2});
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Two-point grids have no curvature cache") {
+    NonUniformGrid1D grid({0, 2});
+    REQUIRE(grid.dynamicMemorySizeInBytes() == 4 * sizeof(Real));
+    checkSpacingLifecycle(grid);
+    grid.finalize();
+  }
+  SECTION("Tiny spacings retain denominator guards") {
+    const Real small = std::numeric_limits<Real>::min();
+    NonUniformGrid1D grid({0, small, 2 * small});
+    checkSpacingLifecycle(grid);
+    REQUIRE(std::isfinite(grid.idx(0)));
+    grid.finalize();
+  }
+  SECTION("Unmanaged constructors populate or validate all caches") {
+    std::vector<Real> buffer(12, -99);
+    const std::array<Real, 4> points{-1, -0.5, 0.25, 2};
+    std::copy(points.begin(), points.end(), buffer.begin());
+    NonUniformGrid1D initialized(buffer.data(), points.size(), true);
+    checkSpacingCache(initialized);
+    const auto saved = buffer;
+    NonUniformGrid1D validated(buffer.data(), points.size(), false);
+    REQUIRE(buffer == saved);
+    checkSpacingLifecycle(validated);
+    buffer[7] = -1; // Invalid idx[0], detected by constructor's validator.
+    REQUIRE_FALSE(validated.isWellFormed());
+    buffer[7] = std::numeric_limits<Real>::quiet_NaN();
+    REQUIRE_FALSE(validated.isWellFormed());
+    buffer = saved;
+    initialized.finalize();
+    validated.finalize();
+    REQUIRE(buffer == saved);
+  }
+  SECTION("Unmanaged device buffers initialize and validate in device space") {
+    std::array<Real, 12> host{};
+    host[0] = -1;
+    host[1] = -0.5;
+    host[2] = 0.25;
+    host[3] = 2;
+    auto *p = static_cast<Real *>(PORTABLE_MALLOC(sizeof(host)));
+    portableCopyToDevice(p, host.data(), sizeof(host));
+    NonUniformGrid1D initialized(p, 4, true, PortsOfCall::Exec::Device{});
+    NonUniformGrid1D validated(p, 4, false, PortsOfCall::Exec::Device{});
+    portableCopyToHost(host.data(), p, sizeof(host));
+    NonUniformGrid1D host_view(host.data(), 4, false);
+    checkSpacingCache(host_view);
+    initialized.finalize();
+    validated.finalize();
+    PORTABLE_FREE(p);
+  }
+}
+
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
   const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
 
@@ -190,7 +334,8 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
 
   SECTION("A borrowed grid never frees its caller-owned coordinates") {
     std::vector<Real> borrowed_points = points;
-    NonUniformGrid1D grid(borrowed_points.data(), borrowed_points.size());
+    borrowed_points.resize(4 * points.size() - 4);
+    NonUniformGrid1D grid(borrowed_points.data(), points.size(), true);
     REQUIRE(grid.dataStatus() == DataStatus::Unmanaged);
     grid.finalize();
     REQUIRE(std::abs(borrowed_points[2] - 0.25) <= EPSTEST);
@@ -1001,10 +1146,14 @@ void checkRationalQuadratics(const Grid &gx, const Grid &gy) {
   std::vector<Real> ys = {gy.min() - 1, gy.max() + 1};
   for (int i = 0; i < nx; ++i) {
     xs.push_back(gx.x(i));
+    xs.push_back(std::nextafter(gx.x(i), gx.min() - 1));
+    xs.push_back(std::nextafter(gx.x(i), gx.max() + 1));
     if (i + 1 < nx) xs.push_back(gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i)));
   }
   for (int j = 0; j < ny; ++j) {
     ys.push_back(gy.x(j));
+    ys.push_back(std::nextafter(gy.x(j), gy.min() - 1));
+    ys.push_back(std::nextafter(gy.x(j), gy.max() + 1));
     if (j + 1 < ny) ys.push_back(gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j)));
   }
   for (Real x : xs) {
@@ -2019,6 +2168,7 @@ TEST_CASE("NonUniformGrid1D HDF5", "[NonUniformGrid1D][HDF5]") {
   status = loaded.loadHDF(file, grid_name);
   status += H5Fclose(file);
   REQUIRE(status == H5_SUCCESS);
+  checkSpacingCache(loaded);
   REQUIRE(loaded.nPoints() == grid.nPoints());
   for (std::size_t i = 0; i < grid.nPoints(); ++i)
     REQUIRE(loaded.x(i) == grid.x(i));
@@ -2067,6 +2217,7 @@ TEST_CASE("FastNonUniformGrid1D HDF5", "[FastNonUniformGrid1D][HDF5]") {
   status = loaded.loadHDF(file, grid_name);
   status += H5Fclose(file);
   REQUIRE(status == H5_SUCCESS);
+  checkSpacingCache(loaded);
   REQUIRE(loaded.usesFastLookup());
   REQUIRE(loaded.scale() == grid.scale());
   REQUIRE(loaded.maxLookupRatio() == grid.maxLookupRatio());
@@ -2108,6 +2259,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
+        checkSpacingCache(loaded_grid);
         REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
         for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
           REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
@@ -2134,6 +2286,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
           status += H5Fclose(file);
           REQUIRE(status == H5_SUCCESS);
 
+          checkSpacingCache(loaded_grid);
           REQUIRE(loaded_grid.min() == g1.min());
           REQUIRE(loaded_grid.max() == g1.max());
           REQUIRE(loaded_grid.nPoints() == g1.nPoints());

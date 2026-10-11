@@ -84,42 +84,21 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   interpToRealWithGrads(const T x, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    const int N = a.GetDim(1);
-    PORTABLE_REQUIRE(
-        N >= NCONTROL,
-        "Four point stencil required for rational function interpolation.");
-    int ix = std::min(N - 3, std::max(1, g[0].index(x)));
-    const std::array<T, NCONTROL> xg = {g[0].x(ix - 1), g[0].x(ix),
-                                        g[0].x(ix + 1), g[0].x(ix + 2)};
-    const std::array<T, NCONTROL> f = {a(ix - 1), a(ix), a(ix + 1), a(ix + 2)};
-    return interp1DHelper_(x, xg, f, ix == 1);
+    auto geometry = prepareAxis_(x, g[0], a.GetDim(1));
+    const int start = geometry.start;
+    const std::array<T, NCONTROL> f = {a(start), a(start + 1), a(start + 2),
+                                       a(start + 3)};
+    return evaluateLine_(geometry, f);
   }
 
   template <typename T, typename GridArray_t, typename Array_t>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result2D<T>
   interpToRealWithGrads(const T x2, const T x1, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    using PortsOfCall::Robust::ratio;
-    const int N1 = a.GetDim(1);
-    const int N2 = a.GetDim(2);
-    PORTABLE_REQUIRE(
-        N1 >= NCONTROL,
-        "Four point stencil required for rational function interpolation.");
-    PORTABLE_REQUIRE(
-        N2 >= NCONTROL,
-        "Four point stencil required for rational function interpolation.");
-    // Indices of cell enclosing x1 and x2
-    const int ix1 = std::min(N1 - 2, std::max(0, g[0].index(x1)));
-    const int ix2 = std::min(N2 - 2, std::max(0, g[1].index(x2)));
-    // indices of the first cell in the full four-point stencil
-    const int start1 = std::min(N1 - 4, std::max(0, ix1 - 1));
-    const int start2 = std::min(N2 - 4, std::max(0, ix2 - 1));
-
-    std::array<T, NCONTROL> x1g, x2g;
-    for (int c = 0; c < NCONTROL; ++c) {
-      x1g[c] = g[0].x(start1 + c);
-      x2g[c] = g[1].x(start2 + c);
-    }
+    const auto gx = prepareAxis_(x1, g[0], a.GetDim(1));
+    const auto gy = prepareAxis_(x2, g[1], a.GetDim(2));
+    const int ix1 = gx.cell, ix2 = gy.cell;
+    const int start1 = gx.start, start2 = gy.start;
 
     // Kerley eqn 17
     // compute rj(x) = r_{ix2}(x1)
@@ -127,27 +106,28 @@ struct Rational {
     for (int c = 0; c < NCONTROL; ++c) {
       f[c] = a(ix2, start1 + c);
     }
-    auto [rjx, drjdx] = interp1DHelper_(x1, x1g, f, ix1 == 1);
+    auto [rjx, drjdx] = evaluateLine_(gx, f);
     // compute r_{j + 1}(x) = r_{ix2 + 1}(x1)
     for (int c = 0; c < NCONTROL; ++c) {
       f[c] = a(ix2 + 1, start1 + c);
     }
-    auto [rjp1x, drjp1dx] = interp1DHelper_(x1, x1g, f, ix1 == 1);
+    auto [rjp1x, drjp1dx] = evaluateLine_(gx, f);
     // compute ri(y) = r_{ix1}(x2)
     for (int c = 0; c < NCONTROL; ++c) {
       f[c] = a(start2 + c, ix1);
     }
-    auto [riy, dridy] = interp1DHelper_(x2, x2g, f, ix2 == 1);
+    auto [riy, dridy] = evaluateLine_(gy, f);
     // compute r_{i+1}(y) = r_{ix1+1}(x2)
     for (int c = 0; c < NCONTROL; ++c) {
       f[c] = a(start2 + c, ix1 + 1);
     }
-    auto [rip1y, drip1dy] = interp1DHelper_(x2, x2g, f, ix2 == 1);
+    auto [rip1y, drip1dy] = evaluateLine_(gy, f);
 
-    const T dx = g[0].x(ix1 + 1) - g[0].x(ix1);
-    const T dy = g[1].x(ix2 + 1) - g[1].x(ix2);
-    const T qx = ratio(x1 - g[0].x(ix1), dx);
-    const T qy = ratio(x2 - g[1].x(ix2), dy);
+    const T inverse_dx = gx.inverse_dx[ix1 - start1];
+    const T inverse_dy = gy.inverse_dx[ix2 - start2];
+    // Originally qx = ratio(gx.cell_offset, dx), likewise for qy.
+    const T qx = gx.cell_offset * inverse_dx;
+    const T qy = gy.cell_offset * inverse_dy;
     const T f00 = a(ix2, ix1), f10 = a(ix2, ix1 + 1);
     const T f01 = a(ix2 + 1, ix1), f11 = a(ix2 + 1, ix1 + 1);
     // Kerley eqn 18 and its partial derivatives before factoring:
@@ -172,58 +152,130 @@ struct Rational {
     const T tx = cx - qy * m;
     const T ty = cy - qx * m;
     const T fout = rjx + riy - f00 + qx * cx + qy * ty;
-    const T dfdx1 = drjdx + qy * (drjp1dx - drjdx) + ratio(tx, dx);
-    const T dfdx2 = dridy + qx * (drip1dy - dridy) + ratio(ty, dy);
+    // Reuse the guarded reciprocals for the original ratio(tx, dx) and
+    // ratio(ty, dy) gradient corrections.
+    const T dfdx1 = drjdx + qy * (drjp1dx - drjdx) + tx * inverse_dx;
+    const T dfdx2 = dridy + qx * (drip1dy - dridy) + ty * inverse_dy;
 
     return {fout, dfdx2, dfdx1};
   }
 
+ private:
+  enum class AxisMode {
+    Interior,
+    LowerQuadratic,
+    UpperQuadratic,
+    LowerExtrapolation,
+    UpperExtrapolation
+  };
+
+  // Per-query scratch only: no allocations or ownership of grid memory.
+  template <typename T>
+  struct AxisGeometry {
+    int cell, start;
+    std::array<T, NCONTROL - 1> dx;
+    std::array<T, NCONTROL - 1> inverse_dx;
+    std::array<T, 2> inv_curv_width;
+    T Q, R, cell_offset;
+    AxisMode mode;
+    bool second_table_interval;
+  };
+
+  template <typename T, typename Grid_t>
+  PORTABLE_FORCEINLINE_FUNCTION static AxisGeometry<T>
+  prepareAxis_(const T x, const Grid_t &grid, const int N) noexcept {
+    PORTABLE_REQUIRE(
+        N >= NCONTROL,
+        "Four point stencil required for rational function interpolation.");
+    AxisGeometry<T> geometry;
+    geometry.cell = std::min(N - 2, std::max(0, grid.index(x)));
+    geometry.start = std::min(N - 4, std::max(0, geometry.cell - 1));
+    geometry.second_table_interval = geometry.cell == 1;
+    std::array<T, NCONTROL> xg;
+    for (int c = 0; c < NCONTROL; ++c)
+      xg[c] = grid.x(geometry.start + c);
+    for (int c = 0; c < NCONTROL - 1; ++c) {
+      geometry.dx[c] = grid.dx(geometry.start + c); // Kerley eqn 1
+      geometry.inverse_dx[c] = grid.idx(geometry.start + c);
+    }
+    geometry.inv_curv_width[0] = grid.invCurvatureWidth(geometry.start);
+    geometry.inv_curv_width[1] = grid.invCurvatureWidth(geometry.start + 1);
+    geometry.cell_offset = x - xg[geometry.cell - geometry.start];
+
+    // Retain coordinate-based classification, including exact-knot behavior.
+    // Q is anchored to the endpoint for extrapolation, to the interval's
+    // left point otherwise. The 2D blend has its own enclosing-cell offset.
+    geometry.R = T(0);
+    if (x < xg[0]) {
+      geometry.mode = AxisMode::LowerExtrapolation;
+      geometry.Q = x - xg[0];
+    } else if (x > xg[3]) {
+      geometry.mode = AxisMode::UpperExtrapolation;
+      geometry.Q = x - xg[3];
+    } else if (x < xg[1]) {
+      geometry.mode = AxisMode::LowerQuadratic;
+      geometry.Q = x - xg[0];
+      geometry.R = xg[1] - x;
+    } else if (x >= xg[2]) {
+      geometry.mode = AxisMode::UpperQuadratic;
+      geometry.Q = x - xg[2];
+      geometry.R = xg[3] - x;
+    } else {
+      geometry.mode = AxisMode::Interior;
+      geometry.Q = x - xg[1];
+      geometry.R = xg[2] - x;
+    }
+    return geometry;
+  }
+
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
-  interp1DHelper_(const T x, const std::array<T, NCONTROL> &xg,
-                  const std::array<T, NCONTROL> &f,
-                  const bool second_table_interval) noexcept {
+  evaluateLine_(const AxisGeometry<T> &geometry,
+                const std::array<T, NCONTROL> &f) noexcept {
     using PortsOfCall::Robust::ratio;
+    const auto &dx = geometry.dx;
+    const auto &inverse_dx = geometry.inverse_dx;
+    const T Q = geometry.Q, R = geometry.R;
     T fout, dfout, C1, C2;
-    std::array<T, NCONTROL - 1> dx, S;
-    for (int i = 0; i < NCONTROL - 1; ++i) {
-      dx[i] = xg[i + 1] - xg[i]; // Kerley eqn 1
-      S[i] = ratio(f[i + 1] - f[i], dx[i]);
-    }
+    std::array<T, NCONTROL - 1> S;
+    // Original slopes: S[i] = ratio(f[i + 1] - f[i], dx[i]).
+    for (int i = 0; i < NCONTROL - 1; ++i)
+      S[i] = (f[i + 1] - f[i]) * inverse_dx[i];
 
     // Linearly extrapolate strictly outside the table.
     // Exact endpoints retain the interior derivative (a jump is possible).
-    if (x < xg[0]) return {f[0] + (x - xg[0]) * S[0], S[0]};
-    if (x > xg[3]) return {f[3] + (x - xg[3]) * S[2], S[2]};
-    if (x < xg[1]) { // Kerley eqn 12
-      C2 = ratio(S[1] - S[0], dx[1] + dx[0]);
-      if (S[0] * (S[0] - dx[0] * C2) <= 0) C2 = ratio(S[0], dx[0]);
+    if (geometry.mode == AxisMode::LowerExtrapolation)
+      return {f[0] + Q * S[0], S[0]};
+    if (geometry.mode == AxisMode::UpperExtrapolation)
+      return {f[3] + Q * S[2], S[2]};
+    if (geometry.mode == AxisMode::LowerQuadratic) { // Kerley eqn 12
+      C2 = (S[1] - S[0]) * geometry.inv_curv_width[0];
+      // Original limited curvature: C2 = ratio(S[0], dx[0]).
+      if (S[0] * (S[0] - dx[0] * C2) <= 0) C2 = S[0] * inverse_dx[0];
       // Original quadratic value and derivative:
       // fout = f[0] + (x - xg[0]) * (S[0] - C2 * (xg[1] - x));
       // dfout = S[0] + C2 * (2 * x - xg[0] - xg[1]);
-      const T Q = x - xg[0], R = xg[1] - x;
       const T L = S[0] - R * C2;
       fout = f[0] + Q * L;
       dfout = L + Q * C2;
-    } else if (x >= xg[2]) { // Kerley eqn 13
-      C1 = ratio(S[2] - S[1], dx[2] + dx[1]);
+    } else if (geometry.mode == AxisMode::UpperQuadratic) { // Kerley eqn 13
+      C1 = (S[2] - S[1]) * geometry.inv_curv_width[1];
       // Original quadratic value and derivative:
       // fout = f[2] + (x - xg[2]) * (S[2] - C1 * (xg[3] - x));
       // dfout = S[2] + C1 * (2 * x - xg[2] - xg[3]);
-      const T Q = x - xg[2], R = xg[3] - x;
       const T L = S[2] - R * C1;
       fout = f[2] + Q * L;
       dfout = L + Q * C1;
     } else { // Kerley eqn 11
-      C1 = ratio(S[1] - S[0], dx[1] + dx[0]);
-      C2 = ratio(S[2] - S[1], dx[2] + dx[1]);
+      C1 = (S[1] - S[0]) * geometry.inv_curv_width[0];
+      C2 = (S[2] - S[1]) * geometry.inv_curv_width[1];
       // Appendix A, lines 50–51: propagate the lower endpoint constraint
       // only into the second interval of the full table.
-      if (second_table_interval && S[0] * (S[0] - dx[0] * C1) <= 0)
-        C1 = ratio(S[1] - 2 * S[0], dx[1]);
+      // Original limited curvature: C1 = ratio(S[1] - 2 * S[0], dx[1]).
+      if (geometry.second_table_interval && S[0] * (S[0] - dx[0] * C1) <= 0)
+        C1 = (S[1] - 2 * S[0]) * inverse_dx[1];
 
       // Appendix A, lines 54–59, including its exact-knot convention.
-      const T Q = x - xg[1], R = xg[2] - x;
       const T mu1 = std::abs(C2 * R), mu2 = std::abs(C1 * Q);
       const T sum = mu1 + mu2;
       const T w = sum > 0 ? ratio(mu1, sum) : T(0);

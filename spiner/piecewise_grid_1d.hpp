@@ -74,6 +74,7 @@ class PiecewiseGrid1D {
         }
       }
     }
+    prepareJoinCaches_();
   }
   PiecewiseGrid1D(std::initializer_list<RegularGrid1D<T>> grids)
       : PiecewiseGrid1D(std::vector<RegularGrid1D<T>>(grids)) {}
@@ -131,6 +132,27 @@ class PiecewiseGrid1D {
   PORTABLE_INLINE_FUNCTION T x(const int i) const {
     int ig = findGridFromGlobalIdx(i);
     return grids_[ig].x(i - pointTotals_[ig]);
+  }
+
+  PORTABLE_INLINE_FUNCTION T dx(const int i) const {
+    const int ig = findGridFromGlobalIdx(i);
+    const int local = i - pointTotals_[ig];
+    return local == int(grids_[ig].nPoints()) - 1 ? join_dx_[ig]
+                                                  : grids_[ig].dx(local);
+  }
+  PORTABLE_INLINE_FUNCTION T idx(const int i) const {
+    const int ig = findGridFromGlobalIdx(i);
+    const int local = i - pointTotals_[ig];
+    return local == int(grids_[ig].nPoints()) - 1 ? join_idx_[ig]
+                                                  : grids_[ig].idx(local);
+  }
+  PORTABLE_INLINE_FUNCTION T invCurvatureWidth(const int i) const {
+    const int ig = findGridFromGlobalIdx(i);
+    const int local = i - pointTotals_[ig];
+    const int n = grids_[ig].nPoints();
+    if (local == n - 2) return join_left_inv_width_[ig];
+    if (local == n - 1) return join_right_inv_width_[ig];
+    return grids_[ig].invCurvatureWidth(local);
   }
 
   PORTABLE_INLINE_FUNCTION int index(const T x) const {
@@ -288,11 +310,26 @@ class PiecewiseGrid1D {
       pointTotals_[0] = 0;
       status += grids_[0].loadHDF(loc, name);
     }
+    prepareJoinCaches_();
     return status;
   }
 #endif
 
  private:
+  // needed because when grids intersect, e.g., curvature, is
+  // ambiguous. Must be stored separately.
+ void prepareJoinCaches_() {
+    using PortsOfCall::Robust::ratio;
+     for (int ig = 0; ig + 1 < NGRIDS_; ++ig) {
+      const int n = grids_[ig].nPoints();
+      join_dx_[ig] = grids_[ig + 1].x(0) - grids_[ig].x(n - 1);
+      join_idx_[ig] = ratio(T(1), join_dx_[ig]);
+      join_left_inv_width_[ig] =
+          ratio(T(1), grids_[ig].dx(n - 2) + join_dx_[ig]);
+      join_right_inv_width_[ig] =
+          ratio(T(1), join_dx_[ig] + grids_[ig + 1].dx(0));
+    }
+  }
   PORTABLE_FORCEINLINE_FUNCTION constexpr auto SMALL_() const {
     return 10 * std::numeric_limits<T>::min();
   }
@@ -311,6 +348,8 @@ class PiecewiseGrid1D {
   }
 
   RegularGrid1D<T> grids_[NGRIDSMAX];
+  T join_dx_[NGRIDSMAX]{}, join_idx_[NGRIDSMAX]{};
+  T join_left_inv_width_[NGRIDSMAX]{}, join_right_inv_width_[NGRIDSMAX]{};
   int pointTotals_[NGRIDSMAX]{};
   int NGRIDS_ = 0;
 };
