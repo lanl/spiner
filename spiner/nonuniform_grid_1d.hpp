@@ -104,8 +104,7 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION void weights(const T &value, int &ix,
                                         weights_t<T> &w) const {
     ix = index(value);
-    const T dx = data_[ix + 1] - data_[ix];
-    w[1] = (value - data_[ix]) / dx;
+    w[1] = (value - data_[ix]) * idx_(ix);
     w[0] = T(1) - w[1];
   }
 
@@ -115,7 +114,7 @@ class NonUniformGrid1D {
                                                 weights_t<T> &w,
                                                 weights_t<T> &dw) const {
     weights(x, ix, w);
-    dw[1] = T(1) / (data_[ix + 1] - data_[ix]);
+    dw[1] = idx_(ix);
     dw[0] = -dw[1];
   }
 

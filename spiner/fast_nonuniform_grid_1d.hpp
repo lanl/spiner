@@ -95,8 +95,7 @@ class FastNonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION void weights(const T &value, int &ix,
                                         weights_t<T> &w) const {
     ix = index(value);
-    const T dx = coordinates_.x(ix + 1) - coordinates_.x(ix);
-    w[1] = (value - coordinates_.x(ix)) / dx;
+    w[1] = (value - coordinates_.x(ix)) * coordinates_.idx(ix);
     w[0] = T(1) - w[1];
   }
 
@@ -106,7 +105,7 @@ class FastNonUniformGrid1D {
                                                 weights_t<T> &w,
                                                 weights_t<T> &dw) const {
     weights(x, ix, w);
-    dw[1] = T(1) / (coordinates_.x(ix + 1) - coordinates_.x(ix));
+    dw[1] = coordinates_.idx(ix);
     dw[0] = -dw[1];
   }
 
