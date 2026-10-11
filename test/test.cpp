@@ -1228,10 +1228,14 @@ void checkRationalQuadratics(const Grid &gx, const Grid &gy) {
   std::vector<Real> ys = {gy.min() - 1, gy.max() + 1};
   for (int i = 0; i < nx; ++i) {
     xs.push_back(gx.x(i));
+    xs.push_back(std::nextafter(gx.x(i), gx.min() - 1));
+    xs.push_back(std::nextafter(gx.x(i), gx.max() + 1));
     if (i + 1 < nx) xs.push_back(gx.x(i) + 0.37 * (gx.x(i + 1) - gx.x(i)));
   }
   for (int j = 0; j < ny; ++j) {
     ys.push_back(gy.x(j));
+    ys.push_back(std::nextafter(gy.x(j), gy.min() - 1));
+    ys.push_back(std::nextafter(gy.x(j), gy.max() + 1));
     if (j + 1 < ny) ys.push_back(gy.x(j) + 0.43 * (gy.x(j + 1) - gy.x(j)));
   }
   for (Real x : xs) {
