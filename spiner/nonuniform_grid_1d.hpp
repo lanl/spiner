@@ -320,7 +320,6 @@ class NonUniformGrid1D {
   template <typename ExecutionSpace>
   void validate(const ExecutionSpace &E, bool initialize_caches = false) const {
     bool valid = false;
-    // Capture a shallow handle by value, never a host this pointer.
     const auto grid = *this;
     portableReduce(
         "Validate UnstructuredGrid1D", E, 0, 1,
@@ -334,8 +333,7 @@ class NonUniformGrid1D {
   }
 
  private:
-  // Reference access follows the grid's shallow pointer semantics.
-  // Keep cache layout offsets in these accessors only.
+  // Syntactic sugar for cache layouts
   PORTABLE_INLINE_FUNCTION T &dx_(const std::size_t i) const {
     return data_[n_ + i];
   }
