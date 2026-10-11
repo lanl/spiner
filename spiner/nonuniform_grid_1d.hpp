@@ -50,7 +50,7 @@ class NonUniformGrid1D {
   NonUniformGrid1D(std::initializer_list<T> points)
       : NonUniformGrid1D(std::vector<T>(points)) {}
 
-  // Borrows 4*n-4 values: coordinates[n], dx[n-1], idx[n-1],
+  // Borrows requiredStorageSizeInBytes(n) bytes: coordinates[n], dx[n-1], idx[n-1],
   // invCurvatureWidth[n-2]. initialize_caches populates the cache regions;
   // otherwise their existing contents are validated without modification.
   // No allocation occurs. The caller must
@@ -128,10 +128,18 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
 
+  // Coordinate and cache storage, excluding the grid object itself.
+  // n == 0 denotes an empty grid; nonempty grids require n >= 2.
+  PORTABLE_INLINE_FUNCTION static std::size_t
+  requiredStorageSizeInBytes(const std::size_t n) {
+    PORTABLE_REQUIRE(n == 0 || n >= 2, "Invalid nonuniform grid size");
+    return n == 0 ? 0 : (4 * n - 4) * sizeof(T);
+  }
+
   // TODO(JMM): Should we support setting pointer from somewhere
   // else... e.g., when a grid is unamanged?
   std::size_t dynamicMemorySizeInBytes() const {
-    return n_ == 0 ? 0 : (4 * n_ - 4) * sizeof(T);
+    return requiredStorageSizeInBytes(n_);
   }
   std::size_t serializedSizeInBytes() const {
     return sizeof(*this) + dynamicMemorySizeInBytes();

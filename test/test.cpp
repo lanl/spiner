@@ -265,8 +265,10 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     grid.finalize();
   }
   SECTION("Unmanaged constructors populate or validate all caches") {
-    std::vector<Real> buffer(12, -99);
     const std::array<Real, 4> points{-1, -0.5, 0.25, 2};
+    std::vector<Real> buffer(
+        NonUniformGrid1D::requiredStorageSizeInBytes(points.size()) / sizeof(Real),
+        -99);
     std::copy(points.begin(), points.end(), buffer.begin());
     NonUniformGrid1D initialized(buffer.data(), points.size(), true);
     checkSpacingCache(initialized);
@@ -284,16 +286,17 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     REQUIRE(buffer == saved);
   }
   SECTION("Unmanaged device buffers initialize and validate in device space") {
-    std::array<Real, 12> host{};
+    const auto bytes = NonUniformGrid1D::requiredStorageSizeInBytes(4);
+    std::vector<Real> host(bytes / sizeof(Real));
     host[0] = -1;
     host[1] = -0.5;
     host[2] = 0.25;
     host[3] = 2;
-    auto *p = static_cast<Real *>(PORTABLE_MALLOC(sizeof(host)));
-    portableCopyToDevice(p, host.data(), sizeof(host));
+    auto *p = static_cast<Real *>(PORTABLE_MALLOC(bytes));
+    portableCopyToDevice(p, host.data(), bytes);
     NonUniformGrid1D initialized(p, 4, true, PortsOfCall::Exec::Device{});
     NonUniformGrid1D validated(p, 4, false, PortsOfCall::Exec::Device{});
-    portableCopyToHost(host.data(), p, sizeof(host));
+    portableCopyToHost(host.data(), p, bytes);
     NonUniformGrid1D host_view(host.data(), 4, false);
     checkSpacingCache(host_view);
     initialized.finalize();
@@ -304,6 +307,21 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
 
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
   const std::vector<Real> points = {-1.0, -0.5, 0.25, 2.0};
+
+  SECTION("Storage requirements include coordinates and caches") {
+    REQUIRE(NonUniformGrid1D::requiredStorageSizeInBytes(0) == 0);
+    REQUIRE(NonUniformGrid1D::requiredStorageSizeInBytes(2) == 4 * sizeof(Real));
+    REQUIRE(NonUniformGrid1D::requiredStorageSizeInBytes(4) == 12 * sizeof(Real));
+    REQUIRE(Spiner::NonUniformGrid1D<float>::requiredStorageSizeInBytes(4) ==
+            12 * sizeof(float));
+    NonUniformGrid1D grid(points);
+    REQUIRE(grid.dynamicMemorySizeInBytes() ==
+            NonUniformGrid1D::requiredStorageSizeInBytes(points.size()));
+    REQUIRE(grid.serializedSizeInBytes() ==
+            sizeof(grid) + NonUniformGrid1D::requiredStorageSizeInBytes(points.size()));
+    grid.finalize();
+    REQUIRE(grid.dynamicMemorySizeInBytes() == 0);
+  }
 
   SECTION("An owning grid maps coordinates and computes local weights") {
     NonUniformGrid1D grid(points);
@@ -334,7 +352,8 @@ TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
 
   SECTION("A borrowed grid never frees its caller-owned coordinates") {
     std::vector<Real> borrowed_points = points;
-    borrowed_points.resize(4 * points.size() - 4);
+    borrowed_points.resize(
+        NonUniformGrid1D::requiredStorageSizeInBytes(points.size()) / sizeof(Real));
     NonUniformGrid1D grid(borrowed_points.data(), points.size(), true);
     REQUIRE(grid.dataStatus() == DataStatus::Unmanaged);
     grid.finalize();
