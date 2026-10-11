@@ -239,13 +239,6 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     checkSpacingLifecycle(grid);
     grid.finalize();
   }
-  SECTION("Piecewise grid with duplicated joins and two-point subgrids") {
-    PiecewiseGrid1D<3> grid({{0, 1, 2}, {1, 3, 2}, {3, 4, 3}});
-    checkSpacingLifecycle(grid);
-    REQUIRE(grid.dx(1) == 0);
-    REQUIRE(grid.invCurvatureWidth(0) == 1);
-    REQUIRE(grid.invCurvatureWidth(1) == 0.5);
-  }
   SECTION("Single precision caches") {
     Spiner::NonUniformGrid1D<float> grid({-1, -0.5, 0.25, 2});
     checkSpacingLifecycle(grid);
@@ -302,6 +295,78 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
     validated.finalize();
     PORTABLE_FREE(p);
   }
+}
+
+template <int N>
+void checkPiecewiseSpacingCache(
+    const PiecewiseGrid1D<N> &grid,
+    const std::vector<RegularGrid1D> &subgrids) {
+  auto device = grid.getOnDevice();
+  int offset = 0;
+  for (int ig = 0; ig < subgrids.size(); ++ig) {
+    const auto &subgrid = subgrids[ig];
+    const int n = subgrid.nPoints();
+    const Real dx = subgrid.dx(0), idx = subgrid.idx(0);
+    const Real interior = subgrid.invCurvatureWidth(0);
+    const Real last = ig + 1 < subgrids.size()
+                          ? PortsOfCall::Robust::ratio(
+                                Real(1), dx + subgrids[ig + 1].dx(0))
+                          : interior;
+    // Both copies of a shared endpoint retain their subgrid's spacing.
+    for (int i = 0; i < n; ++i) {
+      REQUIRE(grid.dx(offset + i) == dx);
+      REQUIRE(grid.idx(offset + i) == idx);
+      if (i + 1 < n) {
+        const Real midpoint = subgrid.x(i) + dx / 2;
+        REQUIRE(grid.index(midpoint) == offset + i);
+        REQUIRE(grid.invCurvatureWidth(offset + i) ==
+                (i == n - 2 ? last : interior));
+      }
+    }
+    int errors = 0;
+    portableReduce(
+        "Piecewise subgrid spacing and join caches", 0, n,
+        PORTABLE_LAMBDA(const int i, int &bad) {
+          if (device.dx(offset + i) != dx) ++bad;
+          if (device.idx(offset + i) != idx) ++bad;
+          if (i + 1 < n && device.invCurvatureWidth(offset + i) !=
+                               (i == n - 2 ? last : interior))
+            ++bad;
+        },
+        errors);
+    REQUIRE(errors == 0);
+    offset += n;
+  }
+  device.finalize();
+}
+
+TEST_CASE("Piecewise grid spacing caches", "[PiecewiseGrid1D][GridSpacing]") {
+  std::vector<RegularGrid1D> subgrids;
+  SECTION("Increasing and decreasing spacing with two-point subgrids") {
+    subgrids = {{0, 1, 2}, {1, 3, 2}, {3, 4, 3}};
+  }
+  SECTION("Equal spacing across a join") {
+    subgrids = {{0, 2, 3}, {2, 4, 3}};
+  }
+  SECTION("A single two-point subgrid has no join") {
+    subgrids = {{0, 2, 2}};
+  }
+  PiecewiseGrid1D<3> grid(subgrids), shallow, deep;
+  checkPiecewiseSpacingCache(grid, subgrids);
+  shallow.shallowCopy(grid);
+  deep.deepCopy(grid);
+  checkPiecewiseSpacingCache(shallow, subgrids);
+  checkPiecewiseSpacingCache(deep, subgrids);
+
+  std::vector<std::byte> buffer(grid.serializedSizeInBytes());
+  REQUIRE(grid.serialize(buffer.data()) == buffer.size());
+  PiecewiseGrid1D<3> restored;
+  REQUIRE(restored.deSerialize(buffer.data()) == buffer.size());
+  checkPiecewiseSpacingCache(restored, subgrids);
+  restored.finalize();
+  shallow.finalize();
+  deep.finalize();
+  grid.finalize();
 }
 
 TEST_CASE("NonUniformGrid1D", "[NonUniformGrid1D]") {
@@ -2011,7 +2076,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
         status += H5Fclose(file);
         REQUIRE(status == H5_SUCCESS);
 
-        checkSpacingCache(loaded_grid);
+        checkPiecewiseSpacingCache(loaded_grid, {g1, g2, g3});
         REQUIRE(loaded_grid.nPoints() == piecewise_grid.nPoints());
         for (std::size_t i = 0; i < piecewise_grid.nPoints(); ++i)
           REQUIRE(loaded_grid.x(i) == piecewise_grid.x(i));
@@ -2038,7 +2103,7 @@ SCENARIO("PiecewiseGrid HDF5", "[PiecewiseGrid1D][HDF5]") {
           status += H5Fclose(file);
           REQUIRE(status == H5_SUCCESS);
 
-          checkSpacingCache(loaded_grid);
+          checkPiecewiseSpacingCache(loaded_grid, {g1});
           REQUIRE(loaded_grid.min() == g1.min());
           REQUIRE(loaded_grid.max() == g1.max());
           REQUIRE(loaded_grid.nPoints() == g1.nPoints());

@@ -93,25 +93,12 @@ All four grid types provide portable, const accessors:
    T invCurvatureWidth(int i) const;
 
 ``dx(i)`` is the width of interval ``i``. ``idx(i)`` is its guarded reciprocal;
-``invCurvatureWidth(i)`` is the guarded reciprocal of ``dx(i) + dx(i+1)``.
-Reciprocals use ``PortsOfCall::Robust::ratio(T(1), width)``. Valid indices are
+``invCurvatureWidth(i)`` is the guarded reciprocal of ``dx(i) + dx(i+1)``,
+except at piecewise-grid joins as described below.
+Reciprocals use ``PortsOfCall::Robust::ratio(T(1), width)``. For regular and
+nonuniform grids, valid indices are
 ``0 <= i < nPoints()-1`` for ``dx`` and ``idx``, and
-``0 <= i < nPoints()-2`` for ``invCurvatureWidth``. Indices are not clamped.
-
-Nonuniform grids store coordinate differences and their reciprocals in caches;
-fast nonuniform grids delegate to those caches. Regular grids return stored
-scalar geometry. Their width can differ slightly from subtracting two rounded
-``x(i)`` values. Piecewise grids delegate within subgrids and store geometry at
-joins, preserving both copies of shared endpoints and their intervening interval.
-
-For a nonuniform grid with ``N >= 2``, one allocation holds ``4*N-4``
-values: ``coordinates[N]``, ``dx[N-1]``, ``idx[N-1]``,
-``invCurvatureWidth[N-2]``, in that order.  Copies, device transfers,
-explicit finalization, and binary serialization handle this whole
-allocation. HDF5 stores coordinates and rebuilds caches when loading.
-Binary buffers are only compatible with matching Spiner
-builds. Coordinates are assumed unchanged during use; existing mutable
-pointer access is retained.
+``0 <= i < nPoints()-2`` for ``invCurvatureWidth``.
 
 ``RegularGrid1D``
 ------------------
