@@ -162,16 +162,16 @@ regular or piecewise-regular intervals. Each grid has independent coordinate
 storage, so a ``DataBox<double, NonUniformGrid1D>`` can use a different
 non-uniform coordinate sequence for every axis.
 
-.. cpp:function:: static std::size_t NonUniformGrid1D::requiredStorageSizeInBytes(std::size_t n)
+.. cpp:function:: static std::size_t NonUniformGrid1D::requiredStorageSize(std::size_t n)
 
-   Returns the storage required for ``n`` points, in bytes, including coordinates
+   Returns the number of ``T`` values required for ``n`` points, including coordinates
    and all spacing caches but excluding the grid object itself. For ``n >= 2``,
-   this is ``(4*n - 4) * sizeof(T)``; ``n == 0`` returns zero for an empty grid.
+   this is ``4*n - 4``; ``n == 0`` returns zero for an empty grid.
    A nonempty grid requires at least two points; ``n == 1`` is invalid.
    This helper can be called on host or device without constructing a grid.
    Use it to size caller-owned buffers for the pointer constructor.
    The instance method ``dynamicMemorySizeInBytes()`` delegates to this helper
-   with ``nPoints()``.
+   with ``nPoints()`` and multiplies the result by ``sizeof(T)``.
 
 Constructing a ``NonUniformGrid1D``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -201,8 +201,7 @@ validate coordinates, using the supplied execution space (host by default):
 
    std::vector<double> points = {-1.0, -0.5, 0.25, 2.0};
    const auto n = points.size();
-   const auto bytes = NonUniformGrid1D::requiredStorageSizeInBytes(n);
-   points.resize(bytes / sizeof(double)); // coordinates AND caches
+   points.resize(NonUniformGrid1D::requiredStorageSize(n)); // coordinates AND caches
    NonUniformGrid1D view(points.data(), n, true);
    NonUniformGrid1D second_view(points.data(), n, false);
 
