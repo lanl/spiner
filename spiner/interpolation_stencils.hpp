@@ -150,16 +150,30 @@ struct Rational {
     const T qy = ratio(x2 - g[1].x(ix2), dy);
     const T f00 = a(ix2, ix1), f10 = a(ix2, ix1 + 1);
     const T f01 = a(ix2 + 1, ix1), f11 = a(ix2 + 1, ix1 + 1);
-    // Kerley eqn 18 and its partial derivatives.
-    const T fout = rjx * (1 - qy) + rjp1x * qy + riy * (1 - qx) + rip1y * qx -
-                   f00 * (1 - qx) * (1 - qy) - f01 * (1 - qx) * qy -
-                   f10 * qx * (1 - qy) - f11 * qx * qy;
-    const T dfdx1 =
-        (1 - qy) * drjdx + qy * drjp1dx +
-        ratio(rip1y - riy - (1 - qy) * (f10 - f00) - qy * (f11 - f01), dx);
-    const T dfdx2 =
-        (1 - qx) * dridy + qx * drip1dy +
-        ratio(rjp1x - rjx - (1 - qx) * (f01 - f00) - qx * (f11 - f10), dy);
+    // Kerley eqn 18 and its partial derivatives before factoring:
+    // clang-format off
+    // const T fout = rjx * (1 - qy) + rjp1x * qy + riy * (1 - qx) + rip1y * qx -
+    //                f00 * (1 - qx) * (1 - qy) - f01 * (1 - qx) * qy -
+    //                f10 * qx * (1 - qy) - f11 * qx * qy;
+    // const T dfdx1 =
+    //     (1 - qy) * drjdx + qy * drjp1dx +
+    //     ratio(rip1y - riy - (1 - qy) * (f10 - f00) - qy * (f11 - f01), dx);
+    // const T dfdx2 =
+    //     (1 - qx) * dridy + qx * drip1dy +
+    //     ratio(rjp1x - rjx - (1 - qx) * (f01 - f00) - qx * (f11 - f10), dy);
+    // clang-format on
+    // Share the bilinear corner differences and edge corrections between
+    // the value and both gradients. m is the mixed corner difference.
+    const T p = f10 - f00;
+    const T q = f01 - f00;
+    const T m = (f11 - f01) - p;
+    const T cx = rip1y - riy - p;
+    const T cy = rjp1x - rjx - q;
+    const T tx = cx - qy * m;
+    const T ty = cy - qx * m;
+    const T fout = rjx + riy - f00 + qx * cx + qy * ty;
+    const T dfdx1 = drjdx + qy * (drjp1dx - drjdx) + ratio(tx, dx);
+    const T dfdx2 = dridy + qx * (drip1dy - dridy) + ratio(ty, dy);
 
     return {fout, dfdx2, dfdx1};
   }
@@ -184,12 +198,22 @@ struct Rational {
     if (x < xg[1]) { // Kerley eqn 12
       C2 = ratio(S[1] - S[0], dx[1] + dx[0]);
       if (S[0] * (S[0] - dx[0] * C2) <= 0) C2 = ratio(S[0], dx[0]);
-      fout = f[0] + (x - xg[0]) * (S[0] - C2 * (xg[1] - x));
-      dfout = S[0] + C2 * (2 * x - xg[0] - xg[1]);
+      // Original quadratic value and derivative:
+      // fout = f[0] + (x - xg[0]) * (S[0] - C2 * (xg[1] - x));
+      // dfout = S[0] + C2 * (2 * x - xg[0] - xg[1]);
+      const T Q = x - xg[0], R = xg[1] - x;
+      const T L = S[0] - R * C2;
+      fout = f[0] + Q * L;
+      dfout = L + Q * C2;
     } else if (x >= xg[2]) { // Kerley eqn 13
       C1 = ratio(S[2] - S[1], dx[2] + dx[1]);
-      fout = f[2] + (x - xg[2]) * (S[2] - C1 * (xg[3] - x));
-      dfout = S[2] + C1 * (2 * x - xg[2] - xg[3]);
+      // Original quadratic value and derivative:
+      // fout = f[2] + (x - xg[2]) * (S[2] - C1 * (xg[3] - x));
+      // dfout = S[2] + C1 * (2 * x - xg[2] - xg[3]);
+      const T Q = x - xg[2], R = xg[3] - x;
+      const T L = S[2] - R * C1;
+      fout = f[2] + Q * L;
+      dfout = L + Q * C1;
     } else { // Kerley eqn 11
       C1 = ratio(S[1] - S[0], dx[1] + dx[0]);
       C2 = ratio(S[2] - S[1], dx[2] + dx[1]);
@@ -204,8 +228,13 @@ struct Rational {
       const T sum = mu1 + mu2;
       const T w = sum > 0 ? ratio(mu1, sum) : T(0);
       const T C = C2 + w * (C1 - C2);
-      fout = f[1] + Q * (S[1] - R * C);
-      dfout = S[1] + (Q - R) * C + dx[1] * (C - C2) * (1 - w);
+      // Original Appendix A value and derivative:
+      // fout = f[1] + Q * (S[1] - R * C);
+      // dfout = S[1] + (Q - R) * C + dx[1] * (C - C2) * (1 - w);
+      // Reuse the value's inner expression in the derivative.
+      const T L = S[1] - R * C;
+      fout = f[1] + Q * L;
+      dfout = L + Q * C + dx[1] * (C - C2) * (1 - w);
     }
 
     return {fout, dfout};
