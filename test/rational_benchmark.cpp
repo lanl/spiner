@@ -296,23 +296,39 @@ std::array<double, 3> reference(Real x, Real y, const Grid &gx, const Grid &gy,
 template <int Dim, class Policy, bool Traffic = false, class Grid>
 void launch(Box<Policy, Grid> db, const Real *x, const Real *y, Real *out,
             int n) {
-  portableFor(
-      "Rational benchmark interpolation", 0, n, PORTABLE_LAMBDA(const int i) {
-        if constexpr (Traffic) {
+  // Dispatch outside the lambdas: extended __host__ __device__ lambdas
+  // cannot first-capture variables inside an if constexpr branch.
+  if constexpr (Traffic && Dim == 1) {
+    portableFor(
+        "Rational benchmark traffic", 0, n, PORTABLE_LAMBDA(const int i) {
           out[i] = x[i];
           out[std::size_t(n) + i] = x[i];
-          if constexpr (Dim == 2) out[2 * std::size_t(n) + i] = y[i];
-        } else if constexpr (Dim == 1) {
+        });
+  } else if constexpr (Traffic) {
+    portableFor(
+        "Rational benchmark traffic", 0, n, PORTABLE_LAMBDA(const int i) {
+          out[i] = x[i];
+          out[std::size_t(n) + i] = x[i];
+          out[2 * std::size_t(n) + i] = y[i];
+        });
+  } else if constexpr (Dim == 1) {
+    portableFor(
+        "Rational benchmark interpolation", 0, n,
+        PORTABLE_LAMBDA(const int i) {
           const auto r = db.interpToRealWithGrads(x[i]);
           out[i] = r.value;
           out[std::size_t(n) + i] = r.d_dx1;
-        } else {
+        });
+  } else {
+    portableFor(
+        "Rational benchmark interpolation", 0, n,
+        PORTABLE_LAMBDA(const int i) {
           const auto r = db.interpToRealWithGrads(y[i], x[i]);
           out[i] = r.value;
           out[std::size_t(n) + i] = r.d_dx1;
           out[2 * std::size_t(n) + i] = r.d_dx2;
-        }
-      });
+        });
+  }
 }
 std::array<double, 3> consume(const Real *out, int n, int components) {
   std::array<double, 3> sums{};
