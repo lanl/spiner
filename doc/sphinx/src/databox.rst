@@ -13,6 +13,8 @@
 ..  permit others to do so.
 .. ======================================================================
 
+.. Generative AI was used to assist with modifications to this document.
+
 .. _databox:
 
 The DataBox
@@ -70,6 +72,10 @@ The third template parameter, ``GradStencil``, selects the implementation of
 
    using DataBox = Spiner::DataBox<double, Spiner::RegularGrid1D<double>,
                                   MyGradStencil>;
+
+The built-in ``Spiner::InterpolationStencils::Rational`` policy enables
+:ref:`rational interpolation <rational-interpolation>` with gradients in
+1D and 2D.
 
 The policy supplies portable static overloads
 ``interpToRealWithGrads(x1, grids, data)`` and
@@ -666,12 +672,12 @@ For a fully interpolated 1D databox, use:
    auto result = db1.interpToRealWithGrads(x);
    // result.value and result.d_dx1
 
-The derivatives are analytic derivatives of the existing underlying
-interpolant, using the same cell selection and weights as
-``interpToReal``.  They are not interpolated samples of a separately
+The derivatives are analytic derivatives of the selected policy's
+interpolant. With the default ``Linear`` policy, this uses the same cell
+selection and weights as ``interpToReal``. They are not interpolated samples of a separately
 computed gradient field.  At knots or cell boundaries, derivatives can
 be discontinuous; the result uses the derivative from the cell
-selected by the grid lookup. Out-of-range coordinates use the boundary
+selected by the grid lookup. With ``Linear``, out-of-range coordinates use the boundary
 cell's linear extrapolation and its derivatives.
 
 Derivatives are taken with respect to the supplied grid coordinates. If a
@@ -685,6 +691,51 @@ matching rank and all dimensions must be interpolatable with
 well-formed grids, as checked by assertions. There are no mixed
 indexed/interpolated or higher-dimensional overloads of
 ``interpToRealWithGrads``.
+
+.. _rational-interpolation:
+
+Rational function interpolation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``Spiner::InterpolationStencils::Rational`` implements the rational function
+interpolation described by
+`Kerley (1977, LA-6903-MS) <https://www.osti.gov/servlets/purl/7301808>`_,
+with analytic coordinate derivatives. Select it as the third ``DataBox``
+template parameter:
+
+.. code-block:: cpp
+
+   using RationalBox = Spiner::DataBox<
+       double, Spiner::RegularGrid1D<double>,
+       Spiner::InterpolationStencils::Rational>;
+
+   // Host-side example: four samples of f(x) = x*x.
+   RationalBox db(4);
+   db.setRange(0, 0.0, 3.0, 4);
+   for (int i = 0; i < 4; ++i) {
+     db(i) = double(i) * double(i);
+   }
+   auto [value, df_dx] = db.interpToRealWithGrads(1.5);
+   // value = 2.25, df_dx = 3.0
+   db.finalize();
+
+The policy supports fully interpolated rank-1 and rank-2 databoxes and
+requires at least four points on every interpolated axis. All four built-in
+grid types are supported. For 2D, call
+``db.interpToRealWithGrads(y, x)``; the result contains ``value``, ``d_dx2``
+(the y derivative), and ``d_dx1`` (the x derivative), in that order.
+
+The one-dimensional stencil uses rational interpolation in interior
+intervals and quadratic formulas in the first and last intervals. Strictly
+outside the table, it uses linear secant extrapolation from the nearest
+two endpoint samples. At an exact table endpoint, it returns the interior
+derivative, which can differ from the exterior secant slope; derivatives
+can therefore jump at the endpoints. These axis rules also apply in 2D.
+
+The policy affects only ``interpToRealWithGrads``. Value-only
+``interpToReal`` calls remain linear, even on a ``RationalBox``. To obtain
+only the rationally interpolated value, use
+``db.interpToRealWithGrads(x).value`` (or the two-coordinate overload).
 
 Mixed interpolation and indexing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

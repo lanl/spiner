@@ -132,7 +132,14 @@ diff, do it as a separate commit.
 
 ## Interpolation
 
-Interpolation is linear. Here's an example of interpolation in 3D (2D
+Interpolation is linear by default. For values and analytic derivatives in
+1D and 2D, `interpToRealWithGrads` also supports the
+`Spiner::InterpolationStencils::Rational` policy. See the
+[rational interpolation documentation](https://lanl.github.io/spiner/main/src/databox.html#rational-interpolation)
+for policy selection, the four-point minimum per axis, and boundary behavior.
+Value-only `interpToReal` calls remain linear.
+
+Here's an example of linear interpolation in 3D (2D
 slice shown). Convergence is second-order, as expected.
 
 ![convergence plot](figs/convergence.png)
@@ -165,7 +172,9 @@ Continuous integration and build system support has been provided by
 
 ## Copyright
 
-© (or copyright) 2019-2021. Triad National Security, LLC. All rights
+Generative AI was used to assist with modifications to this document.
+
+© (or copyright) 2019-2026. Triad National Security, LLC. All rights
 reserved.  This program was produced under U.S. Government contract
 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
 operated by Triad National Security, LLC for the U.S.  Department of

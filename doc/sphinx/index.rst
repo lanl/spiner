@@ -1,3 +1,18 @@
+.. ======================================================================
+..  © (or copyright) 2019-2026. Triad National Security, LLC. All rights
+..  reserved.  This program was produced under U.S. Government contract
+..  89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
+..  operated by Triad National Security, LLC for the U.S.  Department of
+..  Energy/National Nuclear Security Administration. All rights in the
+..  program are reserved by Triad National Security, LLC, and the
+..  U.S. Department of Energy/National Nuclear Security
+..  Administration. The Government is granted for itself and others acting
+..  on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+..  in this material to reproduce, prepare derivative works, distribute
+..  copies to the public, perform publicly and display publicly, and to
+..  permit others to do so.
+.. ======================================================================
+
 .. Spiner Documentation master file, created by
    sphinx-quickstart on Tue Nov 2 16:56:44 2021.
    You can adapt this file completely to your liking, but it should at least
@@ -19,7 +34,14 @@ together with instructions for interpolating it. This means you don't
 have to specify anything to start interpolating, simple load the file
 and evaluate where you want.
 
-Interpolation is linear. Here's an example of 3D interpolation (2D
+Interpolation is linear by default. For values and analytic derivatives in
+1D and 2D, ``interpToRealWithGrads`` also supports the
+``Spiner::InterpolationStencils::Rational`` policy. See
+:ref:`rational-interpolation` for policy selection, the four-point minimum
+per axis, and boundary behavior. Value-only ``interpToReal`` calls remain
+linear.
+
+Here's an example of 3D linear interpolation (2D
 slice shown) on a GPU, with second-order convergence:
 
 .. image:: ../../figs/convergence.png
