@@ -29,6 +29,7 @@
 
 #include "ports-of-call/portability.hpp"
 #include "ports-of-call/portable_errors.hpp"
+#include "ports-of-call/robust_utils.hpp"
 #include "regular_grid_1d.hpp"
 #include "spiner_types.hpp"
 
@@ -49,7 +50,10 @@ class NonUniformGrid1D {
   NonUniformGrid1D(std::initializer_list<T> points)
       : NonUniformGrid1D(std::vector<T>(points)) {}
 
-  // This constructor borrows caller-owned memory. The caller must
+  // Borrows requiredStorageSize(n) values of T: coordinates[n], dx[n-1],
+  // idx[n-1], invCurvatureWidth[n-2]. initialize_caches populates the cache regions;
+  // otherwise their existing contents are validated without modification.
+  // No allocation occurs. The caller must
   // keep it alive and unchanged for this grid's lifetime, and is
   // responsible for ensuring that its coordinates are finite and
   // strictly increasing.  Validation is performed on the specified
@@ -57,17 +61,24 @@ class NonUniformGrid1D {
   // space is specified.
   template <typename ExecutionSpace = PortsOfCall::Exec::Host>
   NonUniformGrid1D(
-      T *points, const std::size_t n,
+      T *points, const std::size_t n, const bool initialize_caches = false,
       const ExecutionSpace &exec_space = PortsOfCall::Exec::Host()) {
     if (n > 0) {
       n_ = n;
       data_ = points;
       status_ = DataStatus::Unmanaged;
     }
-    validate(exec_space);
+    validate(exec_space, initialize_caches);
   }
 
   PORTABLE_INLINE_FUNCTION T x(const int i) const { return data_[i]; }
+
+  // Valid indices: [0,n-2] for dx/idx, [0,n-3] for curvature widths.
+  PORTABLE_INLINE_FUNCTION T dx(const int i) const { return dx_(i); }
+  PORTABLE_INLINE_FUNCTION T idx(const int i) const { return idx_(i); }
+  PORTABLE_INLINE_FUNCTION T invCurvatureWidth(const int i) const {
+    return invCurv_(i);
+  }
 
   PORTABLE_INLINE_FUNCTION int index(const T value) const {
     if (value <= data_[0]) return 0;
@@ -93,8 +104,7 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION void weights(const T &value, int &ix,
                                         weights_t<T> &w) const {
     ix = index(value);
-    const T dx = data_[ix + 1] - data_[ix];
-    w[1] = (value - data_[ix]) / dx;
+    w[1] = (value - data_[ix]) * idx_(ix);
     w[0] = T(1) - w[1];
   }
 
@@ -104,7 +114,7 @@ class NonUniformGrid1D {
                                                 weights_t<T> &w,
                                                 weights_t<T> &dw) const {
     weights(x, ix, w);
-    dw[1] = T(1) / (data_[ix + 1] - data_[ix]);
+    dw[1] = idx_(ix);
     dw[0] = -dw[1];
   }
 
@@ -112,14 +122,24 @@ class NonUniformGrid1D {
   PORTABLE_INLINE_FUNCTION T max() const { return data_[n_ - 1]; }
   PORTABLE_INLINE_FUNCTION std::size_t nPoints() const { return n_; }
   PORTABLE_INLINE_FUNCTION bool isWellFormed() const {
-    return pointsWellFormed(data_, n_);
+    return pointsWellFormed(data_, n_) && cachesWellFormed_();
   }
   PORTABLE_INLINE_FUNCTION DataStatus dataStatus() const { return status_; }
   PORTABLE_INLINE_FUNCTION T *data() const { return data_; }
 
+  // Number of T values for coordinates and caches, excluding the grid object.
+  // n == 0 denotes an empty grid; nonempty grids require n >= 2.
+  PORTABLE_INLINE_FUNCTION static std::size_t
+  requiredStorageSize(const std::size_t n) {
+    PORTABLE_REQUIRE(n == 0 || n >= 2, "Invalid nonuniform grid size");
+    return n == 0 ? 0 : 4 * n - 4;
+  }
+
   // TODO(JMM): Should we support setting pointer from somewhere
   // else... e.g., when a grid is unamanged?
-  std::size_t dynamicMemorySizeInBytes() const { return n_ * sizeof(T); }
+  std::size_t dynamicMemorySizeInBytes() const {
+    return requiredStorageSize(n_) * sizeof(T);
+  }
   std::size_t serializedSizeInBytes() const {
     return sizeof(*this) + dynamicMemorySizeInBytes();
   }
@@ -138,7 +158,6 @@ class NonUniformGrid1D {
   std::size_t setPointer(std::byte *src) {
     data_ = n_ == 0 ? nullptr : reinterpret_cast<T *>(src);
     status_ = n_ == 0 ? DataStatus::Empty : DataStatus::Unmanaged;
-    if (n_ > 0) validate(PortsOfCall::Exec::Host{});
     return dynamicMemorySizeInBytes();
   }
   std::size_t deSerialize(std::byte *src) {
@@ -249,7 +268,7 @@ class NonUniformGrid1D {
     const auto h5_type =
         std::is_same<T, double>::value ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
     status += H5LTread_dataset(loc, name.c_str(), h5_type, data_);
-    validate(PortsOfCall::Exec::Host{});
+    validate(PortsOfCall::Exec::Host{}, true);
     return status;
   }
 #endif
@@ -267,28 +286,72 @@ class NonUniformGrid1D {
     return true;
   }
 
+  // Public helpers for CUDA lambdas, not part of the grid API.
+  PORTABLE_INLINE_FUNCTION static bool approxEqual_(const T a, const T b) {
+    return std::isfinite(a) && std::isfinite(b) &&
+           (a == b ||
+            std::abs(a - b) <= PortsOfCall::Robust::EPS<T>() *
+                                   std::max(std::abs(a), std::abs(b)));
+  }
+  PORTABLE_INLINE_FUNCTION bool cachesWellFormed_() const {
+    using PortsOfCall::Robust::ratio;
+    for (std::size_t i = 0; i + 1 < n_; ++i) {
+      const T width = data_[i + 1] - data_[i];
+      if (!approxEqual_(dx_(i), width) ||
+          !approxEqual_(idx_(i), ratio(T(1), width)))
+        return false;
+      if (i + 2 < n_ &&
+          !approxEqual_(invCurv_(i),
+                        ratio(T(1), width + (data_[i + 2] - data_[i + 1]))))
+        return false;
+    }
+    return true;
+  }
+  PORTABLE_INLINE_FUNCTION void initializeCaches_() const {
+    using PortsOfCall::Robust::ratio;
+    for (std::size_t i = 0; i + 1 < n_; ++i) {
+      dx_(i) = data_[i + 1] - data_[i];
+      idx_(i) = ratio(T(1), dx_(i));
+    }
+    for (std::size_t i = 0; i + 2 < n_; ++i)
+      invCurv_(i) = ratio(T(1), dx_(i) + dx_(i + 1));
+  }
+
   template <typename ExecutionSpace>
-  void validate(const ExecutionSpace &E) const {
+  void validate(const ExecutionSpace &E, bool initialize_caches = false) const {
     bool valid = false;
-    T *points = data_; // TODO(JMM): Expose PORTABLE_CLASS_LAMBDA
-    std::size_t n = n_;
+    const auto grid = *this;
     portableReduce(
         "Validate UnstructuredGrid1D", E, 0, 1,
         PORTABLE_LAMBDA(const int, bool &b) {
-          b = pointsWellFormed(points, n);
+          b = pointsWellFormed(grid.data(), grid.nPoints());
+          if (b && initialize_caches) grid.initializeCaches_();
+          if (b) b = grid.cachesWellFormed_();
         },
         valid);
     PORTABLE_ALWAYS_REQUIRE(valid, "Dataset is well formed");
   }
 
  private:
+  // Syntactic sugar for cache layouts
+  PORTABLE_INLINE_FUNCTION T &dx_(const std::size_t i) const {
+    return data_[n_ + i];
+  }
+  PORTABLE_INLINE_FUNCTION T &idx_(const std::size_t i) const {
+    return data_[2 * n_ - 1 + i];
+  }
+  PORTABLE_INLINE_FUNCTION T &invCurv_(const std::size_t i) const {
+    return data_[3 * n_ - 2 + i];
+  }
+
   void allocate_(const T *src, const std::size_t n) {
     PORTABLE_ALWAYS_REQUIRE(pointsWellFormed(src, n),
                             "Input dataset must be well-formed.");
     n_ = n;
     data_ = static_cast<T *>(std::malloc(dynamicMemorySizeInBytes()));
     PORTABLE_ALWAYS_REQUIRE(data_ != nullptr, "Grid allocation failed");
-    std::memcpy(data_, src, dynamicMemorySizeInBytes());
+    std::memcpy(data_, src, n_ * sizeof(T));
+    initializeCaches_();
     status_ = DataStatus::AllocatedHost;
   }
 

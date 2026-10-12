@@ -33,6 +33,7 @@
 #include "ports-of-call/portability.hpp"
 #include "ports-of-call/portable_arrays.hpp"
 #include "ports-of-call/portable_errors.hpp"
+#include "ports-of-call/robust_utils.hpp"
 #include "sp5.hpp"
 #include "spiner_types.hpp"
 
@@ -63,9 +64,12 @@ class RegularGrid1D {
 
   // Constructors
   PORTABLE_INLINE_FUNCTION RegularGrid1D()
-      : min_(rNaN), max_(rNaN), dx_(rNaN), idx_(rNaN), N_(iNaN) {}
+      : min_(rNaN), max_(rNaN), dx_(rNaN), idx_(rNaN),
+        inv_curvature_width_(rNaN), N_(iNaN) {}
   PORTABLE_INLINE_FUNCTION RegularGrid1D(T min, T max, size_t N)
-      : min_(min), max_(max), dx_((max - min) / ((T)(N - 1))), idx_(1 / dx_),
+      : min_(min), max_(max), dx_((max - min) / ((T)(N - 1))),
+        idx_(PortsOfCall::Robust::ratio(T(1), dx_)),
+        inv_curvature_width_(PortsOfCall::Robust::ratio(T(1), dx_ + dx_)),
         N_(N) {
     PORTABLE_ALWAYS_REQUIRE(min_ < max_ && N_ > 0, "Valid grid");
   }
@@ -83,6 +87,12 @@ class RegularGrid1D {
   PORTABLE_INLINE_FUNCTION T x(const int i) const { return i * dx_ + min_; }
   PORTABLE_INLINE_FUNCTION int index(const T x) const {
     return bound(idx_ * (x - min_));
+  }
+
+  PORTABLE_INLINE_FUNCTION T dx(const int i) const { return dx_; }
+  PORTABLE_INLINE_FUNCTION T idx(const int i) const { return idx_; }
+  PORTABLE_INLINE_FUNCTION T invCurvatureWidth(const int i) const {
+    return inv_curvature_width_;
   }
 
   // Returns closest index and weights for interpolation
@@ -192,7 +202,8 @@ class RegularGrid1D {
     min_ = range[0];
     max_ = range[1];
     dx_ = range[2];
-    idx_ = 1. / dx_;
+    idx_ = PortsOfCall::Robust::ratio(T(1), dx_);
+    inv_curvature_width_ = PortsOfCall::Robust::ratio(T(1), dx_ + dx_);
     status += H5LTget_attribute_int(loc, name.c_str(), SP5::RG1D::N, &n);
     N_ = n;
     return status;
@@ -202,6 +213,7 @@ class RegularGrid1D {
  private:
   T min_, max_;
   T dx_, idx_;
+  T inv_curvature_width_;
   size_t N_;
 };
 
