@@ -123,8 +123,8 @@ struct Rational {
     }
     auto [rip1y, drip1dy] = evaluateLine_(gy, f);
 
-    const T inverse_dx = gx.inverse_dx[ix1 - start1];
-    const T inverse_dy = gy.inverse_dx[ix2 - start2];
+    const T inverse_dx = gx.inverse_cell_dx;
+    const T inverse_dy = gy.inverse_cell_dx;
     // Originally qx = ratio(gx.cell_offset, dx), likewise for qy.
     const T qx = gx.cell_offset * inverse_dx;
     const T qy = gy.cell_offset * inverse_dy;
@@ -176,7 +176,7 @@ struct Rational {
     std::array<T, NCONTROL - 1> dx;
     std::array<T, NCONTROL - 1> inverse_dx;
     std::array<T, 2> inv_curv_width;
-    T Q, R, cell_offset;
+    T Q, R, cell_offset, inverse_cell_dx;
     AxisMode mode;
     bool second_table_interval;
   };
@@ -195,16 +195,20 @@ struct Rational {
     for (int c = 0; c < NCONTROL; ++c)
       xg[c] = grid.x(geometry.start + c);
     for (int c = 0; c < NCONTROL - 1; ++c) {
-      geometry.dx[c] = grid.dx(geometry.start + c); // Kerley eqn 1
+      // Kerley eqn 1. 
+      geometry.dx[c] = xg[c + 1] - xg[c];
       geometry.inverse_dx[c] = grid.idx(geometry.start + c);
     }
     geometry.inv_curv_width[0] = grid.invCurvatureWidth(geometry.start);
     geometry.inv_curv_width[1] = grid.invCurvatureWidth(geometry.start + 1);
-    geometry.cell_offset = x - xg[geometry.cell - geometry.start];
+    const int k = geometry.cell - geometry.start;
+    geometry.cell_offset = x - (k == 0 ? xg[0] : (k == 1 ? xg[1] : xg[2]));
+    geometry.inverse_cell_dx =
+        k == 0 ? geometry.inverse_dx[0]
+               : (k == 1 ? geometry.inverse_dx[1] : geometry.inverse_dx[2]);
 
-    // Retain coordinate-based classification, including exact-knot behavior.
     // Q is anchored to the endpoint for extrapolation, to the interval's
-    // left point otherwise. The 2D blend has its own enclosing-cell offset.
+    // left point otherwise.
     geometry.R = T(0);
     if (x < xg[0]) {
       geometry.mode = AxisMode::LowerExtrapolation;
@@ -232,7 +236,6 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   evaluateLine_(const AxisGeometry<T> &geometry,
                 const std::array<T, NCONTROL> &f) noexcept {
-    using PortsOfCall::Robust::ratio;
     const auto &dx = geometry.dx;
     const auto &inverse_dx = geometry.inverse_dx;
     const T Q = geometry.Q, R = geometry.R;
@@ -277,7 +280,7 @@ struct Rational {
       // Appendix A, lines 54–59, including its exact-knot convention.
       const T mu1 = std::abs(C2 * R), mu2 = std::abs(C1 * Q);
       const T sum = mu1 + mu2;
-      const T w = sum > 0 ? ratio(mu1, sum) : T(0);
+      const T w = sum > 0 ? mu1 / sum : T(0);
       const T C = C2 + w * (C1 - C2);
       // Original Appendix A value and derivative:
       // fout = f[1] + Q * (S[1] - R * C);
