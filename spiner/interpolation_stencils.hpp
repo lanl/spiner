@@ -238,7 +238,6 @@ struct Rational {
     const T Q = geometry.Q, R = geometry.R;
     T fout, dfout, C1, C2;
     std::array<T, NCONTROL - 1> S;
-    // Original slopes: S[i] = ratio(f[i + 1] - f[i], dx[i]).
     for (int i = 0; i < NCONTROL - 1; ++i)
       S[i] = (f[i + 1] - f[i]) * inverse_dx[i];
 
