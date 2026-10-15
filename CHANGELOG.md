@@ -3,6 +3,7 @@
 ## Current develop
 
 ### Added (new features/APIs/variables/...)
+- [[MR 155]](https://github.com/lanl/spiner/pull/155) Add rational function interpolation.
 - [[MR 154]](https://github.com/lanl/spiner/pull/154) Extend grid API to include caches of the grid spacing
 - [[MR 151]](https://github.com/lanl/spiner/pull/151) Add interpToRealWithGrad
 - [[MR 148]](https://github.com/lanl/spiner/pull/148) Add `FastNonUniformGrid1D` with exact O(1) NQT-asinh lookup acceleration, configurable binary fallback, and host-side reconfiguration.
