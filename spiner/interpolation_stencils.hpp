@@ -1,5 +1,3 @@
-#ifndef SPINER_INTERPOLATION_STENCILS
-#define SPINER_INTERPOLATION_STENCILS
 #ifndef SPINER_INTERPOLATION_STENCILS_
 #define SPINER_INTERPOLATION_STENCILS_
 // © (or copyright) 2026. Triad National Security, LLC. All rights
@@ -298,4 +296,4 @@ struct Rational {
 } // namespace InterpolationStencils
 } // namespace Spiner
 
-#endif // SPINER_INTERPOLATION_STENCILS
+#endif // SPINER_INTERPOLATION_STENCILS_
