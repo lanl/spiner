@@ -150,11 +150,14 @@ struct Rational {
     const T cy = rjp1x - rjx - q;
     const T tx = cx - qy * m;
     const T ty = cy - qx * m;
-    const T fout = rjx + riy - f00 + qx * cx + qy * ty;
+    // fout
+    rjx += riy - f00 + qx * cx + qy * ty;
     // Reuse the guarded reciprocals for the original ratio(tx, dx) and
     // ratio(ty, dy) gradient corrections.
-    const T dfdx1 = drjdx + qy * (drjp1dx - drjdx) + tx * inverse_dx;
-    const T dfdx2 = dridy + qx * (drip1dy - dridy) + ty * inverse_dy;
+    // dfdx1 
+    drjdx += qy * (drjp1dx - drjdx) + tx * inverse_dx;
+    // dfdx2
+    dridy += qx * (drip1dy - dridy) + ty * inverse_dy;
 
     return {fout, dfdx2, dfdx1};
   }
