@@ -1,6 +1,7 @@
 #ifndef SPINER_INTERPOLATION_STENCILS
 #define SPINER_INTERPOLATION_STENCILS
-//======================================================================
+#ifndef SPINER_INTERPOLATION_STENCILS_
+#define SPINER_INTERPOLATION_STENCILS_
 // © (or copyright) 2026. Triad National Security, LLC. All rights
 // reserved.  This program was produced under U.S. Government contract
 // 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
