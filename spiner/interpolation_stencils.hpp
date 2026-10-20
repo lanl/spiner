@@ -83,7 +83,7 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   interpToRealWithGrads(const T x, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    auto geometry = prepareAxis_(x, g[0], a.GetDim(1));
+    const AxisGeometry geometry(x, g[0], a.GetDim(1));
     const int start = geometry.start;
     const std::array<T, NCONTROL> f = {a(start), a(start + 1), a(start + 2),
                                        a(start + 3)};
@@ -94,10 +94,34 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result2D<T>
   interpToRealWithGrads(const T x2, const T x1, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    const auto gx = prepareAxis_(x1, g[0], a.GetDim(1));
-    const auto gy = prepareAxis_(x2, g[1], a.GetDim(2));
+    const AxisGeometry gx(x1, g[0], a.GetDim(1));
+    const AxisGeometry gy(x2, g[1], a.GetDim(2));
     const int ix1 = gx.cell, ix2 = gy.cell;
     const int start1 = gx.start, start2 = gy.start;
+
+    /*
+      JMM: Note the notation here gets tricky because I followed
+      Kerley's basic convetion and the 2nd-order interpolation needs a
+      way of representing the "continuum" 1D interpolation objects
+      based at grid lines. This doesn't match the rest of
+      Spiner. Convention is:
+
+      - r is the 1D interpolant.
+
+      - i or j indicates index in x1 or x2 respectively for location
+        on mesh the interpolant is based. It then interpolates in the
+        ORTHOGNAL direction as a continuum object.
+
+      - x or y specifies the continuum interpolant.
+
+      E.g., riy specifies interpolant continuous in x2 based at point in x1 i
+      rjp1x specifies interpolant continuous in x1 based at point j+1 in x2.
+
+      This gets more confusing below when we actually compute the
+      final formulae, as I (i.e., Claude) introduced some intermediate
+      values that don't really have useful/meaningful names. I just
+      picked something. Sorry.
+    */
 
     // Kerley eqn 17
     // compute rj(x) = r_{ix2}(x1)
@@ -125,8 +149,8 @@ struct Rational {
     const T inverse_dx = gx.inverse_cell_dx;
     const T inverse_dy = gy.inverse_cell_dx;
     // Originally qx = ratio(gx.cell_offset, dx), likewise for qy.
-    const T qx = gx.cell_offset * inverse_dx;
-    const T qy = gy.cell_offset * inverse_dy;
+    const T qx = gx.cell_offset * inverse_dx; // x-slope denominator
+    const T qy = gy.cell_offset * inverse_dy; // y-slope denominator
     const T f00 = a(ix2, ix1), f10 = a(ix2, ix1 + 1);
     const T f01 = a(ix2 + 1, ix1), f11 = a(ix2 + 1, ix1 + 1);
     // Kerley eqn 18 and its partial derivatives before factoring:
@@ -143,23 +167,23 @@ struct Rational {
     // clang-format on
     // Share the bilinear corner differences and edge corrections between
     // the value and both gradients. m is the mixed corner difference.
-    const T p = f10 - f00;
-    const T q = f01 - f00;
-    const T m = (f11 - f01) - p;
-    const T cx = rip1y - riy - p;
-    const T cy = rjp1x - rjx - q;
-    const T tx = cx - qy * m;
+    const T p = f10 - f00;        // fip1j - fij, x-slope numerator at i,j
+    const T q = f01 - f00;        // fijp1 - fij; y-slope numerator at i,j
+    const T m = (f11 - f01) - p;  // x-slope numerator at i, j+1 minus p
+    const T cx = rip1y - riy - p; // r(y) at i+1 - r(i) at i - p.
+    const T cy = rjp1x - rjx - q; // r(x) at j+1 - r(x) at j - p.
+    const T tx = cx - qy * m;     // build "cross terms" of interpolation ...
     const T ty = cy - qx * m;
     // fout
     rjx += riy - f00 + qx * cx + qy * ty;
     // Reuse the guarded reciprocals for the original ratio(tx, dx) and
     // ratio(ty, dy) gradient corrections.
-    // dfdx1 
+    // dfdx1
     drjdx += qy * (drjp1dx - drjdx) + tx * inverse_dx;
     // dfdx2
     dridy += qx * (drip1dy - dridy) + ty * inverse_dy;
 
-    return {fout, dfdx2, dfdx1};
+    return {rjx, dridy, drjdx};
   }
 
  private:
@@ -181,58 +205,58 @@ struct Rational {
     T Q, R, cell_offset, inverse_cell_dx;
     AxisMode mode;
     bool second_table_interval;
+
+    template <typename Grid_t>
+    PORTABLE_FORCEINLINE_FUNCTION AxisGeometry(const T x, const Grid_t &grid,
+                                               const int N) noexcept {
+      PORTABLE_REQUIRE(
+          N >= NCONTROL,
+          "Four point stencil required for rational function interpolation.");
+      cell = std::min(N - 2, std::max(0, grid.index(x)));
+      start = std::min(N - 4, std::max(0, cell - 1));
+      second_table_interval = cell == 1;
+      std::array<T, NCONTROL> xg;
+      for (int c = 0; c < NCONTROL; ++c)
+        xg[c] = grid.x(start + c);
+      for (int c = 0; c < NCONTROL - 1; ++c) {
+        // Kerley eqn 1.
+        dx[c] = xg[c + 1] - xg[c];
+        inverse_dx[c] = grid.idx(start + c);
+      }
+      inv_curv_width[0] = grid.invCurvatureWidth(start);
+      inv_curv_width[1] = grid.invCurvatureWidth(start + 1);
+      const int k = cell - start;
+      cell_offset = x - (k == 0 ? xg[0] : (k == 1 ? xg[1] : xg[2]));
+      inverse_cell_dx =
+          k == 0 ? inverse_dx[0] : (k == 1 ? inverse_dx[1] : inverse_dx[2]);
+
+      // Q is anchored to the endpoint for extrapolation, to the interval's
+      // left point otherwise.
+      R = T(0);
+      if (x < xg[0]) {
+        mode = AxisMode::LowerExtrapolation;
+        Q = x - xg[0];
+      } else if (x > xg[3]) {
+        mode = AxisMode::UpperExtrapolation;
+        Q = x - xg[3];
+      } else if (x < xg[1]) {
+        mode = AxisMode::LowerQuadratic;
+        Q = x - xg[0];
+        R = xg[1] - x;
+      } else if (x >= xg[2]) {
+        mode = AxisMode::UpperQuadratic;
+        Q = x - xg[2];
+        R = xg[3] - x;
+      } else {
+        mode = AxisMode::Interior;
+        Q = x - xg[1];
+        R = xg[2] - x;
+      }
+    }
   };
 
   template <typename T, typename Grid_t>
-  PORTABLE_FORCEINLINE_FUNCTION static AxisGeometry<T>
-  prepareAxis_(const T x, const Grid_t &grid, const int N) noexcept {
-    PORTABLE_REQUIRE(
-        N >= NCONTROL,
-        "Four point stencil required for rational function interpolation.");
-    AxisGeometry<T> geometry;
-    geometry.cell = std::min(N - 2, std::max(0, grid.index(x)));
-    geometry.start = std::min(N - 4, std::max(0, geometry.cell - 1));
-    geometry.second_table_interval = geometry.cell == 1;
-    std::array<T, NCONTROL> xg;
-    for (int c = 0; c < NCONTROL; ++c)
-      xg[c] = grid.x(geometry.start + c);
-    for (int c = 0; c < NCONTROL - 1; ++c) {
-      // Kerley eqn 1. 
-      geometry.dx[c] = xg[c + 1] - xg[c];
-      geometry.inverse_dx[c] = grid.idx(geometry.start + c);
-    }
-    geometry.inv_curv_width[0] = grid.invCurvatureWidth(geometry.start);
-    geometry.inv_curv_width[1] = grid.invCurvatureWidth(geometry.start + 1);
-    const int k = geometry.cell - geometry.start;
-    geometry.cell_offset = x - (k == 0 ? xg[0] : (k == 1 ? xg[1] : xg[2]));
-    geometry.inverse_cell_dx =
-        k == 0 ? geometry.inverse_dx[0]
-               : (k == 1 ? geometry.inverse_dx[1] : geometry.inverse_dx[2]);
-
-    // Q is anchored to the endpoint for extrapolation, to the interval's
-    // left point otherwise.
-    geometry.R = T(0);
-    if (x < xg[0]) {
-      geometry.mode = AxisMode::LowerExtrapolation;
-      geometry.Q = x - xg[0];
-    } else if (x > xg[3]) {
-      geometry.mode = AxisMode::UpperExtrapolation;
-      geometry.Q = x - xg[3];
-    } else if (x < xg[1]) {
-      geometry.mode = AxisMode::LowerQuadratic;
-      geometry.Q = x - xg[0];
-      geometry.R = xg[1] - x;
-    } else if (x >= xg[2]) {
-      geometry.mode = AxisMode::UpperQuadratic;
-      geometry.Q = x - xg[2];
-      geometry.R = xg[3] - x;
-    } else {
-      geometry.mode = AxisMode::Interior;
-      geometry.Q = x - xg[1];
-      geometry.R = xg[2] - x;
-    }
-    return geometry;
-  }
+  AxisGeometry(T, const Grid_t &, int) -> AxisGeometry<T>;
 
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
