@@ -83,7 +83,9 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
   interpToRealWithGrads(const T x, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    const AxisGeometry geometry(x, g[0], a.GetDim(1));
+    // JMM: We don't use a deduction guide because the CUDA compiler
+    // doesn't accept private scope deduction guides.
+    const AxisGeometry<T> geometry(x, g[0], a.GetDim(1));
     const int start = geometry.start;
     const std::array<T, NCONTROL> f = {a(start), a(start + 1), a(start + 2),
                                        a(start + 3)};
@@ -94,8 +96,10 @@ struct Rational {
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result2D<T>
   interpToRealWithGrads(const T x2, const T x1, const GridArray_t &g,
                         const Array_t &a) noexcept {
-    const AxisGeometry gx(x1, g[0], a.GetDim(1));
-    const AxisGeometry gy(x2, g[1], a.GetDim(2));
+    // JMM: We don't use a deduction guide because the CUDA compiler
+    // doesn't accept private scope deduction guides.
+    const AxisGeometry<T> gx(x1, g[0], a.GetDim(1));
+    const AxisGeometry<T> gy(x2, g[1], a.GetDim(2));
     const int ix1 = gx.cell, ix2 = gy.cell;
     const int start1 = gx.start, start2 = gy.start;
 
@@ -254,9 +258,6 @@ struct Rational {
       }
     }
   };
-
-  template <typename T, typename Grid_t>
-  AxisGeometry(T, const Grid_t &, int) -> AxisGeometry<T>;
 
   template <typename T>
   PORTABLE_FORCEINLINE_FUNCTION static InterpolationHelpers::Result1D<T>
