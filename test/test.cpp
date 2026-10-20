@@ -298,9 +298,8 @@ TEST_CASE("Grid spacing caches", "[GridSpacing]") {
 }
 
 template <int N>
-void checkPiecewiseSpacingCache(
-    const PiecewiseGrid1D<N> &grid,
-    const std::vector<RegularGrid1D> &subgrids) {
+void checkPiecewiseSpacingCache(const PiecewiseGrid1D<N> &grid,
+                                const std::vector<RegularGrid1D> &subgrids) {
   auto device = grid.getOnDevice();
   int offset = 0;
   for (int ig = 0; ig < subgrids.size(); ++ig) {
@@ -308,10 +307,10 @@ void checkPiecewiseSpacingCache(
     const int n = subgrid.nPoints();
     const Real dx = subgrid.dx(0), idx = subgrid.idx(0);
     const Real interior = subgrid.invCurvatureWidth(0);
-    const Real last = ig + 1 < subgrids.size()
-                          ? PortsOfCall::Robust::ratio(
-                                Real(1), dx + subgrids[ig + 1].dx(0))
-                          : interior;
+    const Real last =
+        ig + 1 < subgrids.size()
+            ? PortsOfCall::Robust::ratio(Real(1), dx + subgrids[ig + 1].dx(0))
+            : interior;
     // Both copies of a shared endpoint retain their subgrid's spacing.
     for (int i = 0; i < n; ++i) {
       REQUIRE(grid.dx(offset + i) == dx);
@@ -345,12 +344,8 @@ TEST_CASE("Piecewise grid spacing caches", "[PiecewiseGrid1D][GridSpacing]") {
   SECTION("Increasing and decreasing spacing with two-point subgrids") {
     subgrids = {{0, 1, 2}, {1, 3, 2}, {3, 4, 3}};
   }
-  SECTION("Equal spacing across a join") {
-    subgrids = {{0, 2, 3}, {2, 4, 3}};
-  }
-  SECTION("A single two-point subgrid has no join") {
-    subgrids = {{0, 2, 2}};
-  }
+  SECTION("Equal spacing across a join") { subgrids = {{0, 2, 3}, {2, 4, 3}}; }
+  SECTION("A single two-point subgrid has no join") { subgrids = {{0, 2, 2}}; }
   PiecewiseGrid1D<3> grid(subgrids), shallow, deep;
   checkPiecewiseSpacingCache(grid, subgrids);
   shallow.shallowCopy(grid);

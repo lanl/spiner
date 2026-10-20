@@ -80,44 +80,6 @@ target_link_libraries(benchmark.bin PRIVATE spiner::spiner spiner_test)
 add_executable(nonuniform_benchmark.bin nonuniform_benchmark.cpp)
 target_link_libraries(nonuniform_benchmark.bin PRIVATE spiner::spiner spiner_test)
 
-# Metadata is refreshed at build time, including source hashes for dirty builds.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_executable(rational_benchmark.bin rational_benchmark.cpp)
-target_link_libraries(rational_benchmark.bin PRIVATE spiner::spiner spiner_test)
-target_include_directories(rational_benchmark.bin PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-string(TOUPPER "${CMAKE_BUILD_TYPE}" _rational_config)
-set(_rational_flags "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_rational_config}}")
-add_custom_target(rational_benchmark_metadata
-  COMMAND ${CMAKE_COMMAND}
-    "-DSOURCE_DIR=${PROJECT_SOURCE_DIR}"
-    "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/rational_benchmark_metadata.hpp"
-    "-DBINARY_DIR=${PROJECT_BINARY_DIR}"
-    "-DCOMPILER=${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})"
-    "-DBUILD_TYPE=$<CONFIG>"
-    "-DFLAGS=${_rational_flags}"
-    "-DPOC_DIR=${ports-of-call_SOURCE_DIR}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/rational_benchmark_metadata.cmake"
-  BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/rational_benchmark_metadata.hpp"
-  VERBATIM)
-add_dependencies(rational_benchmark.bin rational_benchmark_metadata)
-
-# Small correctness/CLI checks only; no performance thresholds.
-foreach(distribution interior-shuffled interior-ordered boundary)
-  add_test(NAME rational_benchmark_${distribution}
-    COMMAND rational_benchmark.bin --queries 256 --passes 1 --trials 1
-      --warmup 0 --nx1d 7 --nx2d 7 --ny2d 4
-      --distribution ${distribution}
-      --output "${CMAKE_CURRENT_BINARY_DIR}/rational-smoke-${distribution}.csv")
-  add_test(NAME rational_benchmark_fast_${distribution}
-    COMMAND rational_benchmark.bin --grid fast-nonuniform
-      --queries 256 --passes 1 --trials 1 --warmup 0
-      --nx1d 7 --nx2d 7 --ny2d 4 --distribution ${distribution}
-      --output "${CMAKE_CURRENT_BINARY_DIR}/rational-fast-smoke-${distribution}.csv")
-endforeach()
-add_test(NAME rational_benchmark_invalid_queries
-  COMMAND rational_benchmark.bin --queries 0)
-set_tests_properties(rational_benchmark_invalid_queries PROPERTIES WILL_FAIL TRUE)
-
 # Convergence test
 add_executable(convergence.bin convergence.cpp)
 target_link_libraries(convergence.bin PRIVATE spiner::spiner spiner_test)
