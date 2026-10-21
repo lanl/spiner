@@ -51,14 +51,13 @@ class NonUniformGrid1D {
       : NonUniformGrid1D(std::vector<T>(points)) {}
 
   // Borrows requiredStorageSize(n) values of T: coordinates[n], dx[n-1],
-  // idx[n-1], invCurvatureWidth[n-2]. initialize_caches populates the cache regions;
-  // otherwise their existing contents are validated without modification.
-  // No allocation occurs. The caller must
-  // keep it alive and unchanged for this grid's lifetime, and is
-  // responsible for ensuring that its coordinates are finite and
-  // strictly increasing.  Validation is performed on the specified
-  // PortsOfCall Execution Space. Code will segfault if the incorrect
-  // space is specified.
+  // idx[n-1], invCurvatureWidth[n-2]. initialize_caches populates the cache
+  // regions; otherwise their existing contents are validated without
+  // modification. No allocation occurs. The caller must keep it alive and
+  // unchanged for this grid's lifetime, and is responsible for ensuring that
+  // its coordinates are finite and strictly increasing.  Validation is
+  // performed on the specified PortsOfCall Execution Space. Code will segfault
+  // if the incorrect space is specified.
   template <typename ExecutionSpace = PortsOfCall::Exec::Host>
   NonUniformGrid1D(
       T *points, const std::size_t n, const bool initialize_caches = false,

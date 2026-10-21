@@ -13,6 +13,8 @@
 ..  permit others to do so.
 .. ======================================================================
 
+.. Generative AI was used to assist with modifications to this document.
+
 .. _interpolation:
 
 Gridding for Interpolation
