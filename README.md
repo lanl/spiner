@@ -1,8 +1,6 @@
 Spiner
 ===
 
-<!-- Generative AI was used to assist with modifications to this file. -->
-
 [![Build Status](https://github.com/LANL/spiner/actions/workflows/tests.yml/badge.svg)](https://github.com/lanl/spiner/actions/workflows/tests.yml)
 
 [![DOI](https://zenodo.org/badge/340131542.svg)](https://zenodo.org/badge/latestdoi/340131542)
@@ -132,7 +130,14 @@ diff, do it as a separate commit.
 
 ## Interpolation
 
-Interpolation is linear. Here's an example of interpolation in 3D (2D
+Interpolation is linear by default. For values and analytic derivatives in
+1D and 2D, `interpToRealWithGrads` also supports the
+`Spiner::InterpolationStencils::Rational` policy. See the
+[rational interpolation documentation](https://lanl.github.io/spiner/main/src/databox.html#rational-interpolation)
+for policy selection, the four-point minimum per axis, and boundary behavior.
+Value-only `interpToReal` calls remain linear.
+
+Here's an example of linear interpolation in 3D (2D
 slice shown). Convergence is second-order, as expected.
 
 ![convergence plot](figs/convergence.png)
@@ -164,6 +169,8 @@ Continuous integration and build system support has been provided by
 - Christopher Mauney
 
 ## Copyright
+
+Generative AI was used to assist with modifications to this document.
 
 © (or copyright) 2019-2026. Triad National Security, LLC. All rights
 reserved.  This program was produced under U.S. Government contract
