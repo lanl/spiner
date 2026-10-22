@@ -13,6 +13,8 @@
 ..  permit others to do so.
 .. ======================================================================
 
+.. Generative AI was used to assist with modifications to this file.
+
 .. _contributing-doc:
 
 .. _Catch2: https://github.com/catchorg/Catch2/blob/devel/docs/tutorial.md
@@ -42,7 +44,7 @@ changelog.
   in-line with other codes in the singularity-eos ecosystem.
 
 Before a pull request will be merged, the code should be formatted. We
-use clang-format for this, pinned to version 10. You can automatically
+use clang-format for this, pinned to version 19. You can automatically
 trigger ``clang-format`` in two ways: first you can run the script
 ``format.sh``; second you can type ``make
 format_spiner`` after configuring the code with ``clang-format``
@@ -73,7 +75,7 @@ AI-assisted coding
 generation, a disclaimer must be made in a comment in the relevant
 file. For example:
 
-..code-block:: c++
+.. code-block:: c++
 
   // This file was made in part with generative AI.
 
@@ -293,13 +295,16 @@ How to Make a Release
 ``spiner`` uses *semantic versioning*. A version is written
 as ``v[major version].[minor version].[patch number]``. To make a new
 release, first make a new pull request where you (1) change the
-version number in the ``project`` field of the of the top-level
-``CmakeLists.txt`` file and (2) add a new release field to the
+``SPINER_VERSION`` value in the top-level
+``CMakeLists.txt`` file and (2) add a new release field to the
 ``CHANGELOG.md``, moving all the changes listed under ``Current Main``
-to that release. Then add empty categories for ``Current
-Main``. Typically the branch for this merge request should be called
+to that release and set its publication date. Then add empty categories
+for ``Current Main``. Typically the branch for this merge request should be called
 ``v[release number]-rc`` for "release candidate." Make sure that the
-full test suite passes for this PR.
+full test suite passes for this PR, including public and internal CI,
+installation checks, and the documentation build. Use a major version bump
+for incompatible public API changes and include migration instructions.
+Build locally with six threads (``cmake --build build --parallel 6``).
 
 After that pull request is merged, go to the ``releases`` tab on the
 right sidebar on GitHub, and draft a new release. Set the tag to
@@ -308,8 +313,9 @@ changelog since the last release, and make the release.
 
 Finally, the Spackages must be updated. To do so, you will need to
 submit an MR to the spack `spack-packages`_ repository with an updated
-``package.py`` with the new release. LANL developers must also submit
-to the ``xcap-spackages`` library.
+``package.py`` with the new release and its dependency constraints.
+For Spiner 2.0.0, require Ports-of-Call 3.1.1 or newer. LANL developers
+must also submit to the ``xcap-spackages`` library.
 
 .. _spack-packages: https://github.com/spack/spack-packages
 

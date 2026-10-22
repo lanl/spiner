@@ -1,3 +1,16 @@
+# © 2021-2026. Triad National Security, LLC. All rights reserved.  This
+# program was produced under U.S. Government contract 89233218CNA000001
+# for Los Alamos National Laboratory (LANL), which is operated by Triad
+# National Security, LLC for the U.S.  Department of Energy/National
+# Nuclear Security Administration. All rights in the program are
+# reserved by Triad National Security, LLC, and the U.S. Department of
+# Energy/National Nuclear Security Administration. The Government is
+# granted for itself and others acting on its behalf a nonexclusive,
+# paid-up, irrevocable worldwide license in this material to reproduce,
+# prepare derivative works, distribute copies to the public, perform
+# publicly and display publicly, and to permit others to do so.
+# Generative AI was used to assist with modifications to this file.
+
 name: Build and Deploy docs
 
 on:
@@ -7,12 +20,14 @@ on:
     branches: [ main ]
   release:
     types:
-      - created
+      - published
 
 jobs:
     docs:
       name: build and deploy docs
       runs-on: ubuntu-latest
+      permissions:
+        contents: write
 
       steps:      
         - name: Checkout code
@@ -42,9 +57,12 @@ jobs:
           run: |
             echo "Repo = ${GITHUB_REPOSITORY}"
             cd doc/sphinx
-            make multiversion
+            make -j6 multiversion
         - name: Deploy
-          if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          if: >-
+            github.event_name == 'push' ||
+            github.event_name == 'release' ||
+            github.event.pull_request.head.repo.full_name == github.repository
           uses: peaceiris/actions-gh-pages@v3.7.3
           with:
             github_token: ${{ secrets.GITHUB_TOKEN }}

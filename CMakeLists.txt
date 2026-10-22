@@ -15,7 +15,7 @@
 
 cmake_minimum_required(VERSION 3.24)
 
-set(SPINER_VERSION 1.7.0)
+set(SPINER_VERSION 2.0.0)
 project(
   spiner
   VERSION ${SPINER_VERSION}
@@ -97,7 +97,7 @@ if(NOT TARGET ports-of-call::ports-of-call)
   FetchContent_Declare(
     ports-of-call
     GIT_REPOSITORY https://github.com/lanl/ports-of-call
-    GIT_TAG v3.1.1 # TODO: update if needed
+    GIT_TAG v3.1.1
   )
 set(SPINER_DEP_LIST "ports-of-call")
 endif()
