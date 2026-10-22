@@ -1,34 +1,71 @@
 # Changelog
 
-## Current develop
+<!-- Generative AI was used to assist with modifications to this file. -->
+
+## Current Main
+
+### Added (new features/APIs/variables/...)
+
+### Fixed (Repair bugs, etc)
+
+### Changed (changing behavior/API/variables/...)
+
+### Infrastructure (changes irrelevant to downstream codes)
+
+### Deprecated (soon to be removed behavior/API/variables/...)
+
+### Removed
+
+## Release 2.0.0
+Date: October 22, 2026
+
+This major release adds nonuniform grids, accelerated lookup, interpolation
+with gradients, and cached grid spacings. It requires Ports-of-Call 3.1.1 or
+newer.
+
+### Migration from 1.7.0
+
+- Replace `DataBox::copy()` with `deepCopy()`. Grid implementations now provide
+  explicit `shallowCopy()` and `deepCopy()` operations. Ordinary DataBox copies
+  remain shallow, without reference counting or automatic deallocation.
+- Replace `DBDeleter` with `DBDeleter<>`. For a DataBox that owns its grids,
+  explicitly call `finalizeGrids()` as well as `finalize()`/`free()`, or use
+  `DBDeleter<true>`. Free each allocation exactly once; non-owning views must
+  not outlive their owners.
+- Replace `interpToDB` calls with an appropriately shaped, allocated destination
+  and `destination.interpFromDB(source, ...)`.
+- Replace no-argument `dx()` with `dx(i)` for an interval. Grid comparison
+  operators have been removed.
+- Raw serialization is for compatible builds, not persistent storage across
+  releases; do not assume 1.7.0 buffers can be read by 2.0.0.
 
 ### Added (new features/APIs/variables/...)
 - [[MR 155]](https://github.com/lanl/spiner/pull/155) Add rational function interpolation.
 - [[MR 154]](https://github.com/lanl/spiner/pull/154) Extend grid API to include caches of the grid spacing
 - [[MR 151]](https://github.com/lanl/spiner/pull/151) Add interpToRealWithGrad
 - [[MR 148]](https://github.com/lanl/spiner/pull/148) Add `FastNonUniformGrid1D` with exact O(1) NQT-asinh lookup acceleration, configurable binary fallback, and host-side reconfiguration.
-- [[MR 146]](https://github.com/lanl/spiner/pull/146) Add UnstructuredGrid1D. Note this bumps ports-of-call dependency and the next spiner release should depend on the newer ports-of-call.
+- [[MR 146]](https://github.com/lanl/spiner/pull/146) Add `NonUniformGrid1D`; requires the updated Ports-of-Call dependency.
 - [[MR 144]](https://github.com/lanl/spiner/pull/144) Add the ability for grid objects to own memory. This extends the public API but the real changes will come later.
 - [[MR 103]](https://github.com/lanl/spiner/pull/103) Add config_summary to cmake
 
 ### Fixed (Repair bugs, etc)
 - [[MR 150]](https://github.com/lanl/spiner/pull/150) Cleaned up memory model for grids that own data
-- [[MR 141]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
+- [[MR 142]](https://github.com/lanl/spiner/pull/142) fix issue with range() method on device
 
 ### Changed (changing behavior/API/variables/...)
 - [[MR 150]](https://github.com/lanl/spiner/pull/150) Replace the grid `copy()` method with `shallowCopy()`, which makes a non-owning (`Unmanaged`) handle, and `deepCopy()`, the previous `copy()`. Rename `DataBox::copy()` to `DataBox::deepCopy()`, which now deep copies grids too.
 - [[MR 150]](https://github.com/lanl/spiner/pull/150) `DataBox::finalize()` and `free()` no longer finalize grids. Use the new `DataBox::finalizeGrids()` to free grid-owned memory. `DBDeleter` is now `DBDeleter<bool FinalizeGrids = false>`, so write `DBDeleter<>` in place of `DBDeleter`. Slices, `copyShape()`, and `getOnDevice(false)` now hold non-owning grids, and `DataBox` assignment no longer deep copies grids.
 - [[MR 150]](https://github.com/lanl/spiner/pull/150) `DataBox::interpFromDB` now requires a destination that already has storage and the right shape, and writes only values, leaving the destination's grids and index types unchanged.
-- [[MR 145]](https://github.com/lanl/spiner/pull/145) Remove comparator and dx methods from public API
+- [[MR 145]](https://github.com/lanl/spiner/pull/145) Remove grid comparison operators and no-argument `dx()`; the new spacing API provides `dx(i)`, `idx(i)`, and `invCurvatureWidth(i)`
 
 ### Infrastructure (changes irrelevant to downstream codes)
-- [[MR 141]](https://github.com/lanl/spiner/pull/142) update contribution rules
+- [[MR 142]](https://github.com/lanl/spiner/pull/142) update contribution rules
 
-### Deprecated (soon to be removed behavior/API/variables/...)
+### Removed
 - [[MR 150]](https://github.com/lanl/spiner/pull/150) Removed interpToDB
 
 ## Release 1.7.0
-Date: 12/15/2026
+Date: 12/15/2025
 
 This is the start of changelog
 

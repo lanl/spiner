@@ -20,7 +20,8 @@
 Building and Installation
 ==========================
 
-``Spiner`` is self-contained and header-only. Clone it as:
+``Spiner`` is header-only. It requires C++20, CMake 3.24 or newer, and
+Ports-of-Call 3.1.1 or newer. Clone it as:
 
 .. code-block:: bash
 
@@ -35,27 +36,31 @@ To build tests and install:
 .. code-block:: bash
 
   cd spiner  # cd to repo root
-  mkdir bin
-  cd bin
-  cmake -DBUILD_TESTING=ON ..
-  make -j
-  make test
-  make install
+  cmake -S . -B bin -DSPINER_BUILD_TESTS=ON -DSPINER_TEST_USE_KOKKOS=OFF
+  cmake --build bin --parallel 6
+  ctest --test-dir bin --output-on-failure -j 6
+  cmake --install bin --prefix /path/to/install
 
 Spiner supports a few ``cmake`` configuration options:
 
-* ``BUILD_TESTING`` enables tests
-* ``SPINER_USE_HDF5`` enables support for saving and loading tables as `hdf5`_.
-* ``SPINER_USE_PORTABLE_NQT`` uses the portable NQT implementation for fast
-  nonuniform grids. The default uses the faster aliased binary64 implementation.
-* ``SPINER_HDF5_INSTALL_DIR`` tells the build system where `hdf5`_ is located.
-* ``SPINER_USE_KOKKOS`` enables `Kokkos`_ as a backend
-* ``SPINER_USE_KOKKOS_SRC`` tells the build system to build `Kokkos`_ from source, and where the source directory is located. Note that if you use this option, you cannot install Spiner, only build the tests.
-* ``SPINER_KOKKOS_INSTALL_DIR`` tells the build system where to find pre-compiled `Kokkos`_
-* ``SPINER_USE_CUDA`` enables the Kokkos cuda backend
-* ``CMAKE_INSTALL_PREFIX`` sets the install location
-* ``CMAKE_BUILD_TYPE`` sets the build type
-* ``SPINER_FORCE_INTERNAL_PORTS`` forces use of a `ports-of-call`_ submodule rather than a system install
+* ``SPINER_BUILD_TESTS`` builds tests (default: ``OFF``).
+* ``SPINER_USE_HDF`` enables saving and loading tables as `hdf5`_ (default: ``OFF``).
+* ``SPINER_USE_PORTABLE_NQT`` selects portable NQT functions (default: ``OFF``).
+* ``SPINER_TEST_USE_KOKKOS`` enables `Kokkos`_ for tests (default: ``ON`` when tests are enabled).
+* ``SPINER_TEST_USE_KOKKOS_CUDA`` enables CUDA for fetched test Kokkos (default: ``ON``).
+  Set this to ``OFF`` for CPU Kokkos tests.
+* ``CMAKE_PREFIX_PATH`` supplies installed dependency prefixes.
+* ``FETCHCONTENT_SOURCE_DIR_<NAME>`` supplies dependency sources, for example
+  ``FETCHCONTENT_SOURCE_DIR_KOKKOS``.
+* ``CMAKE_INSTALL_PREFIX`` sets the install location.
+* ``CMAKE_BUILD_TYPE`` sets the build type.
+
+CMake searches installed packages first, then fetches missing dependencies
+where supported. Ports-of-Call must be at least 3.1.1. HDF5 must be installed
+when enabled. CUDA tests need an appropriate compiler such as ``nvcc_wrapper``
+and Kokkos architecture settings for the target GPU.
+
+.. _`Spack`: https://spack.io
 
 .. _`hdf5`: https://www.hdfgroup.org/solutions/hdf5
 

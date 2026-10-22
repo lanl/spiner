@@ -17,39 +17,42 @@ Spiner](https://en.wikipedia.org/wiki/Brent_Spiner). For full documentation, see
 
 ## Building and Installation
 
-`Spiner` is self-contained. Simply clone it as
+`Spiner` is header-only and requires C++20, CMake 3.24 or newer, and
+Ports-of-Call 3.1.1 or newer. Clone it as
 ```bash
 git clone --recursive git@github.com:lanl/spiner.git
 ```
 To build and run unit tests,
 ```bash
-mkdir bin
-cmake -DSPINER_BUILD_TESTS=ON ..
-make -j
-make test
+cd spiner
+cmake -S . -B bin -DSPINER_BUILD_TESTS=ON -DSPINER_TEST_USE_KOKKOS=OFF
+cmake --build bin --parallel 6
+ctest --test-dir bin --output-on-failure -j 6
 ```
 and to do convergence testing,
 ```bash
-make convergence
+cmake --build bin --target convergence --parallel 6
 ```
 after building.
 
 To install,
 ```bash
-make install
+cmake --install bin --prefix /path/to/install
 ```
 after configuring and building.
 
 ### Build options
 
 - `SPINER_USE_HDF` enables or disables HDF5. Default is `OFF`
-- `SPINER_USE_KOKKOS` enables or disables Kokkos. Default is `OFF`.
-- `SPINER_USE_CUDA` enables or disables Cuda. Requires Kokkos. Default is `OFF`.
+- `SPINER_TEST_USE_KOKKOS` enables Kokkos for tests; defaults to `ON` when tests are enabled.
+- `SPINER_TEST_USE_KOKKOS_CUDA` enables CUDA for the fetched test Kokkos; default is `ON`.
+- `SPINER_USE_PORTABLE_NQT` selects portable NQT functions; default is `OFF`.
 - `SPINER_BUILD_TESTS` enables or disables tests. Default is `OFF`. If
   this is disabled, then configuration *only* prepares for install and
   provides targets for in-tree builds, as no build step is necessary.
-- `SPINER_HDF5_INSTALL_DIR` a hint for cmake about where you may have stashed HDF5.
-- `SPINER_KOKKOS_INSTALL_DIR` a hint for cmake about where you may have stashed Kokkos.
+- `CMAKE_PREFIX_PATH` supplies installation prefixes for dependency discovery.
+- `FETCHCONTENT_SOURCE_DIR_<NAME>` supplies an existing dependency source tree,
+  for example `FETCHCONTENT_SOURCE_DIR_KOKKOS`.
 
 ## Including spiner in your project
 
@@ -62,14 +65,11 @@ target_link_libraries(my_project PRIVATE spiner::spiner)
 
 ## Dependencies
 
-`Spiner` relies on [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html) for performance portability. It is included as a submodule. Otherwise, `Spiner` has no dependencies for the `databox` tool. Simply include it in your project under the `spiner` directory. It is header-only and requires only a few files:
-
-- `spiner/databox.hpp`
-- `spiner/interpolation.hpp`
-- `spiner/spiner_types.hpp`
-- `spiner/sp5.hpp`
-
-To use the build system (rather than simply cloning and including the files) requires `cmake`.
+`Spiner` relies on [ports-of-call](https://lanl.github.io/ports-of-call/main/index.html)
+3.1.1 or newer for performance portability. CMake first searches installed
+packages and fetches the pinned dependency when no compatible package is found.
+When integrating without CMake, provide both the complete `spiner/` header
+directory and Ports-of-Call headers.
 
 The testing tooling requires a few different pieces:
 
@@ -88,31 +88,29 @@ If you use the cmake build system, just configure with `-DSPINER_USE_HDF=ON`.
 
 ### CUDA and Kokkos
 
-`Spiner` uses the `ports-of-call` code to optionally support
-compilation with CUDA, Kokkos, or none of the above. If `Kokkos` is
-discoverable by cmake (for example if you installed it with `spack`),
-then the build system should find it automatically. Otherwise you can
-specify a location for Kokkos with `SPINER_KOKKOS_INSTALL_DIR`. 
+`Spiner` uses Ports-of-Call for portability. Test builds can use an installed
+Kokkos discovered through `CMAKE_PREFIX_PATH`, or fetch Kokkos automatically.
+For CUDA tests, configure with an appropriate CUDA compiler wrapper:
 
-The following spack install was tested with a V100 GPU:
 ```bash
-spack install kokkos-nvcc-wrapper
-spack install kokkos~shared+cuda+cuda_lambda+cuda_relocatable_device_code+wrapper cuda_arch=70
+cmake -S . -B bin-cuda -DSPINER_BUILD_TESTS=ON \
+  -DSPINER_TEST_USE_KOKKOS=ON -DSPINER_TEST_USE_KOKKOS_CUDA=ON \
+  -DCMAKE_CXX_COMPILER=nvcc_wrapper
+cmake --build bin-cuda --parallel 6
+ctest --test-dir bin-cuda --output-on-failure -j 6
 ```
-and then the following cmake configuration line
-```C++
-cmake -DSPINER_USE_KOKKOS=ON -DSPINER_USE_CUDA=ON -DBUILD_TESTING=ON -DCMAKE_CXX_COMPILER=nvcc_wrapper ..
-```
-builds the tests for CUDA.
+
+Set the appropriate Kokkos architecture options for your hardware. For CPU
+Kokkos tests, set `SPINER_TEST_USE_KOKKOS_CUDA=OFF`.
 
 ### Clang-Format
 
-Clang-format version 12 is required for committing, and a github
+Clang-format version 19 is required for committing, and a github
 workflow is used to check that code meets format requirements. We
 provide a make target in the build system. After configuration, simply
 type
 ```bash
-make format_spiner
+cmake --build bin --target format_spiner --parallel 6
 ```
 to format the code.
 
