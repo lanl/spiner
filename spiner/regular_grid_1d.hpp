@@ -83,8 +83,9 @@ class RegularGrid1D {
     return ix;
   }
 
-  // Gets real value at index
-  PORTABLE_INLINE_FUNCTION T x(const int i) const { return i * dx_ + min_; }
+  PORTABLE_INLINE_FUNCTION T x(const int i) const {
+    return i == static_cast<int>(N_) - 1 ? max_ : i * dx_ + min_;
+  }
   PORTABLE_INLINE_FUNCTION int index(const T x) const {
     return bound(idx_ * (x - min_));
   }
